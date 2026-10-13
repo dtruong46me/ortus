@@ -1,0 +1,13 @@
+{
+  "lectures": [
+    {
+      "id": "l04",
+      "num": 4,
+      "title": "Attention Alternatives and Mixtures of Experts",
+      "titleVi": "Thay thế Attention & Mixture of Experts",
+      "slides": 60,
+      "file": "lectures/l04.html",
+      "imgDir": "img/l04"
+    }
+  ]
+}

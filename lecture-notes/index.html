@@ -1,0 +1,455 @@
+<title>Sổ tay CS336</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    svg: { fontCache: 'global' },
+    startup: { typeset: false }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>
+/* Layout: sổ tay học tập — cột trái là kệ lecture, giữa là bài đọc ~70ch, phải là mục lục của lecture đang mở */
+:root {
+  --bg: #F3F4F8;
+  --surface: #FFFFFF;
+  --ink: #171A26;
+  --muted: #5A6075;
+  --line: #DADDE7;
+  --accent: #2E48D4;
+  --accent-soft: #E7EBFD;
+  --hl: #FFE36A;
+  --key: #2E48D4;   --key-bg: #EEF1FE;
+  --life: #0F7B5F;  --life-bg: #E7F6F0;
+  --warn: #B4400F;  --warn-bg: #FDF0E8;
+  --num: #6B3FB8;   --num-bg: #F2ECFB;
+  --code-bg: #EEF0F6;
+  --shadow: 0 1px 2px rgba(23,26,38,.06), 0 6px 20px rgba(23,26,38,.06);
+  --f-display: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1118; --surface: #171A24; --ink: #E6E8F0; --muted: #99A0B5; --line: #2A2F3E;
+    --accent: #8FA2FF; --accent-soft: #1E2547; --hl: rgba(255,214,64,.30);
+    --key: #9BACFF; --key-bg: #1A2040;
+    --life: #5FD3AE; --life-bg: #11281F;
+    --warn: #FFA472; --warn-bg: #2E1C12;
+    --num: #C3A3FF; --num-bg: #241A38;
+    --code-bg: #1E2230; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1118; --surface: #171A24; --ink: #E6E8F0; --muted: #99A0B5; --line: #2A2F3E;
+  --accent: #8FA2FF; --accent-soft: #1E2547; --hl: rgba(255,214,64,.30);
+  --key: #9BACFF; --key-bg: #1A2040;
+  --life: #5FD3AE; --life-bg: #11281F;
+  --warn: #FFA472; --warn-bg: #2E1C12;
+  --num: #C3A3FF; --num-bg: #241A38;
+  --code-bg: #1E2230; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 18px; line-height: 1.65;
+}
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.app {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 100vh;
+}
+@media (min-width: 1280px) { .app { grid-template-columns: 250px minmax(0, 1fr) 240px; } }
+
+/* ---------- Kệ lecture (trái) ---------- */
+.shelf {
+  position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+  height: 100vh; overflow-y: auto;
+  border-right: 1px solid var(--line);
+  padding: 28px 18px; display: flex; flex-direction: column; gap: 22px;
+  font-family: var(--f-display);
+}
+.brand { display: flex; flex-direction: column; gap: 2px; }
+.brand b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.brand span { font-size: 13px; color: var(--muted); }
+.shelf h3 { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.lec-list a {
+  display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start;
+  padding: 9px 10px; border-radius: 10px; text-decoration: none; color: var(--ink);
+}
+.lec-list a:hover { background: var(--accent-soft); }
+.lec-list a[aria-current="page"] { background: var(--accent); color: var(--surface); }
+.lec-list a[aria-current="page"] .lec-meta { color: inherit; opacity: .8; }
+.lec-num { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.lec-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.lec-meta { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+.lec-soon { padding: 9px 10px; font-size: 13px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; line-height: 1.45; }
+.theme-row { margin-top: auto; display: flex; gap: 6px; }
+.theme-row button {
+  flex: 1; font: 600 12px var(--f-display); padding: 7px 0; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer;
+}
+.theme-row button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- Bài đọc (giữa) ---------- */
+main { min-width: 0; padding-block: 40px 120px; padding-inline: 40px; }
+.reader { max-width: 760px; margin: 0 auto; }
+.lec-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 36px; }
+.eyebrow { font: 600 12px var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.lec-head h1 {
+  font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 4.6vw, 46px);
+  line-height: 1.08; letter-spacing: -.025em; margin: 0; text-wrap: balance;
+}
+.lec-head .sub { font-size: 19px; color: var(--muted); margin: 0; }
+.progress { display: flex; align-items: center; gap: 12px; font: 500 13px var(--f-display); color: var(--muted); }
+.progress .bar { flex: 1; max-width: 240px; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.progress .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+
+.reader h2 {
+  font-family: var(--f-display); font-size: 27px; line-height: 1.2; letter-spacing: -.015em;
+  margin: 64px 0 14px; text-wrap: balance; scroll-margin-top: 20px;
+  display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+}
+.reader h2 .slide-range { font: 500 13px var(--f-mono); color: var(--muted); letter-spacing: 0; }
+.reader h3 { font-family: var(--f-display); font-size: 19px; margin: 32px 0 8px; }
+.part {
+  margin: 80px 0 0; padding-top: 22px; border-top: 3px solid var(--ink);
+  font: 800 14px var(--f-display); letter-spacing: .14em; text-transform: uppercase;
+}
+.part small { display: block; font: 400 17px var(--f-body); letter-spacing: 0; text-transform: none; color: var(--muted); margin-top: 6px; }
+.reader p, .reader li { max-width: 68ch; }
+.reader ul, .reader ol { padding-left: 1.3em; }
+.reader li + li { margin-top: 6px; }
+mark { background: var(--hl); color: inherit; padding: 0 .15em; border-radius: 3px; }
+code { font-family: var(--f-mono); font-size: .84em; background: var(--code-bg); padding: .1em .35em; border-radius: 5px; }
+dfn { font-style: normal; font-weight: 600; border-bottom: 1.5px dotted var(--accent); }
+.en { font-style: italic; color: var(--muted); }
+
+.mathbox { overflow-x: auto; padding: 4px 0; }
+mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+/* Callout */
+.note { margin: 22px 0; padding: 14px 18px 14px 18px; border-radius: 12px; border: 1px solid transparent; }
+.note > :first-child { margin-top: 0; } .note > :last-child { margin-bottom: 0; }
+.note::before { display: block; font: 700 12px var(--f-display); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; }
+.note.key  { background: var(--key-bg);  border-color: color-mix(in srgb, var(--key) 25%, transparent); }
+.note.key::before  { content: "Ý chính"; color: var(--key); }
+.note.life { background: var(--life-bg); border-color: color-mix(in srgb, var(--life) 25%, transparent); }
+.note.life::before { content: "Ví dụ đời thường"; color: var(--life); }
+.note.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+.note.warn::before { content: "Dễ nhầm"; color: var(--warn); }
+.note.num  { background: var(--num-bg);  border-color: color-mix(in srgb, var(--num) 25%, transparent); }
+.note.num::before  { content: "Tính thử bằng số"; color: var(--num); }
+
+/* Ảnh slide */
+.slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 18px 0 22px; }
+.slides.one { grid-template-columns: minmax(0, 1fr); }
+.sl {
+  all: unset; cursor: zoom-in; display: flex; flex-direction: column; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px;
+}
+.sl:hover { border-color: var(--accent); }
+.sl:focus-visible { outline: 2px solid var(--accent); }
+.sl img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 6px; background: #fff; }
+.sl span { font: 600 12px var(--f-display); color: var(--muted); padding: 0 4px 2px; }
+
+/* Bảng */
+.tbl { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.tbl table { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; }
+.tbl th, .tbl td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl th { font: 600 13px var(--f-display); color: var(--muted); background: var(--code-bg); }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl td.hi { font-weight: 600; color: var(--accent); }
+
+/* Widget */
+.widget { margin: 22px 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); font-family: var(--f-display); font-size: 15px; }
+.widget h4 { margin: 0 0 12px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.widget label { font-weight: 600; }
+.widget input[type="range"] { width: 100%; accent-color: var(--accent); }
+.widget .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.widget .chip { padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Tự kiểm tra */
+.quiz { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.quiz details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.quiz summary { cursor: pointer; font-family: var(--f-display); font-weight: 600; font-size: 16px; }
+.quiz details[open] summary { margin-bottom: 8px; color: var(--accent); }
+.quiz details > div > :last-child { margin-bottom: 0; }
+
+/* Đánh dấu đã hiểu */
+.done-btn {
+  margin-left: auto; font: 600 12px var(--f-display); padding: 5px 11px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer;
+}
+.done-btn[aria-pressed="true"] { background: var(--life-bg); border-color: var(--life); color: var(--life); }
+
+/* ---------- Mục lục (phải) ---------- */
+.toc { display: none; }
+@media (min-width: 1280px) {
+  .toc {
+    display: block; position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+    height: 100vh; overflow-y: auto; padding: 40px 18px 40px 6px; font-family: var(--f-display);
+  }
+}
+.toc h3 { margin: 0 0 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.toc a {
+  display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 6px;
+  font-size: 13px; line-height: 1.35; color: var(--muted); text-decoration: none;
+}
+.toc a:hover { color: var(--ink); background: var(--accent-soft); }
+.toc a.active { color: var(--accent); font-weight: 600; }
+.toc a .tick { width: 10px; flex: none; color: var(--life); font-weight: 800; }
+.toc li.part-label { margin-top: 12px; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+
+/* ---------- Mobile ---------- */
+.topbar { display: none; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .shelf { display: none; }
+  .topbar {
+    display: flex; gap: 10px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-family: var(--f-display);
+  }
+  .topbar b { font-size: 16px; font-weight: 800; white-space: nowrap; }
+  .topbar select { flex: 1; min-width: 0; font: 600 14px var(--f-display); padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  main { padding-inline: 16px; padding-block: 24px 80px; }
+  body { font-size: 17px; }
+  .reader h2 { font-size: 23px; scroll-margin-top: 70px; }
+  .mtoc { display: block; }
+}
+.mtoc { display: none; margin: 0 0 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-family: var(--f-display); }
+.mtoc summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.mtoc ol { margin: 8px 0 4px; padding-left: 1.2em; font-size: 14px; line-height: 1.6; }
+.mtoc a { color: var(--ink); text-decoration: none; }
+
+/* ---------- Lightbox ---------- */
+.lightbox[hidden] { display: none; }
+.lightbox {
+  position: fixed; inset: 0; z-index: 50; background: rgba(8,10,16,.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.lightbox img { max-width: min(1400px, 100%); max-height: calc(100% - 60px); border-radius: 8px; background: #fff; }
+.lightbox .lb-bar { display: flex; gap: 10px; align-items: center; color: #E6E8F0; font: 600 14px var(--f-display); }
+.lightbox button { font: 600 14px var(--f-display); padding: 7px 14px; border-radius: 8px; border: 1px solid #3A4052; background: #1B1F2B; color: #E6E8F0; cursor: pointer; }
+
+.loading, .error { font-family: var(--f-display); color: var(--muted); padding: 40px 0; }
+</style>
+
+<div class="app">
+  <aside class="shelf" aria-label="Danh sách lecture">
+    <div class="brand"><b>Sổ tay CS336</b><span>Language Modeling from Scratch · giải thích tiếng Việt</span></div>
+    <div>
+      <h3>Các lecture</h3>
+      <ul class="lec-list" id="lecList"></ul>
+    </div>
+    <div class="lec-soon">Lecture mới sẽ được thêm vào danh sách này khi bạn gửi slide.</div>
+    <div class="theme-row" role="group" aria-label="Giao diện">
+      <button data-t="light">Sáng</button><button data-t="system">Tự động</button><button data-t="dark">Tối</button>
+    </div>
+  </aside>
+
+  <div class="topbar">
+    <b>CS336</b>
+    <label for="lecSelect" hidden>Chọn lecture</label>
+    <select id="lecSelect"></select>
+  </div>
+
+  <main>
+    <article class="reader" id="reader"><p class="loading">Đang mở lecture…</p></article>
+  </main>
+
+  <nav class="toc" aria-label="Mục lục lecture">
+    <h3>Trong lecture này</h3>
+    <ol id="toc"></ol>
+  </nav>
+</div>
+
+<div class="lightbox" id="lightbox" hidden>
+  <img id="lbImg" alt="">
+  <div class="lb-bar">
+    <button id="lbPrev" aria-label="Slide trước">←</button>
+    <span id="lbCap"></span>
+    <button id="lbNext" aria-label="Slide sau">→</button>
+    <button id="lbClose">Đóng</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  // Theme toggle
+  const themeBtns = document.querySelectorAll('.theme-row button');
+  function applyTheme(t) {
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.removeAttribute('data-theme');
+    themeBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+  }
+  applyTheme(store.get('cs336:theme') || 'system');
+  themeBtns.forEach(b => b.addEventListener('click', () => { store.set('cs336:theme', b.dataset.t); applyTheme(b.dataset.t); }));
+
+  const listEl = document.getElementById('lecList');
+  const selEl = document.getElementById('lecSelect');
+  const reader = document.getElementById('reader');
+  const tocEl = document.getElementById('toc');
+  let lectures = [];
+  let current = null;
+
+  fetch('lectures.json').then(r => r.json()).then(data => {
+    lectures = data.lectures.slice().sort((a, b) => a.num - b.num);
+    renderShelf();
+    route();
+  }).catch(() => { reader.innerHTML = '<p class="error">Không tải được danh sách lecture. Hãy tải lại trang.</p>'; });
+
+  function renderShelf() {
+    listEl.innerHTML = lectures.map(l => `
+      <li><a href="#${l.id}" data-id="${l.id}">
+        <span class="lec-num">${String(l.num).padStart(2, '0')}</span>
+        <span><span class="lec-name">${l.titleVi}</span><span class="lec-meta">${l.slides} slide</span></span>
+      </a></li>`).join('');
+    selEl.innerHTML = lectures.map(l => `<option value="${l.id}">Lecture ${l.num} · ${l.titleVi}</option>`).join('');
+    selEl.addEventListener('change', () => { location.hash = selEl.value; });
+  }
+
+  window.addEventListener('hashchange', route);
+  function route() {
+    if (!lectures.length) return;
+    const h = location.hash.slice(1);
+    const lec = lectures.find(l => h === l.id || h.startsWith(l.id + '-')) || lectures[lectures.length - 1];
+    if (current && current.id === lec.id) {
+      const t = h && document.getElementById(h);
+      if (t) t.scrollIntoView();
+      return;
+    }
+    openLecture(lec, h);
+  }
+
+  function openLecture(lec, anchor) {
+    current = lec;
+    listEl.querySelectorAll('a').forEach(a => { if (a.dataset.id === lec.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    selEl.value = lec.id;
+    document.title = `L${lec.num} · Sổ tay CS336`;
+    reader.innerHTML = '<p class="loading">Đang mở lecture…</p>';
+    fetch(lec.file).then(r => r.text()).then(html => {
+      reader.innerHTML = html;
+      runScripts(reader);
+      expandSlides(reader, lec);
+      buildSections(reader, lec);
+      typeset(reader);
+      if (anchor && anchor !== lec.id) { const t = document.getElementById(anchor); if (t) t.scrollIntoView(); }
+      else window.scrollTo(0, 0);
+    }).catch((e) => { console.error(e); reader.innerHTML = '<p class="error">Không tải được lecture này. Hãy tải lại trang.</p>'; });
+  }
+
+  function runScripts(root) {
+    root.querySelectorAll('script').forEach(old => {
+      const s = document.createElement('script');
+      s.textContent = old.textContent;
+      old.replaceWith(s);
+    });
+  }
+
+  // <div class="slides" data-s="2,3"> → ảnh slide bấm để phóng to
+  function expandSlides(root, lec) {
+    root.querySelectorAll('.slides[data-s]').forEach(box => {
+      const nums = box.dataset.s.split(',').map(s => parseInt(s, 10));
+      if (nums.length === 1) box.classList.add('one');
+      box.innerHTML = nums.map(n => {
+        const src = `${lec.imgDir}/s-${String(n).padStart(2, '0')}.jpg`;
+        return `<button class="sl" data-n="${n}" aria-label="Phóng to slide ${n}"><img src="${src}" alt="Slide ${n} của lecture ${lec.num}" loading="lazy"><span>Slide ${n}</span></button>`;
+      }).join('');
+    });
+    root.querySelectorAll('.sl').forEach(b => b.addEventListener('click', () => openLb(parseInt(b.dataset.n, 10))));
+  }
+
+  function buildSections(root, lec) {
+    const heads = [...root.querySelectorAll('h2[id], .part[id]')];
+    const sections = heads.filter(h => h.tagName === 'H2');
+    const key = id => `cs336:${lec.id}:done:${id}`;
+    sections.forEach(h => {
+      const b = document.createElement('button');
+      b.className = 'done-btn';
+      const set = v => { b.setAttribute('aria-pressed', String(v)); b.textContent = v ? '✓ Đã hiểu' : 'Đánh dấu đã hiểu'; };
+      set(store.get(key(h.id)) === '1');
+      b.addEventListener('click', () => {
+        const v = b.getAttribute('aria-pressed') !== 'true';
+        store.set(key(h.id), v ? '1' : '0'); set(v); refreshToc();
+      });
+      h.appendChild(b);
+    });
+
+    function refreshToc() {
+      let done = 0;
+      tocEl.innerHTML = heads.map(h => {
+        if (h.classList.contains('part')) return `<li class="part-label">${h.dataset.short || h.firstChild.textContent}</li>`;
+        const ok = store.get(key(h.id)) === '1'; if (ok) done++;
+        return `<li><a href="#${h.id}" data-for="${h.id}"><span class="tick">${ok ? '✓' : ''}</span><span>${h.dataset.short || h.firstChild.textContent}</span></a></li>`;
+      }).join('');
+      const mt = root.querySelector('.mtoc ol');
+      if (mt) mt.innerHTML = sections.map(h => `<li><a href="#${h.id}">${h.dataset.short || h.firstChild.textContent}</a></li>`).join('');
+      const bar = root.querySelector('.progress');
+      if (bar) {
+        bar.querySelector('i').style.width = (sections.length ? done / sections.length * 100 : 0) + '%';
+        bar.querySelector('span').textContent = `Đã hiểu ${done}/${sections.length} phần`;
+      }
+    }
+    refreshToc();
+
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(es => {
+        es.forEach(e => {
+          if (e.isIntersecting) {
+            tocEl.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.for === e.target.id));
+          }
+        });
+      }, { rootMargin: '0px 0px -70% 0px' });
+      sections.forEach(h => io.observe(h));
+    }
+  }
+
+  function typeset(root, tries = 0) {
+    const mj = window.MathJax;
+    if (mj && typeof mj.typesetPromise === 'function') {
+      const p = mj.startup && mj.startup.promise ? mj.startup.promise : Promise.resolve();
+      p.then(() => mj.typesetPromise([root])).catch(() => {});
+    } else if (tries < 40) setTimeout(() => typeset(root, tries + 1), 250);
+  }
+
+  // Lightbox
+  const lb = document.getElementById('lightbox'), lbImg = document.getElementById('lbImg'), lbCap = document.getElementById('lbCap');
+  let lbN = 1;
+  function openLb(n) {
+    lbN = Math.max(1, Math.min(current.slides, n));
+    lbImg.src = `${current.imgDir}/s-${String(lbN).padStart(2, '0')}.jpg`;
+    lbImg.alt = `Slide ${lbN}`;
+    lbCap.textContent = `Slide ${lbN} / ${current.slides}`;
+    lb.hidden = false;
+  }
+  document.getElementById('lbPrev').onclick = () => openLb(lbN - 1);
+  document.getElementById('lbNext').onclick = () => openLb(lbN + 1);
+  document.getElementById('lbClose').onclick = () => { lb.hidden = true; };
+  lb.addEventListener('click', e => { if (e.target === lb) lb.hidden = true; });
+  document.addEventListener('keydown', e => {
+    if (lb.hidden) return;
+    if (e.key === 'Escape') lb.hidden = true;
+    if (e.key === 'ArrowLeft') openLb(lbN - 1);
+    if (e.key === 'ArrowRight') openLb(lbN + 1);
+  });
+})();
+</script>

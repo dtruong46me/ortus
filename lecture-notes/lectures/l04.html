@@ -1,0 +1,496 @@
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 4 · 60 slide</span>
+  <h1>Thay thế Attention &amp; Mixture of Experts</h1>
+  <p class="sub">Attention Alternatives and Mixtures of Experts — làm sao cho mô hình đọc được văn bản rất dài mà không tốn quá nhiều tính toán, và làm sao cho mô hình "to" hơn mà vẫn chạy nhanh.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Đã hiểu 0 phần</span></div>
+</header>
+
+<details class="mtoc"><summary>Mục lục lecture</summary><ol></ol></details>
+
+<h2 id="l04-overview" data-short="Bức tranh tổng thể">Bức tranh tổng thể trước khi đọc</h2>
+<p>Lecture này có hai nửa, nhưng cùng chung một câu hỏi: <mark>làm sao để mô hình mạnh hơn mà không phải trả thêm quá nhiều chi phí tính toán?</mark></p>
+<ol>
+  <li><b>Nửa 1 — Thay thế attention (slide 2–13).</b> Attention bình thường tốn chi phí tăng theo <i>bình phương</i> độ dài văn bản. Văn bản dài gấp 10 lần thì tốn gấp 100 lần. Ta xem các cách né chuyện này: linear attention, Mamba-2, Gated DeltaNet, mô hình lai (hybrid), và sparse attention.</li>
+  <li><b>Nửa 2 — Mixture of Experts, viết tắt MoE (slide 14–60).</b> Thay vì một khối tính toán khổng lồ, ta có nhiều "chuyên gia" nhỏ và mỗi token chỉ dùng vài chuyên gia. Mô hình có rất nhiều tham số nhưng mỗi lần chạy chỉ dùng một phần nhỏ.</li>
+</ol>
+<div class="note key">
+  <p>Hai nửa giải quyết hai phần khác nhau của một khối Transformer. Mỗi khối có hai phần chính: <b>attention</b> (các token nhìn nhau) và <b>feed-forward / MLP</b> (mỗi token tự xử lý riêng). Nửa 1 tối ưu phần attention. Nửa 2 (MoE) tối ưu phần feed-forward.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="part" id="l04-part1" data-short="Phần 1 · Attention">Phần 1 · Thay thế Attention<small>Khi văn bản dài ra, attention trở thành "nút cổ chai".</small></div>
+
+<h2 id="l04-why" data-short="Vì sao attention đắt"><span>Vì sao attention đắt khi văn bản dài?</span><span class="slide-range">slide 2–3</span></h2>
+<div class="slides" data-s="2"></div>
+<p><b>Biểu đồ bên trái</b> cho thấy độ dài ngữ cảnh (<span class="en">context window</span>, tức số token mô hình đọc được một lúc) đã tăng rất nhanh: GPT-1 chỉ khoảng 512 token, đến 2025 đã có mô hình đọc được 1 triệu, thậm chí 10 triệu token (Llama 4 Scout). Lưu ý trục tung là thang log: mỗi vạch lớn gấp 10 lần vạch trước.</p>
+<p><b>Biểu đồ bên phải</b> đo thời gian chạy của một lớp. Phần màu xanh (feed-forward) tăng theo đường gần như thẳng. Phần màu cam (attention) cong vút lên. Khi chuỗi dài 16.000 token, attention chiếm phần lớn thời gian.</p>
+<div class="note life">
+  <p>Hãy tưởng tượng một lớp học có \(n\) học sinh và mỗi người phải bắt tay <i>tất cả</i> những người còn lại. 10 người thì khoảng 100 cái bắt tay. 1.000 người thì khoảng 1 triệu. Attention cũng vậy: mỗi token phải "nhìn" mọi token khác, nên số phép so sánh là \(n \times n = n^2\).</p>
+</div>
+
+<h3>"Bộ công cụ cơ bản" đã có (slide 3)</h3>
+<div class="slides" data-s="3"></div>
+<ul>
+  <li><b>Kết hợp attention cục bộ + toàn cục</b> (hình bên trái): thay vì nhìn tất cả, mỗi token chỉ nhìn vài token gần nó (vùng xanh dọc đường chéo), cộng thêm một số vị trí "toàn cục". Các ma trận ô vuông trong hình cho biết token nào được phép nhìn token nào. Ô xanh là được nhìn.</li>
+  <li><b>Kỹ thuật hệ thống</b> (hình bên phải): FlashAttention không đổi công thức, chỉ tính toán khéo hơn trên GPU nên nhanh hơn PyTorch thường 3–4 lần. Cột "OOM" nghĩa là hết bộ nhớ.</li>
+</ul>
+<p>Câu hỏi slide đặt ra: <i>nếu muốn cải thiện mạnh tay hơn thì sao?</i> Đó là phần tiếp theo.</p>
+
+<h2 id="l04-linear" data-short="Linear attention"><span>Linear attention: một mẹo đổi thứ tự nhân</span><span class="slide-range">slide 4</span></h2>
+<div class="slides" data-s="4"></div>
+<p>Attention thông thường được viết như sau:</p>
+<div class="mathbox">\[ \text{Attn}(Q,K,V) = \rho(QK^\top)\,V \]</div>
+<ul>
+  <li>\(Q, K\) là ma trận cỡ \(n \times d_k\): \(n\) token, mỗi token là một vector dài \(d_k\). \(V\) cỡ \(n \times d_v\).</li>
+  <li>\(\rho\) là một hàm áp lên từng phần tử. Trong Transformer thường, \(\rho\) chính là softmax.</li>
+  <li>\(QK^\top\) cỡ \(n \times n\). Đây là "bảng điểm" cho biết mỗi token chú ý đến token khác bao nhiêu. Tính bảng này tốn \(n^2 d_k\) phép nhân. Đó là cái giá bình phương.</li>
+</ul>
+<p><b>Mẹo:</b> nếu bỏ softmax đi (cho \(\rho\) là hàm đồng nhất, tức không làm gì cả), phép nhân ma trận có tính kết hợp, nên ta được đổi chỗ dấu ngoặc:</p>
+<div class="mathbox">\[ (QK^\top)\,V = Q\,(K^\top V) \]</div>
+<p>Kết quả y hệt, nhưng chi phí khác hẳn:</p>
+<ul>
+  <li>Cách trái: tạo bảng \(n \times n\) rồi nhân với \(V\) → khoảng \(n^2 d_k + n^2 d_v\) phép tính.</li>
+  <li>Cách phải: \(K^\top V\) chỉ là một ma trận nhỏ cỡ \(d_k \times d_v\) (không phụ thuộc \(n\)!), rồi nhân với \(Q\) → khoảng \(2\,n\,d_k d_v\) phép tính. <mark>Tuyến tính theo \(n\).</mark></li>
+</ul>
+
+<div class="widget" id="attnCalc">
+  <h4>Thử kéo: độ dài văn bản thay đổi thì chi phí đổi thế nào?</h4>
+  <label for="attnN">Số token \(n\): <span class="chip" id="attnNv"></span></label>
+  <input type="range" id="attnN" min="3" max="7" step="0.1" value="5">
+  <div class="tbl"><table>
+    <tr><th>Cách tính (với \(d_k = d_v = 128\))</th><th>Số phép nhân</th></tr>
+    <tr><td>Attention thường \((QK^\top)V\)</td><td id="attnQ"></td></tr>
+    <tr><td>Linear attention \(Q(K^\top V)\)</td><td id="attnL"></td></tr>
+    <tr><td>Linear nhanh hơn</td><td class="hi" id="attnR"></td></tr>
+  </table></div>
+</div>
+<script>
+(function () {
+  const r = document.getElementById('attnN'); if (!r) return;
+  const d = 128;
+  const fmt = x => x >= 1e12 ? (x / 1e12).toFixed(1) + ' nghìn tỷ' : x >= 1e9 ? (x / 1e9).toFixed(1) + ' tỷ' : x >= 1e6 ? (x / 1e6).toFixed(1) + ' triệu' : Math.round(x).toLocaleString('vi-VN');
+  function upd() {
+    const n = Math.round(Math.pow(10, parseFloat(r.value)));
+    const q = n * n * (d + d), l = 2 * n * d * d;
+    document.getElementById('attnNv').textContent = n.toLocaleString('vi-VN');
+    document.getElementById('attnQ').textContent = fmt(q);
+    document.getElementById('attnL').textContent = fmt(l);
+    document.getElementById('attnR').textContent = (q / l >= 1 ? (q / l).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' lần' : 'chậm hơn (n quá nhỏ)');
+  }
+  r.addEventListener('input', upd); upd();
+})();
+</script>
+
+<div class="note warn">
+  <p>Mẹo này <b>chỉ đúng khi bỏ softmax</b>. Softmax chuẩn hoá theo từng hàng của bảng \(n\times n\), nên bắt buộc phải tạo cả bảng trước. Bỏ softmax làm mô hình kém đi một chút. Bản "kernel" (Katharopoulos 2020) thay softmax bằng một hàm \(\phi\) áp riêng lên \(Q\) và \(K\), tức \(\phi(Q)\,(\phi(K)^\top V)\), để vẫn đổi được thứ tự nhân. Slide gọi mẹo này là "rất ngớ ngẩn nhưng quan trọng đến bất ngờ".</p>
+</div>
+
+<h2 id="l04-recurrent" data-short="Linear attention = RNN"><span>Linear attention thực chất là một RNN</span><span class="slide-range">slide 5</span></h2>
+<div class="slides" data-s="5"></div>
+<p>Khi sinh văn bản, token thứ \(t\) chỉ được nhìn các token từ 1 đến \(t\). Viết \(K^\top V\) theo từng bước, ta có:</p>
+<div class="mathbox">\[ S_t = S_{t-1} + k_t v_t^\top \qquad y_t = q_t^\top S_t \]</div>
+<ul>
+  <li>\(S_t\) là ma trận <dfn>trạng thái</dfn> cỡ \(d_k \times d_v\), giống một "cuốn sổ ghi nhớ" có kích thước cố định.</li>
+  <li>Mỗi token mới ghi thêm \(k_t v_t^\top\) vào sổ: "với chìa khoá \(k_t\), hãy nhớ giá trị \(v_t\)".</li>
+  <li>Muốn đọc ra, ta dùng câu hỏi \(q_t\) để "tra" sổ: \(y_t = q_t^\top S_t\).</li>
+</ul>
+<p>Đây đúng là dạng của mạng hồi quy (RNN): một trạng thái được cập nhật từng bước.</p>
+<div class="note key">
+  <p><b>Tính đối ngẫu</b> (<span class="en">duality</span>): cùng một mô hình có thể tính theo hai cách.</p>
+  <ul>
+    <li><b>Khi huấn luyện:</b> đã có sẵn cả câu, nên tính song song cho mọi token cùng lúc (dạng ma trận, dạng "bình phương"). GPU rất giỏi việc này.</li>
+    <li><b>Khi sinh văn bản (inference):</b> tính tuần tự từng token bằng công thức RNN. Mỗi bước chỉ tốn một lượng cố định, và chỉ cần lưu \(S_t\) thay vì lưu lại toàn bộ token cũ như KV cache của attention thường.</li>
+  </ul>
+</div>
+<p>Ghi chú cuối slide: nếu nhân \(S_{t-1}\) với một hệ số \(\gamma\) nhỏ hơn 1 (cho thông tin cũ mờ dần), ta được mô hình <b>RetNet</b>.</p>
+
+<h2 id="l04-minimax" data-short="MiniMax M1 (hybrid 7:1)"><span>MiniMax M1: lai 7 lớp linear + 1 lớp đầy đủ</span><span class="slide-range">slide 6</span></h2>
+<div class="slides" data-s="6"></div>
+<p>Linear attention thuần thì nhanh nhưng yếu hơn. Giải pháp thực tế là <dfn>mô hình lai</dfn> (<span class="en">hybrid</span>): cứ 7 lớp "lightning attention" (một dạng linear attention) thì xen 1 lớp softmax attention đầy đủ.</p>
+<ul>
+  <li>Biểu đồ cột: MiniMax-M1 (đỏ) cạnh tranh được với các mô hình lớn khác trên nhiều bài kiểm tra.</li>
+  <li>Biểu đồ đường: khi sinh văn bản dài tới 128K token, FLOPs của DeepSeek R1 (xanh lá) tăng rất nhanh, còn MiniMax-M1 (đỏ) gần như một đường thẳng thoai thoải.</li>
+  <li>Bảng nhỏ: bản Hybrid-lightning ngang hoặc hơn bản Softmax ở đa số bài kiểm tra.</li>
+</ul>
+
+<h2 id="l04-mamba" data-short="Mamba-2: thêm cổng quên"><span>Mamba-2: thêm "cổng quên"</span><span class="slide-range">slide 7–8</span></h2>
+<div class="slides" data-s="7"></div>
+<p>So sánh hai công thức (phần màu đỏ trên slide là phần mới):</p>
+<div class="mathbox">\[ \text{Linear attention: } S_t = S_{t-1} + k_t v_t^\top \]
+\[ \text{Mamba-2: } S_t = \gamma_t\, S_{t-1} + k_t v_t^\top,\quad \gamma_t = f(x_t),\quad y_t = q_t^\top S_t + v_t^\top D \]</div>
+<ul>
+  <li>\(\gamma_t\) là một số trong khoảng 0–1, <b>phụ thuộc vào token hiện tại</b> \(x_t\). Đây gọi là <dfn>gating</dfn> (cổng). \(\gamma_t\) gần 1 thì giữ trí nhớ cũ. \(\gamma_t\) gần 0 thì xoá gần hết để bắt đầu lại.</li>
+  <li>\(v_t^\top D\) là một đường tắt (<span class="en">skip connection</span>) đưa thẳng thông tin của token hiện tại ra ngoài.</li>
+</ul>
+<div class="note life">
+  <p>Linear attention giống một cuốn sổ chỉ được viết thêm, không bao giờ tẩy, nên lâu dần chữ chồng lên nhau và rối. Mamba-2 cho phép mô hình tự quyết định: "sang chương mới rồi, chuyện cũ quên bớt đi". Slide tóm lại: <i>gating is good!</i></p>
+</div>
+<p>Vì \(\gamma_t\) tính được song song cho mọi token, Mamba-2 vẫn giữ được tính đối ngẫu: huấn luyện song song, sinh văn bản tuần tự.</p>
+
+<h3>Nemotron 3 của NVIDIA (slide 8)</h3>
+<div class="slides" data-s="8"></div>
+<p>Kiến trúc chủ yếu là các cặp <b>Mamba-2 + MoE</b> xen kẽ, chỉ thỉnh thoảng có một lớp Attention (khối hồng). Tỷ lệ khoảng 3 lớp Mamba : 1 lớp attention. Kết quả (cột xanh lá) ngang hoặc tốt hơn các mô hình cùng cỡ, và <b>thông lượng</b> (số token sinh ra mỗi giây, nhóm cột bên phải) cao hơn hẳn.</p>
+
+<h2 id="l04-delta" data-short="Gated DeltaNet"><span>Gated DeltaNet: biết "ghi đè" thay vì chỉ cộng dồn</span><span class="slide-range">slide 9–10</span></h2>
+<div class="slides" data-s="9"></div>
+<div class="mathbox">\[ S_t = \gamma_t\,(I - \beta_t k_t k_t^\top)\, S_{t-1} + \beta_t\, k_t v_t^\top,\qquad y_t = q_t^\top S_t \]</div>
+<p>Có hai thứ mới so với Mamba-2 (phần màu xanh dương):</p>
+<ol>
+  <li><b>\(\beta_t\) — cổng đầu vào.</b> Nếu \(\beta_t = 0\) thì token này không ghi gì vào sổ ("no input operation"). Token không quan trọng thì bỏ qua.</li>
+  <li><b>\((I - \beta_t k_t k_t^\top)\) — xoá có chọn lọc.</b> Trước khi ghi giá trị mới vào chìa khoá \(k_t\), nó <i>xoá</i> những gì đang lưu theo hướng của chìa khoá \(k_t\).</li>
+</ol>
+<div class="note num">
+  <p>Nhân công thức ra (bỏ \(\gamma\) cho gọn) sẽ thấy rõ ý nghĩa:</p>
+  <div class="mathbox">\[ S_t = S_{t-1} + \beta_t\, k_t\,\big(v_t - S_{t-1}^\top k_t\big)^\top \]</div>
+  <p>\(S_{t-1}^\top k_t\) là giá trị mà sổ <i>đang nhớ</i> cho chìa khoá \(k_t\). Vậy mô hình chỉ ghi thêm <b>phần chênh lệch</b> giữa giá trị đúng \(v_t\) và giá trị đang nhớ. Đây là "delta rule": nhớ đúng rồi thì không ghi thêm, nhớ sai thì sửa. Thực chất đây là một bước gradient descent trên trí nhớ. Vì thế slide nhắc đến quan hệ với "fast weight programming" và "test-time training" (học ngay khi đang chạy).</p>
+</div>
+<div class="note life">
+  <p>Linear attention: viết chồng lên bảng. Mamba-2: thỉnh thoảng lau mờ cả bảng. Gated DeltaNet: tìm đúng dòng ghi chìa khoá đó, tẩy dòng ấy, rồi viết giá trị mới vào.</p>
+</div>
+
+<h3>Qwen 3.5 / Qwen3-Next (slide 10)</h3>
+<div class="slides" data-s="10"></div>
+<p>Các mô hình Qwen mới nhất dùng tỷ lệ <b>3 lớp Gated DeltaNet : 1 lớp Gated Attention</b>, kết hợp với MoE. Biểu đồ phải: khi ngữ cảnh dài 128K, tốc độ sinh văn bản của Qwen3-Next-80B-A3B (tím) nhanh gấp khoảng 10 lần mô hình dense Qwen3-32B. Chất lượng vẫn hợp lý.</p>
+
+<h2 id="l04-hybrid" data-short="Tỷ lệ lai bao nhiêu là đủ"><span>Lai bao nhiêu lớp attention là đủ?</span><span class="slide-range">slide 11</span></h2>
+<div class="slides" data-s="11"></div>
+<p><b>Bảng bên phải</b> rất đáng xem: nó xếp tất cả các mô hình trên vào cùng một khuôn "cập nhật trạng thái \(S_t\) + đọc ra \(o_t\)". Các dòng chỉ khác nhau ở cách cập nhật: có cổng quên không (Mamba-2, GLA), có xoá theo chìa khoá không (DeltaNet).</p>
+<p><b>Biểu đồ "Recall vs. ratio"</b>: trục ngang là tỷ lệ linear : full (3-1, 6-1, 12-1, 24-1, pure = toàn linear). Trục dọc là khả năng <dfn>recall</dfn>, tức tìm lại đúng một chi tiết trong văn bản dài, kiểu "mò kim đáy bể". Đường đứt nét là Transformer thường.</p>
+<ul>
+  <li>Càng ít lớp full attention (sang phải) thì recall càng giảm. Mô hình thuần linear (pure) tụt mạnh.</li>
+  <li>Ở tỷ lệ nhỏ như 3-1 hay 6-1, recall gần bằng Transformer thường.</li>
+</ul>
+<div class="note key"><p>Trạng thái \(S_t\) có kích thước cố định nên không thể nhớ chính xác mọi chi tiết của một văn bản rất dài. Vài lớp full attention đóng vai trò "tra cứu chính xác". Kết luận của slide: chưa có nhiều thí nghiệm đối chứng kỹ, nhưng có dấu hiệu là lai với tỷ lệ nhỏ thì mất rất ít chất lượng.</p></div>
+
+<h2 id="l04-dsa" data-short="Sparse attention (DSA)"><span>Hướng khác: sparse attention (DSA)</span><span class="slide-range">slide 12–13</span></h2>
+<div class="slides" data-s="12,13"></div>
+<p>Thay vì đổi sang RNN, <b>DeepSeek Sparse Attention</b> giữ attention thường nhưng mỗi token <b>chỉ nhìn một số ít token quan trọng nhất</b> (top-k, ví dụ khoảng 2048 token) thay vì nhìn tất cả.</p>
+<ol>
+  <li><b>Lightning indexer</b> (công thức 1): một bộ chấm điểm rất nhẹ (ít head, chạy bằng FP8, dùng ReLU) tính điểm \(I_{t,s}\) xem token \(s\) có đáng để token \(t\) nhìn không.</li>
+  <li><b>Chọn token</b> (công thức 2): lấy top-k token có điểm cao nhất, rồi chạy attention thật chỉ trên những token đó.</li>
+</ol>
+<div class="note life"><p>Giống đọc sách có mục lục: thay vì đọc lại cả cuốn mỗi lần muốn tìm gì, bạn liếc mục lục (indexer, rất rẻ) rồi chỉ mở đúng vài trang cần thiết (attention thật).</p></div>
+<ul>
+  <li><b>Slide 13, biểu đồ dưới trái:</b> chi phí trên mỗi triệu token của DeepSeek-V3.2 (cam) gần như nằm ngang theo vị trí token, trong khi V3.1 (xanh) tăng tuyến tính. Cả khi đọc đầu vào (prefilling) lẫn khi sinh (decoding).</li>
+  <li><b>Thích nghi sau</b> (<span class="en">post hoc</span>): có thể lấy một mô hình đã huấn luyện với attention đầy đủ, rồi gắn thêm indexer. Bảng của GLM-4.7-Flash cho thấy: chỉ huấn luyện indexer (warmup) thì hơi tụt ở ngữ cảnh dài. Huấn luyện thêm cả mô hình (+DSA) thì gần như không mất gì.</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="part" id="l04-part2" data-short="Phần 2 · MoE">Phần 2 · Mixture of Experts<small>Nhiều tham số hơn nhưng không tốn thêm tính toán.</small></div>
+
+<h2 id="l04-moe-what" data-short="MoE là gì"><span>MoE là gì?</span><span class="slide-range">slide 14–15</span></h2>
+<div class="slides" data-s="14,15"></div>
+<p>Slide 14 cho thấy hầu hết mô hình lớn gần đây đều là MoE: GPT-4 (được đồn), Mixtral, Grok, DeepSeek, Llama 4, OLMoE…</p>
+<p>Slide 15 so sánh hai loại:</p>
+<ul>
+  <li><b>Dense model</b> (trái): mỗi token đi qua <i>một</i> khối FFN to.</li>
+  <li><b>Sparse model / MoE</b> (phải): có <i>nhiều</i> khối FFN (FFN 1, 2, 3, 4), gọi là các <dfn>expert</dfn> (chuyên gia). Một lớp chọn gọi là <dfn>router</dfn> quyết định mỗi token đi vào expert nào. Trong hình, chữ "The" đi vào FFN 2, chữ "Dog" đi vào FFN 1.</li>
+</ul>
+<div class="note life">
+  <p>Bệnh viện có quầy tiếp đón (router) và nhiều bác sĩ chuyên khoa (expert). Mỗi bệnh nhân (token) chỉ được gửi đến 1–2 bác sĩ phù hợp, không phải khám hết mọi khoa. Bệnh viện có thể tuyển thêm thật nhiều bác sĩ (thêm tham số) mà thời gian khám của mỗi bệnh nhân vẫn như cũ (FLOPs không đổi).</p>
+</div>
+<div class="note key"><p><b>Tham số tổng</b> khác <b>tham số kích hoạt</b> (<span class="en">active parameters</span>). Ví dụ DeepSeek-V3 có 671 tỷ tham số tổng, nhưng mỗi token chỉ dùng khoảng 37 tỷ. Chi phí tính toán phụ thuộc vào số tham số <i>kích hoạt</i>.</p></div>
+
+<h2 id="l04-moe-why" data-short="Vì sao MoE phổ biến"><span>Vì sao MoE ngày càng phổ biến?</span><span class="slide-range">slide 16–19</span></h2>
+<div class="slides" data-s="16,17,18,19"></div>
+<ol>
+  <li><b>Cùng FLOPs, nhiều tham số hơn thì tốt hơn</b> (slide 16). Trái: tăng số expert từ 1 lên 256 (1e → 256e) thì test loss giảm đều. Phải: các mô hình Switch có nhiều expert (128e, 64e…) học nhanh hơn hẳn T5-Base dense (tím) trong khi tốn cùng FLOPs mỗi token.</li>
+  <li><b>Huấn luyện nhanh hơn</b> (slide 17). Để đạt cùng chất lượng, Switch-Base 128 expert nhanh gấp khoảng <b>7 lần</b> T5-Base. OLMoE: bản MoE (hồng) cần ít hơn khoảng 3 lần lượng token, nhanh hơn khoảng 2 lần về thời gian thực.</li>
+  <li><b>Rất cạnh tranh với mô hình dense</b> (slide 18). Trục ngang là tham số <i>kích hoạt</i>, trục dọc là điểm MMLU. DeepSeek-V2 (ngôi sao đỏ) chỉ kích hoạt khoảng 21 tỷ tham số nhưng điểm ngang các mô hình dense 70 tỷ.</li>
+  <li><b>Dễ chia ra nhiều máy</b> (slide 19). Mỗi expert có thể đặt trên một GPU riêng. Token được gửi đến GPU chứa expert của nó (All-to-All Dispatch), tính xong thì gửi về (All-to-All Combine). Kiểu chia này gọi là <dfn>expert parallelism</dfn>.</li>
+</ol>
+
+<h2 id="l04-moe-results" data-short="Kết quả thực tế"><span>Kết quả thực tế: phương Tây và Trung Quốc</span><span class="slide-range">slide 20–23</span></h2>
+<div class="slides" data-s="20,21,22,23"></div>
+<ul>
+  <li><b>Slide 20:</b> Llama 4 Maverick (MoE) mạnh và rẻ (khoảng 0,19–0,49 USD mỗi triệu token so với 4,38 USD của GPT-4o). Hầu hết mô hình mở mạnh nhất hiện nay là MoE.</li>
+  <li><b>Slide 21 (Qwen):</b> so sánh hai bảng. Qwen1.5-MoE-A2.7B có 14,3 tỷ tham số tổng nhưng chỉ <b>2,7 tỷ kích hoạt</b>, mà điểm gần bằng các mô hình dense 7 tỷ như Mistral-7B. Tức là chạy nhanh hơn khoảng 3 lần với chất lượng tương đương.</li>
+  <li><b>Slide 22 (DeepSeek):</b> một thí nghiệm có đối chứng chặt. Cả ba mô hình đều có 0,2B tham số kích hoạt và cùng FLOPs, cùng 100B token. Bản Switch (MoE, 2B tham số tổng) tốt hơn Dense ở gần như mọi bài kiểm tra. Loss trên Pile giảm từ 2,060 xuống 1,881.</li>
+  <li><b>Slide 23:</b> DeepSeek-V3 (cột sọc xanh) dẫn đầu nhiều bài như MATH 500 (90,2), Codeforces (51,6).</li>
+</ul>
+
+<h2 id="l04-moe-whynot" data-short="Vì sao không phải ai cũng dùng"><span>Vì sao trước đây MoE chưa phổ biến?</span><span class="slide-range">slide 24</span></h2>
+<div class="slides" data-s="24"></div>
+<ol>
+  <li><b>Hạ tầng phức tạp.</b> MoE chỉ thật sự có lợi khi có nhiều GPU để chứa hết đống tham số. Trên một máy đơn lẻ thì lợi ích ít.</li>
+  <li><b>Huấn luyện thiếu ổn định.</b> Mục tiêu huấn luyện mang tính "mẹo" (heuristic). Hình dưới: loss đang xuống bình thường thì đột ngột vọt lên 300+ (mô hình "nổ"), thay vì giảm đều như hình bên phải.</li>
+</ol>
+
+<h2 id="l04-moe-shape" data-short="MoE trông như thế nào"><span>Một MoE trông như thế nào, và những gì thay đổi được?</span><span class="slide-range">slide 25–26</span></h2>
+<div class="slides" data-s="25,26"></div>
+<ul>
+  <li><b>Phổ biến:</b> thay lớp MLP/FFN bằng một lớp MoE. Phần attention giữ nguyên.</li>
+  <li><b>Ít phổ biến:</b> dùng MoE cho cả attention head (ModuleFormer, JetMoE): router chọn head nào được dùng.</li>
+</ul>
+<p>Ba thứ các thiết kế MoE khác nhau (slide 26), và cũng là ba phần tiếp theo của lecture:</p>
+<ol>
+  <li><b>Hàm routing</b>: token được gửi đến expert nào?</li>
+  <li><b>Kích thước expert</b>: ít expert to hay nhiều expert nhỏ?</li>
+  <li><b>Mục tiêu huấn luyện</b>: làm sao huấn luyện được router?</li>
+</ol>
+
+<h2 id="l04-routing" data-short="Các kiểu routing"><span>Các kiểu routing</span><span class="slide-range">slide 27–31</span></h2>
+<div class="slides" data-s="27,28"></div>
+<p>Hầu hết thuật toán routing quy về "<b>chọn top-k</b>". Slide 27 có một bảng điểm: hàng là expert (E1–E5), cột là token (T1–T3). Có ba cách chọn:</p>
+<div class="tbl"><table>
+  <tr><th>Kiểu</th><th>Chọn thế nào</th><th>Ưu / nhược</th></tr>
+  <tr><td><b>Token chọn expert</b><br><span class="en">token choice</span></td><td>Mỗi cột (token) lấy k expert có điểm cao nhất</td><td>Đơn giản, phổ biến nhất. Nhưng có thể nhiều token cùng dồn vào một expert.</td></tr>
+  <tr><td><b>Expert chọn token</b><br><span class="en">expert choice</span></td><td>Mỗi hàng (expert) lấy k token có điểm cao nhất</td><td>Tải tự động cân bằng. Nhưng có token không được expert nào chọn, và cần biết trước cả batch.</td></tr>
+  <tr><td><b>Tối ưu toàn cục</b></td><td>Giải một bài toán phân công cho cả bảng</td><td>Đẹp về lý thuyết nhưng tốn công.</td></tr>
+</table></div>
+<p>Slide 28 (thí nghiệm của OLMoE): token choice (TC, hồng) tốt hơn expert choice (EC, xanh) ở cả loss lẫn HellaSwag. Vì vậy gần như mọi MoE đều dùng <b>token choice top-k</b>.</p>
+
+<div class="slides" data-s="29,30"></div>
+<ul>
+  <li><b>Top-k</b> (slide 29): dùng trong hầu hết MoE. Switch Transformer dùng k=1. GShard, Grok, Mixtral dùng k=2. Qwen, DBRX dùng k=4. DeepSeek dùng k=7–8.</li>
+  <li><b>Hashing:</b> gửi token đi theo một hàm băm cố định, không học gì cả. Hay dùng làm mốc so sánh, và nó vẫn chạy được khá tốt.</li>
+  <li><b>Reinforcement learning</b> (slide 30): học cách route bằng RL. Dùng trong các nghiên cứu đầu tiên (Bengio 2013), giờ ít dùng.</li>
+  <li><b>BASE routing:</b> giải bài toán ghép cặp (linear assignment) để mỗi expert nhận số token bằng nhau.</li>
+</ul>
+
+<h2 id="l04-topk" data-short="Top-K routing chi tiết"><span>Top-K routing: đọc công thức từng dòng</span><span class="slide-range">slide 31</span></h2>
+<div class="slides" data-s="31"></div>
+<p>Đọc từ <b>dưới lên trên</b> cho dễ hiểu:</p>
+<div class="mathbox">\[ s_{i,t} = \text{Softmax}_i\big(u_t^{\top} e_i\big) \]</div>
+<p><b>Bước 1 — chấm điểm.</b> \(u_t\) là vector của token \(t\). Mỗi expert \(i\) có một vector "đại diện" \(e_i\). Tích vô hướng \(u_t^\top e_i\) đo mức độ hợp nhau, rồi softmax biến thành xác suất. Đây chính là một bộ hồi quy logistic, như chú thích trên slide.</p>
+<div class="mathbox">\[ g_{i,t} = \begin{cases} s_{i,t}, &amp; s_{i,t} \in \text{Topk}(\{s_{j,t}\}, K) \\ 0, &amp; \text{còn lại} \end{cases} \]</div>
+<p><b>Bước 2 — giữ top-K.</b> Chỉ giữ điểm của K expert cao nhất, các expert khác bị gán 0 (không chạy).</p>
+<div class="mathbox">\[ h_t = \sum_{i=1}^{N} g_{i,t}\,\text{FFN}_i(u_t) + u_t \]</div>
+<p><b>Bước 3 — kết hợp.</b> Đầu ra là tổng có trọng số của các expert được chọn, cộng thêm \(u_t\) (kết nối tắt / residual). Vì \(g = 0\) với các expert không được chọn, ta không cần tính FFN của chúng.</p>
+
+<div class="widget" id="routerToy">
+  <h4>Ví dụ đồ chơi: 4 expert, chọn K</h4>
+  <div class="row" role="group" aria-label="Chọn K">
+    <span>K =</span>
+    <button class="kbtn" data-k="1">1</button><button class="kbtn" data-k="2">2</button><button class="kbtn" data-k="3">3</button><button class="kbtn" data-k="4">4</button>
+  </div>
+  <div class="tbl"><table id="routerTbl"></table></div>
+  <p id="routerOut" style="margin:0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('routerToy'); if (!box) return;
+  const s = [0.50, 0.30, 0.15, 0.05];
+  const btns = box.querySelectorAll('.kbtn');
+  btns.forEach(b => Object.assign(b.style, { font: '700 14px var(--f-display)', padding: '5px 13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer' }));
+  function upd(k) {
+    btns.forEach(b => { const on = +b.dataset.k === k; b.style.background = on ? 'var(--accent)' : 'var(--surface)'; b.style.color = on ? 'var(--surface)' : 'var(--ink)'; b.setAttribute('aria-pressed', String(on)); });
+    const keep = s.map((v, i) => i < k ? v : 0);
+    const sum = keep.reduce((a, b) => a + b, 0);
+    let rows = '<tr><th>Expert</th><th>Điểm softmax s</th><th>DeepSeek V1-2 (giữ nguyên)</th><th>Mixtral / V3 (chuẩn hoá lại)</th></tr>';
+    s.forEach((v, i) => {
+      const on = i < k;
+      rows += `<tr><td>FFN ${i + 1}</td><td>${v.toFixed(2)}</td><td class="${on ? 'hi' : ''}">${on ? v.toFixed(2) : '0 (bỏ qua)'}</td><td class="${on ? 'hi' : ''}">${on ? (v / sum).toFixed(3) : '0'}</td></tr>`;
+    });
+    box.querySelector('#routerTbl').innerHTML = rows;
+    const terms = keep.map((v, i) => v ? `${v.toFixed(2)}·FFN${i + 1}(u)` : null).filter(Boolean).join(' + ');
+    box.querySelector('#routerOut').innerHTML = `Đầu ra kiểu DeepSeek V1-2: <b>h = ${terms} + u</b>. Chỉ chạy ${k}/4 expert, tốn ${k}/4 chi phí FFN so với chạy hết.`;
+  }
+  btns.forEach(b => b.addEventListener('click', () => upd(+b.dataset.k)));
+  upd(2);
+})();
+</script>
+
+<div class="note warn"><p>Slide nói có hai trường phái. <b>DeepSeek V1-2, Grok, Qwen</b>: softmax trước, rồi mới lấy top-k (các trọng số cộng lại nhỏ hơn 1). <b>Mixtral, DBRX, DeepSeek V3</b>: lấy top-k trước rồi mới softmax (chuẩn hoá lại để tổng bằng 1). Cột cuối của bảng trên cho thấy sự khác nhau.</p></div>
+
+<h2 id="l04-finegrained" data-short="Expert nhỏ + expert dùng chung"><span>Nhiều expert nhỏ + expert dùng chung</span><span class="slide-range">slide 32–35</span></h2>
+<div class="slides" data-s="32"></div>
+<p>Đây là cải tiến quan trọng của DeepSeek (gốc từ DeepSpeed-MoE), đi qua ba bước (a → b → c):</p>
+<ol>
+  <li><b>(a) Kiểu truyền thống:</b> N expert to, chọn 2.</li>
+  <li><b>(b) Chia nhỏ expert</b> (<span class="en">fine-grained segmentation</span>): cắt mỗi expert thành nhiều expert nhỏ hơn (2N expert, mỗi cái bằng một nửa), và chọn nhiều hơn (K=4). Tổng tính toán không đổi.</li>
+  <li><b>(c) Expert dùng chung</b> (<span class="en">shared expert</span>, ô xanh lá): một vài expert <i>luôn luôn</i> được dùng cho mọi token, không cần qua router.</li>
+</ol>
+<div class="note num">
+  <p>Vì sao chia nhỏ lại tốt? Vì số cách kết hợp tăng vọt. Chọn 2 trong 16 expert có \(\binom{16}{2} = 120\) tổ hợp. Chọn 8 trong 64 expert nhỏ (cùng tổng tính toán) có \(\binom{64}{8} \approx 4{,}4\) <b>tỷ</b> tổ hợp. Mỗi token có thể nhận một "đội chuyên gia" được may đo kỹ hơn.</p>
+</div>
+<div class="note life"><p>Expert dùng chung giống bác sĩ đa khoa: ai đến cũng gặp, lo phần kiến thức chung (ngữ pháp, từ thông dụng…). Nhờ vậy các bác sĩ chuyên khoa không phải mỗi người học lại phần chung đó, và được tập trung vào chuyên môn riêng.</p></div>
+
+<div class="slides" data-s="33,34"></div>
+<ul>
+  <li><b>Slide 33 (DeepSeek):</b> các cột từ xanh → cam → xanh lá → đỏ cam là thêm dần expert dùng chung rồi chia nhỏ hơn. Cột đỏ cam (1 dùng chung + 7 trong 63) tốt nhất. Cải thiện rõ nhất ở TriviaQA và NaturalQuestions (các bài cần nhớ kiến thức).</li>
+  <li><b>Slide 34 (OLMoE):</b> chia nhỏ expert (8 → 32 → 64) <b>có</b> giúp. Nhưng thêm expert dùng chung (31 routed + 1 shared so với 32 routed) <b>không</b> giúp gì. Kết luận về expert dùng chung chưa thống nhất.</li>
+</ul>
+
+<h3>Bảng cấu hình các MoE gần đây (slide 35)</h3>
+<div class="slides" data-s="35"></div>
+<p>Cách đọc bảng: <b>Routed</b> là số expert có router chọn. <b>Active</b> là số expert được chọn cho mỗi token. <b>Shared</b> là số expert luôn bật. <b>Fine-grained ratio</b> là kích thước mỗi expert so với một FFN bình thường (1/14 nghĩa là mỗi expert chỉ bằng 1/14 FFN chuẩn).</p>
+<p>Xu hướng dễ thấy: các mô hình cũ (GShard, Switch, Mixtral, Grok) dùng ít expert to, không có shared. Các mô hình mới (DeepSeek, Qwen, OLMoE) dùng nhiều expert nhỏ, thường có 1–4 expert dùng chung. DeepSeek V3: 256 routed, 8 active, 1 shared, mỗi expert bằng 1/14 FFN.</p>
+
+<h2 id="l04-train" data-short="Khó khăn khi huấn luyện"><span>Huấn luyện MoE: vấn đề "không đạo hàm được"</span><span class="slide-range">slide 36–39</span></h2>
+<div class="slides" data-s="36"></div>
+<p><b>Thách thức chính:</b> mạng nơ-ron học bằng đạo hàm (gradient). Nhưng quyết định "chọn expert 2, bỏ expert 3" là một lựa chọn rời rạc, kiểu bật/tắt. Nó không có đạo hàm, nên router không biết phải chỉnh theo hướng nào để chọn tốt hơn.</p>
+<p>Ba hướng giải quyết: (1) học tăng cường RL, (2) thêm nhiễu ngẫu nhiên, (3) dùng loss "cân bằng" theo kinh nghiệm. Slide hỏi đố: người ta dùng cái nào trong thực tế? Đáp án là cái thứ 3.</p>
+
+<div class="slides" data-s="37,38,39"></div>
+<ul>
+  <li><b>RL (slide 37):</b> REINFORCE chạy được, nhưng không tốt hơn hẳn (các đường gần như trùng hash routing). Về lý thuyết RL là "giải pháp đúng", nhưng gradient dao động mạnh và phức tạp, nên ít người dùng.</li>
+  <li><b>Nhiễu Gaussian (slide 38, Shazeer 2017):</b> cộng nhiễu ngẫu nhiên vào điểm router trước khi lấy top-k: \(H(x)_i = (xW_g)_i + \text{nhiễu}\cdot\text{Softplus}(\dots)\). Expert nằm sát ranh giới top-k thỉnh thoảng được thử, nên các expert "cứng cáp" hơn. Các expert bị loại được gán \(-\infty\) để sau softmax bằng 0.</li>
+  <li><b>Jitter (slide 39, Switch Transformer):</b> nhân điểm router với một số ngẫu nhiên trong khoảng \([1-\epsilon, 1+\epsilon]\). Về sau Zoph 2022 bỏ cách này, vì bảng cho thấy chất lượng giảm (−1,755 → −1,777) dù ổn định hơn.</li>
+</ul>
+
+<h2 id="l04-balance" data-short="Loss cân bằng tải"><span>Loss cân bằng tải (load balancing loss)</span><span class="slide-range">slide 40–43</span></h2>
+<div class="slides" data-s="40"></div>
+<p><b>Vấn đề:</b> nếu để tự do, router có xu hướng dồn hết token vào vài expert "được ưa". Các expert đó càng được dùng thì càng giỏi, càng giỏi thì càng được chọn. Một vòng luẩn quẩn. Kết quả là vài GPU quá tải còn các GPU khác ngồi chơi, và các expert khác bị lãng phí.</p>
+<div class="mathbox">\[ \text{loss} = \alpha \cdot N \cdot \sum_{i=1}^{N} f_i \cdot P_i \]</div>
+<ul>
+  <li>\(f_i\): <b>tỷ lệ token thực sự được gửi</b> đến expert \(i\) (đếm thật, không đạo hàm được).</li>
+  <li>\(P_i\): <b>xác suất trung bình</b> router dành cho expert \(i\) (đạo hàm được).</li>
+  <li>\(\alpha\): hệ số nhỏ để loss này không lấn át loss chính.</li>
+</ul>
+<div class="note num">
+  <p>Với \(N = 4\) expert:</p>
+  <ul>
+    <li><b>Cân bằng hoàn hảo:</b> \(f_i = P_i = 1/4\) với mọi \(i\) → \(\sum f_i P_i = 4 \times \tfrac{1}{16} = \tfrac14\) → loss \(= \alpha \cdot 4 \cdot \tfrac14 = \alpha\). Đây là giá trị nhỏ nhất.</li>
+    <li><b>Dồn hết vào expert 1:</b> \(f_1 = P_1 = 1\) → loss \(= \alpha \cdot 4 \cdot 1 = 4\alpha\). Gấp 4 lần.</li>
+  </ul>
+  <p>Mẹo nằm ở đạo hàm: theo \(p_i(x)\), đạo hàm tỷ lệ với \(f_i\). Expert nào đang được dùng nhiều (\(f_i\) lớn) thì bị "đẩy xuống" mạnh hơn. Slide viết: <i>more frequent use = stronger downweighting</i>.</p>
+</div>
+
+<div class="slides" data-s="41,42"></div>
+<ul>
+  <li><b>DeepSeek V1-2 (slide 41):</b> dùng hai loss cân bằng. Một cho từng expert (giống Switch), một cho từng <b>thiết bị</b> (gộp các expert cùng nằm trên một GPU), để không GPU nào bị quá tải.</li>
+  <li><b>DeepSeek V3 (slide 42), "không cần loss phụ":</b> thêm vào mỗi expert một <b>độ lệch \(b_i\)</b>, chỉ dùng lúc <i>chọn</i> top-k (không dùng để tính trọng số). Expert nào đang nhận quá ít token thì tăng \(b_i\) lên một chút, nhận quá nhiều thì giảm xuống. Cách này điều chỉnh trực tiếp chứ không qua gradient. Tuy vậy V3 vẫn giữ thêm một loss cân bằng nhỏ theo từng chuỗi, nên slide nói "không hoàn toàn aux-loss-free".</li>
+</ul>
+<div class="note life"><p>Độ lệch \(b_i\) giống nhân viên điều phối ở quầy tiếp đón: thấy phòng khám A vắng thì ưu tiên đẩy bệnh nhân sang A một chút, thấy phòng B đông thì bớt lại.</p></div>
+
+<div class="slides" data-s="43"></div>
+<p><b>Nếu bỏ loss cân bằng thì sao? (slide 43, OLMoE)</b> Biểu đồ dưới trái: không có cân bằng thì ngay từ đầu một expert (hồng) nhận gần 100% token, sau đó 2 expert chia nhau tất cả, 6 expert còn lại gần như không dùng tới (<dfn>expert collapse</dfn>). Có cân bằng (dưới phải) thì 8 expert chia đều khoảng 12,5% mỗi cái. Các biểu đồ trên cho thấy validation loss cũng tốt hơn khi có cân bằng (LBL, hồng).</p>
+
+<h2 id="l04-systems" data-short="Hệ thống: chia trên nhiều GPU"><span>Phía hệ thống: chạy MoE trên nhiều GPU</span><span class="slide-range">slide 44–46</span></h2>
+<div class="slides" data-s="44,45,46"></div>
+<ul>
+  <li><b>Slide 44:</b> mỗi expert vừa một GPU, nên MoE mở ra thêm kiểu song song mới là <b>expert parallelism</b>. Hình phải: mỗi ô màu là một phần trọng số hoặc dữ liệu đặt trên một lõi. "Expert and Data Parallelism" có mỗi lõi giữ một expert khác màu.</li>
+  <li><b>Slide 45:</b> nếu bắt mọi expert nhận đúng số token bằng nhau (A, B) thì tính gọn bằng phép nhân ma trận theo lô, nhưng phải bỏ bớt token thừa. Thư viện <b>MegaBlocks</b> (C) biểu diễn thành phép nhân ma trận thưa theo khối, nên mỗi expert nhận số token khác nhau cũng được, không phải bỏ token nào.</li>
+  <li><b>Slide 46, LatentMoE (Nemotron 3):</b> trước khi gửi token qua mạng giữa các GPU (All-to-All), nén vector token xuống chiều nhỏ hơn (latent down-proj), xử lý xong thì phóng to lại (up-proj). Gửi ít dữ liệu hơn nên giao tiếp nhanh hơn, và có thể dùng nhiều expert hơn.</li>
+</ul>
+
+<h2 id="l04-random" data-short="Tính ngẫu nhiên của MoE"><span>Chuyện thú vị: vì sao MoE có thêm "tính ngẫu nhiên"?</span><span class="slide-range">slide 47</span></h2>
+<div class="slides" data-s="47"></div>
+<p>Mỗi expert có một <dfn>sức chứa</dfn> (<span class="en">capacity</span>) tối đa trong một batch. Hình minh hoạ <code>capacity_factor=1</code>: 6 token chia cho 3 expert, nên mỗi expert chỉ nhận tối đa 2 token. Router lại muốn gửi 3 token vào cùng một expert, nên token thừa bị <b>loại</b> (dấu X đỏ, "dropped"). Token bị loại sẽ bỏ qua lớp MoE, chỉ đi qua đường residual.</p>
+<div class="note warn"><p>Việc loại token xảy ra ở <b>cấp batch</b>. Khi bạn gọi API, câu hỏi của bạn được gộp chung batch với câu hỏi của người khác. Nếu người khác "giành" hết chỗ của một expert, token của bạn có thể bị loại. Vì thế cùng một câu hỏi, cùng temperature = 0, vẫn có thể ra kết quả hơi khác nhau giữa các lần.</p></div>
+
+<h2 id="l04-stability" data-short="Ổn định: float32 & z-loss"><span>Vấn đề ổn định: float32 và z-loss</span><span class="slide-range">slide 48–49</span></h2>
+<div class="slides" data-s="48,49"></div>
+<p>Router dùng softmax, mà hàm mũ \(e^x\) rất nhạy: chỉ một sai số nhỏ ở đầu vào cũng thành sai lệch lớn ở đầu ra. Ví dụ trên slide:</p>
+<div class="note num">
+  <p>Có 10 logit bằng 128 và 1 logit bằng 128,5. Xác suất của logit lớn nhất:</p>
+  <div class="mathbox">\[ \frac{e^{0}}{e^{0} + 10\,e^{-0{,}5}} \approx 0{,}142 \]</div>
+  <p>Nhưng định dạng <code>bfloat16</code> có rất ít bit để lưu số, nên 128,5 bị làm tròn thành 128. Khi đó mọi logit bằng nhau và xác suất thành \(1/11 \approx 0{,}091\). Sai lệch 36% chỉ vì làm tròn!</p>
+</div>
+<p><b>Giải pháp:</b></p>
+<ol>
+  <li>Chỉ riêng router tính bằng <code>float32</code> (chính xác hơn). Phần còn lại vẫn dùng bfloat16 cho nhanh.</li>
+  <li>Thêm <dfn>z-loss</dfn>: \(L_z = \frac1B\sum \big(\log\sum_j e^{x_j}\big)^2\). Loss này phạt khi các logit quá lớn, giữ chúng gần 0, là vùng mà làm tròn ít gây hại.</li>
+</ol>
+<p><b>Slide 49 (OLMoE):</b> không có z-loss (xanh) thì loss có rất nhiều "gai" vọt lên. Có z-loss (hồng) thì mượt hơn hẳn.</p>
+
+<h2 id="l04-finetune" data-short="Fine-tuning & upcycling"><span>Fine-tuning và upcycling</span><span class="slide-range">slide 50–53</span></h2>
+<div class="slides" data-s="50"></div>
+<p><b>MoE dễ học vẹt khi fine-tune trên dữ liệu nhỏ</b> (slide 50). Bản Sparse đạt 100% trên tập huấn luyện (xanh dương), nhưng điểm validation (cam) lại thấp hơn bản Dense (đỏ). Đây là <dfn>overfitting</dfn>: nhiều tham số quá nên thuộc lòng dữ liệu nhỏ.</p>
+<ul>
+  <li><b>Cách của Zoph:</b> chỉ fine-tune các phần không phải MoE. Biểu đồ cột cho thấy chỉ cập nhật phần MoE thì kém nhất, chỉ cập nhật phần Non-MoE thì tốt ngang cập nhật tất cả.</li>
+  <li><b>Cách của DeepSeek:</b> dùng thật nhiều dữ liệu, 1,4 triệu ví dụ SFT, để mô hình không thể học vẹt.</li>
+</ul>
+
+<div class="slides" data-s="51,52,53"></div>
+<p><b>Upcycling</b> (slide 51): thay vì huấn luyện MoE từ đầu, lấy một mô hình dense đã huấn luyện xong rồi:</p>
+<ol>
+  <li>Sao chép attention, layer norm y nguyên.</li>
+  <li>Nhân bản lớp MLP thành E bản để làm E expert ban đầu.</li>
+  <li>Router thì khởi tạo mới từ đầu.</li>
+  <li>Huấn luyện tiếp. Các expert dần dần tách ra, mỗi cái chuyên một kiểu.</li>
+</ol>
+<p>Biểu đồ phải: với cùng thời gian huấn luyện thêm, bản upcycling (cam) tăng chất lượng nhanh hơn tiếp tục huấn luyện bản dense (xanh).</p>
+<ul>
+  <li><b>MiniCPM-MoE</b> (slide 52): 8 expert, top-2, khoảng 4B tham số kích hoạt. Upcycle từ MiniCPM-2.4B, huấn luyện thêm khoảng 520B token, tốt hơn bản gốc ở hầu hết bài kiểm tra.</li>
+  <li><b>Qwen1.5-MoE</b> (slide 53): khởi tạo từ Qwen 1.8B, 60 expert, top-4, 4 shared. Một trong những ca upcycling thành công đầu tiên được xác nhận.</li>
+</ul>
+
+<h2 id="l04-deepseek" data-short="DeepSeek MoE v1 → v3"><span>Tổng kết qua ví dụ: DeepSeek MoE v1 → v2 → v3</span><span class="slide-range">slide 54–56</span></h2>
+<div class="slides" data-s="54,55,56"></div>
+<div class="tbl"><table>
+  <tr><th></th><th>V1</th><th>V2</th><th>V3</th></tr>
+  <tr><td>Tham số tổng / kích hoạt</td><td>16B / 2,8B</td><td>236B / 21B</td><td>671B / 37B</td></tr>
+  <tr><td>Expert</td><td>2 shared + 64 nhỏ (bằng 1/4 FFN)</td><td>2 shared + 160 nhỏ, 6 active</td><td>1 shared + 256 nhỏ, 8 active</td></tr>
+  <tr><td>Chấm điểm router</td><td>Softmax, top-k</td><td>Softmax, top-k</td><td><b>Sigmoid</b>, top-k rồi chuẩn hoá lại</td></tr>
+  <tr><td>Cân bằng tải</td><td>Loss theo expert + theo thiết bị</td><td>+ <b>Top-M device routing</b> + loss cân bằng giao tiếp</td><td><b>Độ lệch \(b_i\)</b> (aux-loss-free) + loss nhỏ theo chuỗi</td></tr>
+</table></div>
+<ul>
+  <li><b>Top-M device routing (V2):</b> mỗi token trước hết chọn tối đa M thiết bị (M = 3), rồi mới chọn top-k expert trong các thiết bị đó. Nhờ vậy mỗi token không phải gửi đi khắp nơi, đỡ tốn giao tiếp.</li>
+  <li><b>Loss cân bằng giao tiếp (V2):</b> cân bằng cả lượng dữ liệu <i>gửi đi</i> lẫn <i>nhận về</i> của mỗi thiết bị.</li>
+  <li>Slide 56 ghi "V2 (671B – 37 active)" và "258 experts". Đây là lỗi đánh máy, đúng ra là <b>V3</b> với 256 routed + 1 shared.</li>
+</ul>
+
+<h2 id="l04-mla" data-short="MLA: nén KV cache"><span>Bonus: MLA — nén KV cache</span><span class="slide-range">slide 57–58</span></h2>
+<div class="slides" data-s="57,58"></div>
+<p><b>Nhắc lại KV cache:</b> khi sinh văn bản, để khỏi tính lại, mô hình lưu vector K và V của mọi token đã qua. Văn bản dài thì bộ nhớ này phình rất to.</p>
+<p><b>Ý tưởng MLA</b> (<span class="en">Multi-head Latent Attention</span>): không lưu K, V đầy đủ, mà chỉ lưu một vector nén nhỏ \(c_t^{KV}\). Khi cần thì "giải nén" ra:</p>
+<div class="mathbox">\[ c_t^{KV} = W^{DKV} h_t \;(\text{nén}),\qquad k_t^C = W^{UK} c_t^{KV},\quad v_t^C = W^{UV} c_t^{KV} \;(\text{giải nén}) \]</div>
+<div class="note num">
+  <p>DeepSeek-V3 có 128 head, mỗi head 128 chiều. Lưu K và V thường tốn \(2 \times 128 \times 128 = 32.768\) số cho mỗi token ở mỗi lớp. MLA chỉ lưu \(512\) (vector nén) \(+ 64\) (phần RoPE) \(= 576\) số. <b>Nhỏ hơn khoảng 57 lần.</b></p>
+</div>
+<p><b>Mẹo hay:</b> thậm chí không cần giải nén K thật. Vì \(\langle hW^Q,\, W^{UK}c\rangle = \langle h\,W^Q W^{UK},\, c\rangle\), ta gộp sẵn \(W^Q W^{UK}\) thành một ma trận rồi nhân thẳng với \(c\).</p>
+<div class="note warn"><p><b>Vướng RoPE.</b> RoPE (mã hoá vị trí bằng phép xoay) chèn một ma trận xoay \(R\) phụ thuộc vị trí vào giữa: \(W^Q R_q R_k W^{UK}\). Ma trận này thay đổi theo từng vị trí, nên không gộp sẵn được nữa. <b>Cách giải:</b> tách ra vài chiều riêng (\(k_t^R\), 64 chiều) không nén, chỉ để áp RoPE, còn phần nén thì không dùng RoPE.</p></div>
+
+<h2 id="l04-mtp" data-short="MTP: đoán trước nhiều token"><span>Bonus: MTP — đoán trước nhiều token</span><span class="slide-range">slide 59</span></h2>
+<div class="slides" data-s="59"></div>
+<p><b>Multi-Token Prediction:</b> ngoài mô hình chính đoán token tiếp theo (\(t+1\)), gắn thêm các mô-đun nhỏ (mỗi cái chỉ 1 khối Transformer) để đoán xa hơn, như \(t+2\). Các mô-đun này dùng chung lớp embedding và output head với mô hình chính.</p>
+<ul>
+  <li>Khi huấn luyện: thêm tín hiệu học, buộc mô hình "nghĩ trước" vài bước.</li>
+  <li>Khi chạy: có thể dùng làm bản nháp cho <dfn>speculative decoding</dfn>, tương tự EAGLE ở hình phải. Đoán nhanh vài token rồi mô hình chính kiểm tra một lượt, nên sinh văn bản nhanh hơn.</li>
+  <li>DeepSeek-V3 thực tế chỉ đoán thêm <b>1 token</b>.</li>
+</ul>
+
+<h2 id="l04-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 60</span></h2>
+<div class="slides" data-s="60"></div>
+<div class="note key">
+  <ul>
+    <li><b>Attention:</b> chi phí \(n^2\) là vấn đề khi văn bản dài. Linear attention, Mamba-2, Gated DeltaNet biến attention thành RNN có trạng thái cố định. Chúng nhanh nhưng nhớ chi tiết kém, nên thực tế người ta <b>lai</b> (khoảng 3:1 đến 7:1) với vài lớp attention đầy đủ. Cách khác là sparse attention (DSA): chỉ nhìn top-k token.</li>
+    <li><b>MoE</b> tận dụng tính thưa: không phải đầu vào nào cũng cần dùng cả mô hình.</li>
+    <li>Routing rời rạc thì khó học, nhưng <b>top-k + loss cân bằng</b> chạy tốt trong thực tế.</li>
+    <li>Có rất nhiều bằng chứng thực nghiệm rằng MoE hiệu quả và tiết kiệm chi phí. Xu hướng hiện nay: nhiều expert nhỏ, có thể có expert dùng chung, router tính bằng float32 với z-loss.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao không thể áp dụng mẹo \((QK^\top)V = Q(K^\top V)\) cho attention có softmax?</summary>
+    <div><p>Softmax chuẩn hoá theo từng hàng của ma trận \(QK^\top\). Muốn chuẩn hoá thì phải có đủ cả hàng, tức phải tạo bảng \(n\times n\) trước. Khi đó không đổi thứ tự nhân được nữa.</p></div></details>
+  <details><summary>2. Khi sinh văn bản, linear attention tiết kiệm bộ nhớ hơn attention thường ở điểm nào?</summary>
+    <div><p>Attention thường phải giữ KV cache, lớn dần theo số token. Linear attention chỉ giữ ma trận trạng thái \(S_t\) cỡ \(d_k\times d_v\), cố định dù văn bản dài bao nhiêu.</p></div></details>
+  <details><summary>3. Gated DeltaNet khác Mamba-2 ở hai điểm nào?</summary>
+    <div><p>(1) Có cổng đầu vào \(\beta_t\), cho phép bỏ qua token. (2) Xoá thông tin cũ theo hướng chìa khoá \(k_t\) trước khi ghi giá trị mới, tức chỉ ghi phần chênh lệch ("delta rule").</p></div></details>
+  <details><summary>4. Vì sao các mô hình như Qwen3-Next vẫn giữ lại vài lớp attention đầy đủ?</summary>
+    <div><p>Trạng thái cố định của các lớp linear không nhớ chính xác được mọi chi tiết, nên khả năng recall (tìm lại thông tin) kém. Vài lớp attention đầy đủ khôi phục khả năng này mà vẫn giữ được phần lớn tốc độ.</p></div></details>
+  <details><summary>5. Một MoE có 64 expert, chọn top-2. So với mô hình dense có FFN cùng cỡ một expert, FLOPs mỗi token thay đổi thế nào?</summary>
+    <div><p>Phần FFN tốn khoảng gấp 2 lần (chạy 2 expert), cộng thêm chi phí router rất nhỏ. Còn số tham số FFN thì gấp 64 lần. Số expert tăng không làm FLOPs tăng, chỉ có K mới làm FLOPs tăng.</p></div></details>
+  <details><summary>6. Trong loss cân bằng \(\alpha N\sum f_i P_i\), vì sao cần cả \(f_i\) lẫn \(P_i\)?</summary>
+    <div><p>\(f_i\) đo việc phân bổ thật nhưng là phép đếm, không đạo hàm được. \(P_i\) là xác suất của router, đạo hàm được. Nhân hai cái với nhau thì gradient đi qua \(P_i\), với độ mạnh tỷ lệ với \(f_i\). Expert càng quá tải thì càng bị đẩy xuống mạnh.</p></div></details>
+  <details><summary>7. DeepSeek V3 cân bằng tải mà gần như không cần loss phụ bằng cách nào?</summary>
+    <div><p>Mỗi expert có một độ lệch \(b_i\) chỉ dùng khi chọn top-k. Expert nhận ít token thì tăng \(b_i\), nhận nhiều thì giảm. Việc điều chỉnh làm trực tiếp, không qua gradient. V3 vẫn giữ thêm một loss nhỏ theo từng chuỗi.</p></div></details>
+  <details><summary>8. Vì sao cùng một câu hỏi gửi vào MoE với temperature = 0 vẫn có thể ra kết quả khác nhau?</summary>
+    <div><p>Mỗi expert có sức chứa giới hạn trong một batch. Câu hỏi của bạn được gộp batch với câu hỏi của người khác, nên tuỳ người khác gửi gì mà token của bạn có thể bị loại khỏi expert, làm kết quả thay đổi.</p></div></details>
+  <details><summary>9. MLA giải quyết vấn đề gì, và RoPE gây khó khăn gì cho nó?</summary>
+    <div><p>MLA nén K, V thành một vector nhỏ để KV cache nhỏ đi nhiều lần (khoảng 57 lần ở DeepSeek-V3). RoPE chèn ma trận xoay phụ thuộc vị trí, nên không gộp sẵn được \(W^Q W^{UK}\). Cách giải là để riêng vài chiều không nén cho RoPE.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Context window</td><td>Số token tối đa mô hình đọc được một lúc</td></tr>
+  <tr><td>FLOPs</td><td>Số phép tính dấu phẩy động, dùng để đo chi phí tính toán</td></tr>
+  <tr><td>KV cache</td><td>Bộ nhớ lưu K, V của các token cũ khi sinh văn bản</td></tr>
+  <tr><td>Linear attention</td><td>Attention bỏ softmax để đổi thứ tự nhân, chi phí tuyến tính theo \(n\)</td></tr>
+  <tr><td>Gating</td><td>"Cổng": một hệ số 0–1 do mô hình tự tính để giữ hoặc bỏ thông tin</td></tr>
+  <tr><td>Hybrid 3:1</td><td>Cứ 3 lớp linear thì có 1 lớp attention đầy đủ</td></tr>
+  <tr><td>Expert / Router</td><td>Một khối FFN con / lớp quyết định token đi vào expert nào</td></tr>
+  <tr><td>Active parameters</td><td>Số tham số thực sự dùng cho mỗi token</td></tr>
+  <tr><td>Shared expert</td><td>Expert luôn được dùng cho mọi token</td></tr>
+  <tr><td>Fine-grained expert</td><td>Expert nhỏ (một phần của FFN chuẩn), dùng nhiều cái cùng lúc</td></tr>
+  <tr><td>Load balancing</td><td>Giữ cho các expert nhận số token tương đương nhau</td></tr>
+  <tr><td>Capacity / token dropping</td><td>Giới hạn số token mỗi expert nhận được / token bị loại khi vượt giới hạn</td></tr>
+  <tr><td>Z-loss</td><td>Loss phạt logit của router quá lớn, giúp huấn luyện ổn định</td></tr>
+  <tr><td>Upcycling</td><td>Biến mô hình dense có sẵn thành MoE bằng cách nhân bản MLP</td></tr>
+  <tr><td>Ablation</td><td>Thí nghiệm bỏ hoặc đổi từng thành phần để xem nó đóng góp bao nhiêu</td></tr>
+</table></div>
