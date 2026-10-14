@@ -198,7 +198,8 @@ main { min-width: 0; padding-block: 40px 120px; padding-inline: 40px; }
   font: 800 14px var(--f-display); letter-spacing: .14em; text-transform: uppercase;
 }
 .part small { display: block; font: 400 17px var(--f-body); letter-spacing: 0; text-transform: none; color: var(--muted); margin-top: 6px; }
-.reader p, .reader li { max-width: 68ch; }
+.reader p, .reader li { text-align: justify; text-justify: inter-word; hyphens: manual; overflow-wrap: break-word; }
+.reader .widget p, .reader .tbl p, .reader .lec-head p, .reader .quiz summary { text-align: left; }
 .reader ul, .reader ol { padding-left: 1.3em; }
 .reader li + li { margin-top: 6px; }
 mark { background: var(--hl); color: inherit; padding: 0 .15em; border-radius: 3px; }
