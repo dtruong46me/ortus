@@ -1,0 +1,1088 @@
+<style>
+  .l09-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l09-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l09-btn.ghost { font-weight: 600; }
+  .l09-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
+  .l09-ctl > span { font-size: 13px; color: var(--muted); margin-right: 2px; }
+  .l09-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l09-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l09-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l09-stats small { color: var(--muted); font-size: 12.5px; }
+  .l09-stats .bad b { color: var(--warn); }
+  .l09-stats .good b { color: var(--life); }
+  .l09-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .l09-legend i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: 3px; margin-right: 6px; }
+  .l09-legend i.d { border-top-style: dashed; }
+  .l09-legend i.o { width: 9px; height: 9px; border: 0; border-radius: 50%; vertical-align: 0; }
+  .l09-msg { margin: 10px 0 0; }
+  .l09-plot { position: relative; margin: 12px 0 4px; touch-action: pan-y; }
+  .l09-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .l09-plot svg text { font: 11.5px var(--f-display); fill: var(--muted); }
+  .l09-plot svg .lab { font-weight: 600; font-size: 12px; }
+  .l09-plot svg .g { stroke: var(--line); stroke-width: 1; }
+  .l09-plot svg .ax { stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  .l09-plot svg .ln { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  .l09-plot svg .dot { stroke: var(--surface); stroke-width: 2; }
+  .l09-plot svg .dl { fill: var(--ink); font-weight: 600; font-size: 11.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .l09-plot svg .vl { stroke: var(--muted); stroke-dasharray: 3 4; stroke-width: 1.2; }
+  .l09-plot svg .hv { fill: none; stroke: var(--ink); stroke-width: 2; }
+  .l09-plot .tip { font-family: var(--f-display); position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; line-height: 1.45; box-shadow: 0 4px 14px rgba(0,0,0,.14); white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); display: none; z-index: 3; }
+  .l09-plot .tip b { font-variant-numeric: tabular-nums; }
+  .l09-ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 10px 0; }
+  .l09-ladder > div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg); }
+  .l09-ladder h5 { margin: 0 0 4px; font: 700 13.5px var(--f-display); }
+  .l09-ladder p { margin: 0; font-size: 14px; }
+  @media (max-width: 640px) {
+    .l09-btn { font-size: 13px; padding: 5px 10px; }
+    .l09-stats b { font-size: 17px; }
+  }
+</style>
+
+<script>
+/* Bộ vẽ biểu đồ nhỏ dùng chung cho các ô thử nghiệm của Lecture 9 */
+(function () {
+  if (window.L09P) return;
+  const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  const pow = e => '10' + String(e).replace(/./g, c => SUP[c] || c);
+  const nice = x => { const e = Math.pow(10, Math.floor(Math.log10(x))), m = x / e; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * e; };
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k == null ? 2 : k });
+  // số lớn: 3,2 tỉ · 1,4 nghìn tỉ · 2,3·10²⁵
+  const big = x => {
+    if (!isFinite(x)) return '∞';
+    if (x >= 1e15) { const e = Math.floor(Math.log10(x)); return nf(x / Math.pow(10, e), 1) + '·' + pow(e); }
+    if (x >= 1e12) return nf(x / 1e12, x < 1e13 ? 1 : 0) + ' nghìn tỉ';
+    if (x >= 1e9) return nf(x / 1e9, x < 1e10 ? 1 : 0) + ' tỉ';
+    if (x >= 1e6) return nf(x / 1e6, x < 1e7 ? 1 : 0) + ' triệu';
+    if (x >= 1e4) return nf(x / 1e3, 0) + ' nghìn';
+    return nf(x, x < 10 ? 2 : 0);
+  };
+  const sci = x => { const e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e); return (Math.abs(m - 1) < 0.05 ? '' : nf(m, 1) + '·') + pow(e); };
+  function mk(ax, a, b) {
+    const f = ax.log ? Math.log10 : v => v, lo = f(ax.min), hi = f(ax.max);
+    return v => a + (f(v) - lo) / (hi - lo) * (b - a);
+  }
+  function ticks(ax) {
+    if (ax.ticks) return ax.ticks;
+    const t = [];
+    if (ax.log) {
+      const s = ax.every || 1;
+      for (let e = Math.ceil(Math.log10(ax.min) - 1e-9); e <= Math.floor(Math.log10(ax.max) + 1e-9); e += s) t.push(Math.pow(10, e));
+      return t;
+    }
+    const st = nice((ax.max - ax.min) / (ax.n || 5));
+    for (let v = Math.ceil(ax.min / st - 1e-9) * st; v <= ax.max + st * 1e-6; v += st) t.push(+v.toPrecision(10));
+    return t;
+  }
+  const tfmt = (ax, v) => ax.fmt ? ax.fmt(v) : ax.log ? pow(Math.round(Math.log10(v))) : nf(v, 3);
+  let uid = 0;
+  function draw(host) {
+    const o = host._o; if (!o) return;
+    const W = Math.max(280, Math.round(host.clientWidth || 600)), narrow = W < 520;
+    const H = o.H || (narrow ? 236 : 280);
+    const m = { l: o.ml || (narrow ? 46 : 56), r: o.mr || 18, t: 14, b: 44 };
+    const X = mk(o.x, m.l, W - m.r), Y = mk(o.y, H - m.b, m.t);
+    const id = host._id || (host._id = 'l09c' + (++uid));
+    const ok = p => isFinite(p[0]) && isFinite(p[1]) && (!o.x.log || p[0] > 0) && (!o.y.log || p[1] > 0);
+    let h = `<defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t - 6}" width="${W - m.l - m.r + 6}" height="${H - m.t - m.b + 6}"/></clipPath></defs>`;
+    ticks(o.x).forEach(v => { const x = X(v).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="g"/><text x="${x}" y="${H - m.b + 16}" text-anchor="middle">${tfmt(o.x, v)}</text>`; });
+    ticks(o.y).forEach(v => { const y = Y(v).toFixed(1); h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="g"/><text x="${m.l - 6}" y="${(+y + 4).toFixed(1)}" text-anchor="end">${tfmt(o.y, v)}</text>`; });
+    h += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" class="ax"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" class="ax"/>`;
+    h += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle" class="lab">${o.x.label || ''}</text>`;
+    h += `<text transform="translate(12 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle" class="lab">${o.y.label || ''}</text>`;
+    h += `<g clip-path="url(#${id})">`;
+    (o.vlines || []).forEach(v => { const x = X(v.x).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="vl"/>`; if (v.label) h += `<text x="${+x + 4}" y="${m.t + 12}" class="dl" style="font-weight:500">${v.label}</text>`; });
+    const hits = [];
+    (o.series || []).forEach(s => {
+      const pts = s.pts.filter(ok);
+      if (!pts.length) return;
+      if (s.line !== false) {
+        const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+        h += `<path d="${d}" class="ln" style="stroke:${s.color};stroke-width:${s.width || 2}${s.dash ? ';stroke-dasharray:' + s.dash : ''}${s.opacity != null ? ';opacity:' + s.opacity : ''}"/>`;
+      }
+      if (s.dots) pts.forEach(p => { h += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${s.dots === true ? 4.5 : s.dots}" class="dot" style="fill:${s.color}"/>`; });
+      if (s.tip !== false) pts.forEach(p => hits.push({ x: X(p[0]), y: Y(p[1]), t: (s.tip || o.tip)(p, s) }));
+    });
+    (o.marks || []).forEach(k => {
+      if (!ok([k.x, k.y])) return;
+      const x = X(k.x), y = Y(k.y);
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${k.r || 6.5}" class="dot" style="fill:${k.color || 'var(--accent)'};stroke-width:2.5"/>`;
+      if (k.tip) hits.push({ x, y, t: k.tip, pri: 1 });
+    });
+    h += `</g>`;
+    // nhãn trực tiếp (ngoài vùng cắt để không bị cụt)
+    (o.series || []).forEach(s => {
+      if (!s.label) return;
+      const pts = s.pts.filter(ok).filter(p => p[1] >= Math.min(o.y.min, o.y.max) && p[1] <= Math.max(o.y.min, o.y.max) && p[0] >= o.x.min && p[0] <= o.x.max);
+      if (!pts.length) return;
+      const p = s.labelAt === 'min' ? pts.reduce((a, q) => q[1] < a[1] ? q : a) : s.labelAt === 'start' ? pts[0] : s.labelAt === 'mid' ? pts[Math.floor(pts.length / 2)] : pts[pts.length - 1];
+      let x = X(p[0]) + (s.ldx || 0), y = Y(p[1]) + (s.ldy || -8);
+      const anc = s.anchor || (x > W - 90 ? 'end' : 'start');
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="dl">${s.label}</text>`;
+    });
+    (o.marks || []).forEach(k => {
+      if (!k.label || !ok([k.x, k.y])) return;
+      const x = X(k.x) + (k.dx != null ? k.dx : 10), y = Y(k.y) + (k.dy != null ? k.dy : -10);
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${k.anchor || 'start'}" class="dl">${k.label}</text>`;
+    });
+    h += `<circle class="hv" r="7" cx="-99" cy="-99"/>`;
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${o.aria || ''}">${h}</svg><div class="tip"></div>`;
+    const svg = host.firstChild, tip = host.lastChild, ring = svg.querySelector('.hv');
+    function move(e) {
+      const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width, sy = (e.clientY - r.top) * H / r.height;
+      let best = null, bd = 1e9;
+      hits.forEach(p => { const d = Math.hypot(p.x - sx, p.y - sy) - (p.pri ? 8 : 0); if (d < bd) { bd = d; best = p; } });
+      if (!best || bd > 36) { hide(); return; }
+      ring.setAttribute('cx', best.x.toFixed(1)); ring.setAttribute('cy', best.y.toFixed(1));
+      tip.innerHTML = best.t; tip.style.display = 'block';
+      const k = r.width / W, tw = tip.offsetWidth;
+      const left = Math.min(Math.max(best.x * k, tw / 2 + 2), r.width - tw / 2 - 2);
+      tip.style.left = left + 'px'; tip.style.top = (best.y * k) + 'px';
+    }
+    function hide() { tip.style.display = 'none'; ring.setAttribute('cx', -99); ring.setAttribute('cy', -99); }
+    svg.addEventListener('pointermove', move);
+    svg.addEventListener('pointerdown', move);
+    svg.addEventListener('pointerleave', hide);
+  }
+  window.L09P = {
+    pow, nf, big, sci,
+    plot(host, o) {
+      host._o = o;
+      if (!host._ro && window.ResizeObserver) {
+        let w = host.clientWidth;
+        host._ro = new ResizeObserver(() => { if (Math.abs(host.clientWidth - w) > 1) { w = host.clientWidth; draw(host); } });
+        host._ro.observe(host);
+      }
+      draw(host);
+    },
+    range(lo, hi, n, log) { const a = []; for (let i = 0; i <= n; i++) { const t = i / n; a.push(log ? Math.pow(10, Math.log10(lo) + t * (Math.log10(hi) - Math.log10(lo))) : lo + t * (hi - lo)); } return a; }
+  };
+})();
+</script>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 9 · 57 slides</span>
+  <h1>Scaling laws: thử trên mô hình nhỏ, đoán trước mô hình lớn</h1>
+  <p class="sub">Scaling laws – basics — vì sao lỗi của mô hình giảm theo một đường thẳng trên đồ thị log–log, dùng điều đó để chọn kiến trúc, optimizer, batch size, learning rate mà không phải huấn luyện mô hình khổng lồ, và câu hỏi lớn nhất: có một ngân sách tính toán thì nên làm mô hình to hơn hay cho nó đọc nhiều dữ liệu hơn (Kaplan và Chinchilla).</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l09-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">slide 1–4</span></h2>
+<div class="slides" data-s="2,3"></div>
+<p>Thầy mở đầu bằng một tình huống (slide 2): <mark>một người bạn cho bạn mượn 10 000 GPU B200 trong một tháng, và nhờ bạn huấn luyện một mô hình ngôn ngữ mã nguồn mở thật tốt.</mark> Bạn làm gì?</p>
+<ol>
+  <li>Lập đội hạ tầng và một framework huấn luyện phân tán. Đây là bài tập A2, và nội dung của <a href="#l07-overview">Lecture 7</a> và <a href="#l08-overview">Lecture 8</a>.</li>
+  <li>Chuẩn bị một bộ dữ liệu tiền huấn luyện tốt. Đây là bài tập A4, ở các lecture sau.</li>
+  <li>Chạy một mô hình lớn. <b>Nhưng mô hình nào?</b> Đây là câu hỏi của hôm nay.</li>
+</ol>
+<p>"Mô hình nào" gồm rất nhiều lựa chọn (slide 3): rộng hay sâu, bao nhiêu head, hàm kích hoạt gì, bao nhiêu tham số, đọc bao nhiêu token, learning rate bao nhiêu, batch bao nhiêu… Cách dễ nhất là <i>chép</i> của các mô hình có sẵn. Bảng ở slide 3 chính là bảng thầy dùng ở <a href="#l03-data">Lecture 3</a>. Thầy gọi cách này là <dfn>cargo cult</dfn>: bắt chước hình thức mà không hiểu vì sao nó đúng. Câu hỏi thật là: <i>những người đầu tiên đã chọn ra các con số đó bằng cách nào?</i></p>
+
+<div class="note num">
+  <p>Thử ước lượng xem 10 000 B200 trong một tháng là bao nhiêu phép tính. Mỗi B200 chạy BF16 dày đặc khoảng \(2{,}25 \times 10^{15}\) FLOP/s. Giả sử máy chạy được 40% công suất (MFU 40%, xem <a href="#l08-limits">Lecture 8</a>):</p>
+  <p>\[ 10^4 \times 2{,}25\times10^{15} \times \underbrace{2{,}6\times10^{6}}_{\text{giây trong 30 ngày}} \times 0{,}4 \approx 2{,}3 \times 10^{25} \text{ FLOP}. \]</p>
+  <p>Cỡ Llama 3 405B (\(3{,}8\times10^{25}\) FLOP). Một lần chạy như vậy tốn hàng chục triệu đô. Bạn chỉ có <b>một lần</b>. Không thể thử mười cấu hình rồi chọn cái tốt nhất.</p>
+</div>
+
+<div class="slides" data-s="4"></div>
+<p>Lời giải của hôm nay là <dfn>scaling law</dfn> (định luật co giãn): <mark>những quy tắc đơn giản, dự đoán được, cho biết hiệu năng của mô hình thay đổi thế nào khi ta tăng dữ liệu, tham số, hoặc lượng tính toán.</mark> Slide 4 so hai cách làm:</p>
+<ul>
+  <li><b>Cách cũ, mệt mỏi</b>: tinh chỉnh siêu tham số trực tiếp trên mô hình lớn. Mỗi lần thử tốn cả một lần huấn luyện lớn.</li>
+  <li><b>Cách mới, lạc quan (có khi quá lạc quan?)</b>: tinh chỉnh trên các mô hình nhỏ, tìm ra quy luật, rồi <i>ngoại suy</i> (kéo dài đường xu hướng) lên mô hình lớn.</li>
+</ul>
+<p>Hai biểu đồ ở slide 4 (từ Kaplan và cộng sự, 2020) cho thấy vì sao cách mới khả thi. Bên trái: rất nhiều lần huấn luyện với cỡ mô hình khác nhau (màu từ tím đến vàng). Mép dưới của cả đám đường cong gần như là <b>một đường thẳng</b>: \(L = 2{,}57 \cdot C^{-0{,}048}\), với \(C\) là lượng tính toán. Bên phải: mô hình với số lớp khác nhau đều nằm trên cùng một đường thẳng theo số tham số. Trục ở cả hai hình đều là thang log.</p>
+
+<div class="note life">
+  <p>Hình ảnh xuyên suốt cho lecture này: <b>hầm gió</b>. Trước khi đóng một chiếc máy bay thật, kỹ sư làm một mô hình thu nhỏ, thổi gió vào và đo lực cản. Họ không đo trên máy bay thật vì quá đắt. Họ dựa vào <i>các quy luật đồng dạng</i> để suy ra máy bay thật sẽ chịu lực thế nào. Scaling law là "quy luật đồng dạng" của mô hình ngôn ngữ: thí nghiệm nhỏ, rẻ, rồi dự đoán cho lần chạy lớn.</p>
+  <p>Nhưng cũng như hầm gió, quy luật chỉ đúng trong một khoảng. Lecture này cũng chỉ ra khi nào nó gãy.</p>
+</div>
+
+<p>Lecture gồm hai phần lớn. Tài liệu này chia phần thứ hai thành ba phần nhỏ theo ba câu hỏi của slide 12, nên có tất cả bốn phần:</p>
+<ol>
+  <li><b>Phần 1 — Lịch sử và nền tảng</b> (slide 5–11): lý thuyết học thống kê đã nói gì về "lỗi giảm theo dữ liệu", và những bài báo đầu tiên đo điều này trên thực tế.</li>
+  <li><b>Phần 2 — Dữ liệu và hiệu năng</b> (slide 12–27): vì sao lỗi theo dữ liệu là một đường thẳng trên log–log, số mũ nói lên điều gì, và các câu hỏi về thành phần dữ liệu, lặp dữ liệu.</li>
+  <li><b>Phần 3 — Dùng scaling law để chọn siêu tham số</b> (slide 28–42): kiến trúc, optimizer, độ sâu, batch size, learning rate.</li>
+  <li><b>Phần 4 — Dữ liệu hay mô hình?</b> (slide 43–57): định luật chung cho cả hai, cuộc tranh luận Kaplan và Chinchilla, và vì sao ngày nay người ta cố tình huấn luyện "quá" tối ưu.</li>
+</ol>
+
+
+<div class="part" id="l09-part1" data-short="Phần 1 · Lịch sử">Phần 1 · Lịch sử và nền tảng<small>Ý tưởng "lỗi giảm theo một quy luật khi có thêm dữ liệu" đã có từ rất lâu trước GPT.</small></div>
+
+<h2 id="l09-theory" data-short="Lý thuyết: cận trên của lỗi"><span>Lý thuyết học thống kê: cận trên của lỗi</span><span class="slide-range">slide 5–6</span></h2>
+<div class="slides" data-s="5,6"></div>
+<p>Phần 1 có hai ý (slide 5): lý thuyết về <dfn>độ phức tạp mẫu</dfn> (<span class="en">sample complexity</span>: cần bao nhiêu mẫu dữ liệu để học tới một độ chính xác nào đó), và các nghiên cứu thực nghiệm đầu tiên về mạng nơ-ron.</p>
+<p>Giới lý thuyết đã nghĩ về "scaling" từ lâu (slide 6). Hai ví dụ:</p>
+<ul>
+  <li><b>Học trong một tập hữu hạn \(k\) giả thuyết.</b> Giả sử ta chọn mô hình tốt nhất \(\hat h\) trong \(k\) mô hình ứng viên, dựa trên \(m\) mẫu. Với xác suất ít nhất \(1-\delta\):
+  \[ \epsilon(\hat h) \le \Big(\min_{h \in H} \epsilon(h)\Big) + 2\sqrt{\tfrac{1}{m}\log\tfrac{2k}{\delta}}. \]
+  Đọc bằng lời: lỗi của mô hình ta chọn không tệ hơn mô hình tốt nhất có thể quá một lượng tỉ lệ với \(1/\sqrt{m}\). Gấp 4 lần dữ liệu thì khoảng cách giảm một nửa.</li>
+  <li><b>Ước lượng mật độ xác suất trơn</b> (một dạng mô hình sinh). Sai số bình phương tại mỗi điểm giảm theo \(n^{-\frac{2\beta}{2\beta+1}}\) (bình phương của tốc độ \(\psi_n = n^{-\frac{\beta}{2\beta+1}}\) trong slide), với \(\beta\) là độ "trơn" của hàm mật độ. Hàm càng trơn thì học càng nhanh.</li>
+</ul>
+<p>Cả hai đều có dạng <b>lỗi \(\approx\) hằng số \(\times\, n^{-\text{số mũ}}\)</b>, tức là một <dfn>luật luỹ thừa</dfn> (<span class="en">power law</span>). Đây là mầm mống của scaling law.</p>
+<div class="note warn"><p>Nhưng đây là <b>cận trên</b> (slide 6): chúng nói "lỗi <i>không thể tệ hơn</i> mức này", chứ không nói lỗi thực tế <i>bằng</i> bao nhiêu. Lỗi thật có thể thấp hơn nhiều. Muốn biết lỗi thật, phải đo.</p></div>
+
+<h2 id="l09-early" data-short="Những phép đo đầu tiên"><span>Những bài báo đo đường cong học đầu tiên (1993–2012)</span><span class="slide-range">slide 7–9</span></h2>
+<div class="slides" data-s="7"></div>
+<p><b>Cortes và cộng sự, 1993</b> (Bell Labs, có cả Vapnik) có lẽ là bài báo scaling law theo dữ liệu đầu tiên. Động lực rất giống hôm nay: huấn luyện bộ phân loại trên cơ sở dữ liệu lớn quá tốn kém, nên muốn <i>dự đoán</i> một bộ phân loại sẽ tốt cỡ nào mà không phải huấn luyện trên toàn bộ dữ liệu. Họ mô hình hoá <dfn>đường cong học</dfn> (<span class="en">learning curve</span>, lỗi theo cỡ tập huấn luyện \(l\)):</p>
+<p>\[ \mathcal{E}_{\text{test}} = a + \frac{b}{l^{\alpha}}, \qquad \mathcal{E}_{\text{train}} = a - \frac{c}{l^{\beta}}. \]</p>
+<p>Lỗi trên tập kiểm tra giảm dần từ trên xuống, lỗi trên tập huấn luyện tăng dần từ dưới lên, và cả hai cùng tiến tới một giá trị \(a\). Trong hình, các điểm đặc dùng để khớp đường cong, còn đường đứt nét là phần dự đoán cho tập lớn hơn, và dự đoán khớp với phép đo thật.</p>
+
+<div class="slides" data-s="8,9"></div>
+<p><b>Banko và Brill, 2001</b> (slide 8) làm bài toán <dfn>phân biệt từ dễ nhầm</dfn>: chọn đúng giữa các cặp như <i>then/than</i>, <i>principal/principle</i>. Độ chính xác tăng đều khi dữ liệu tăng từ 0,1 triệu lên 1 tỉ từ, và trên trục log thì gần như là đường thẳng (tăng <i>log-tuyến tính</i>). Hai quan sát thú vị:</p>
+<ul>
+  <li>Thuật toán tốt nhất ở dữ liệu nhỏ (memory-based, màu đỏ) lại là tệ nhất ở dữ liệu lớn. Thứ hạng giữa các phương pháp <b>đổi theo quy mô</b>.</li>
+  <li>Họ kết luận: có lẽ nên cân nhắc lại việc tiêu tiền vào cải tiến thuật toán so với tiêu tiền vào thu thập dữ liệu, vì chưa thuật toán nào chạm trần ở cỡ dữ liệu mà cả ngành đang dùng.</li>
+</ul>
+<p><b>Kolachina và cộng sự, 2012</b> (slide 9) thử nghiêm túc xem <i>dạng hàm</i> nào khớp tốt nhất với đường cong BLEU của dịch máy theo số câu huấn luyện: các họ hàm mũ (Exp₃, Exp₄, ExpP₃), luỹ thừa (Pow₃, Pow₄), và log (ILog₂). Các họ luỹ thừa khớp tốt và ngoại suy hợp lý. Họ hàm mũ thì bão hoà quá sớm.</p>
+
+<h2 id="l09-hestness" data-short="Hestness 2017"><span>Hestness 2017: scaling law quy mô lớn đầu tiên cho mạng nơ-ron</span><span class="slide-range">slide 10–11</span></h2>
+<div class="slides" data-s="10"></div>
+<p>Bài báo của <b>Hestness và cộng sự (Baidu, 2017)</b> là nghiên cứu scaling "mạng nơ-ron quy mô lớn" đầu tiên. Họ đo trên dịch máy, mô hình ngôn ngữ, nhận dạng giọng nói, phân loại ảnh, và thấy đường cong học đều dự đoán được, theo dạng</p>
+<p>\[ \varepsilon(m) = \alpha\, m^{\beta_g} + \gamma, \]</p>
+<p>với \(m\) là cỡ dữ liệu, \(\beta_g < 0\) là số mũ, và \(\gamma\) là lỗi không thể giảm. Họ cũng đề xuất <b>hình dạng chung</b> của một đường cong học, gồm ba vùng (hình bên phải, sẽ gặp lại nhiều lần):</p>
+<div class="l09-ladder">
+  <div><h5>1. Vùng ít dữ liệu</h5><p>Mô hình chưa học được gì. Lỗi bằng mức "đoán bừa" (<span class="en">best guess error</span>).</p></div>
+  <div><h5>2. Vùng luật luỹ thừa</h5><p>Lỗi giảm theo đường thẳng trên log–log. Đây là vùng scaling law mô tả.</p></div>
+  <div><h5>3. Vùng lỗi không thể giảm</h5><p>Lỗi chạm sàn \(\gamma\): nhiễu vốn có trong dữ liệu, hoặc giới hạn của mô hình.</p></div>
+</div>
+
+<div class="slides" data-s="11"></div>
+<p>Thầy gọi bài này là "đi trước thời đại" (slide 11), vì nó đã nêu ba ý mà nhiều năm sau mới thành chủ đề nóng:</p>
+<ul>
+  <li><b>"Emergence"</b> (năng lực đột ngột xuất hiện). Mô hình được khởi tạo kém có những "vách đá": độ chính xác chỉ bằng đoán bừa cho tới khi đủ dữ liệu để vào vùng luật luỹ thừa. Thí nghiệm trên dữ liệu nhỏ phải đảm bảo dữ liệu đủ lớn để vượt qua vùng 1, nếu không sẽ kết luận sai.</li>
+  <li><b>Scaling theo lượng tính toán.</b> Nếu biết đường cong học và đường cong theo cỡ mô hình, ta có thể ước tính phải đầu tư bao nhiêu tính toán để đạt một độ chính xác mục tiêu.</li>
+  <li><b>Tốc độ chính là độ chính xác.</b> Lượng tử hoá (dùng số ít bit) hay mô hình thưa làm giảm độ chính xác một chút (có khi tới 20%) để chạy nhanh hơn. Nhưng nếu chạy nhanh hơn cho phép huấn luyện mô hình lớn hơn trên nhiều dữ liệu hơn, phần mất mát đó có thể được bù lại.</li>
+</ul>
+<div class="note key"><p>Ý thứ ba là tư duy cốt lõi của cả khoá học: <mark>đừng so hai phương pháp ở cùng số bước, hãy so ở cùng lượng tài nguyên</mark> (FLOP, giờ GPU, tiền). Một phương pháp "kém hơn" mỗi bước nhưng nhanh gấp đôi có thể thắng.</p></div>
+
+
+<div class="part" id="l09-part2" data-short="Phần 2 · Dữ liệu và hiệu năng">Phần 2 · Dữ liệu và hiệu năng<small>Lỗi giảm theo một đường thẳng trên đồ thị log–log. Vì sao lại thế, và độ dốc của đường thẳng nói lên điều gì?</small></div>
+
+<h2 id="l09-map" data-short="Ba câu hỏi, và luật luỹ thừa"><span>Ba câu hỏi, và luật luỹ thừa ở khắp nơi</span><span class="slide-range">slide 12–13</span></h2>
+<div class="slides" data-s="12"></div>
+<p>Phần lớn còn lại của lecture trả lời ba câu hỏi (slide 12):</p>
+<ol>
+  <li><b>Dữ liệu và hiệu năng</b>: có quy tắc đơn giản nào cho biết dữ liệu ảnh hưởng tới hiệu năng thế nào không? (Phần 2 của tài liệu này.)</li>
+  <li><b>Dữ liệu và cỡ mô hình</b>: nên cho mô hình đọc thêm dữ liệu, hay làm mô hình to hơn? (Phần 4.)</li>
+  <li><b>Siêu tham số và hiệu năng</b>: chọn siêu tham số cho mô hình lớn thế nào? (Phần 3.)</li>
+</ol>
+
+<div class="slides" data-s="13"></div>
+<p>Slide 13 là ba biểu đồ nổi tiếng nhất của Kaplan và cộng sự (2020). Test loss của mô hình ngôn ngữ là một đường thẳng trên log–log theo cả ba đại lượng:</p>
+<div class="tbl"><table>
+  <tr><th>Theo</th><th>Công thức khớp</th><th>Gấp 10 lần thì loss còn</th></tr>
+  <tr><td>Lượng tính toán \(C\) (PF-ngày)</td><td>\(L = (C_{min}/2{,}3\cdot10^{8})^{-0{,}050}\)</td><td>\(10^{-0{,}050} \approx 89\%\)</td></tr>
+  <tr><td>Số token dữ liệu \(D\)</td><td>\(L = (D/5{,}4\cdot10^{13})^{-0{,}095}\)</td><td>\(10^{-0{,}095} \approx 80\%\)</td></tr>
+  <tr><td>Số tham số \(N\) (không tính embedding)</td><td>\(L = (N/8{,}8\cdot10^{13})^{-0{,}076}\)</td><td>\(10^{-0{,}076} \approx 84\%\)</td></tr>
+</table></div>
+<p>Mỗi công thức đo một đại lượng khi đại lượng kia <i>không phải nút thắt</i>. Ví dụ đường theo \(D\) dùng mô hình đủ lớn để dữ liệu là giới hạn duy nhất.</p>
+<p>Hàng dưới của slide cho thấy quy luật này còn xuất hiện ở những chỗ không ngờ. Hai hình giữa (từ nghiên cứu "observational scaling laws" của Ruan, Maddison và Hashimoto, 2024) vẽ độ chính xác trên các tác vụ cụ thể (xếp lại chữ cái, hỏi đáp tiếng Ba Tư) theo lượng tính toán quy đổi. Các điểm nằm trên một đường <dfn>sigmoid</dfn> (hình chữ S) của log FLOP: lúc đầu gần 0, rồi tăng vọt, rồi bão hoà. Hình phải (Epoch AI) vẽ một chỉ số năng lực tổng hợp theo ngày phát hành mô hình, cũng tăng đều đặn.</p>
+
+<h2 id="l09-datalaw" data-short="Scaling law theo dữ liệu"><span>Scaling law theo dữ liệu trông như thế nào</span><span class="slide-range">slide 14–15</span></h2>
+<div class="slides" data-s="14,15"></div>
+<p><dfn>Scaling law theo dữ liệu</dfn> là một công thức đơn giản biến cỡ dữ liệu \(n\) thành lỗi (slide 14). Ta chờ đợi gì ở nó? Một đường cong <b>đơn điệu</b> (thêm dữ liệu không làm tệ đi), có dạng giống hàm logistic khi vẽ trên trục log: phẳng ở đầu, dốc ở giữa, phẳng ở cuối. Đó chính là ba vùng của Hestness.</p>
+<p>Với mô hình ngôn ngữ, quan sát thực nghiệm rất gọn (slide 15): <mark>loss và cỡ dữ liệu là một đường thẳng trên đồ thị log–log.</mark> Người ta gọi đó là quan hệ <dfn>luật luỹ thừa</dfn> hay <dfn>không có thang đo riêng</dfn> (<span class="en">scale-free</span>).</p>
+<div class="note key">
+  <p>Vì sao "đường thẳng trên log–log" và "luật luỹ thừa" là một? Lấy log hai vế của \(L = a\, n^{-\alpha}\):</p>
+  <p>\[ \log L = \log a - \alpha \log n. \]</p>
+  <p>Đây là phương trình đường thẳng với biến \(\log n\), hệ số góc \(-\alpha\). Số mũ chính là <b>độ dốc</b>.</p>
+  <p>"Scale-free" nghĩa là: <b>gấp \(k\) lần dữ liệu thì lỗi luôn nhân với cùng một hệ số \(k^{-\alpha}\)</b>, bất kể đang ở 1 triệu hay 1 tỉ token. Không có cỡ dữ liệu nào "đặc biệt". Nhờ đó ta mới dám ngoại suy: độ dốc đo ở vùng nhỏ cũng là độ dốc ở vùng lớn.</p>
+</div>
+
+<h2 id="l09-why" data-short="Vì sao lại là luật luỹ thừa?"><span>Vì sao lại là luật luỹ thừa? Ví dụ ước lượng trung bình</span><span class="slide-range">slide 16–17</span></h2>
+<div class="slides" data-s="16,17"></div>
+<p>Câu hỏi (slide 16): lỗi giảm khi có thêm dữ liệu thì dễ hiểu, nhưng vì sao lại giảm <i>đúng theo luật luỹ thừa</i>? Câu trả lời đề xuất: <mark>sai số ước lượng tự nhiên giảm theo một đa thức của \(1/n\).</mark></p>
+<p>Ví dụ đơn giản nhất (slide 17): có \(n\) số \(x_1, \dots, x_n\) lấy ngẫu nhiên từ phân phối chuẩn \(N(\mu, \sigma^2)\). Ta ước lượng trung bình thật \(\mu\) bằng trung bình mẫu \(\hat\mu = \frac{1}{n}\sum_i x_i\). Sai số bình phương kỳ vọng là</p>
+<p>\[ \mathbb{E}\big[(\hat\mu - \mu)^2\big] = \frac{\sigma^2}{n} \quad\Longrightarrow\quad \log(\text{Error}) = -\log n + 2\log\sigma. \]</p>
+<p>Đó đã là một scaling law, với độ dốc \(-1\). Tổng quát hơn, mọi tốc độ dạng \(1/n^{\alpha}\) đều là một scaling law với độ dốc \(-\alpha\).</p>
+<div class="note life"><p>Vì sao \(\sigma^2/n\)? Mỗi \(x_i\) lệch khỏi \(\mu\) một lượng ngẫu nhiên có phương sai \(\sigma^2\). Cộng \(n\) độ lệch độc lập thì phương sai cộng lại: \(n\sigma^2\). Chia cho \(n\) để lấy trung bình thì phương sai chia cho \(n^2\): còn \(\sigma^2/n\). Các độ lệch ngẫu nhiên <i>triệt tiêu lẫn nhau</i> khi lấy trung bình, và càng nhiều mẫu thì triệt tiêu càng tốt.</p></div>
+<p>Đừng tin công thức suông, hãy mô phỏng. Ô dưới đây thực sự lấy mẫu ngẫu nhiên: với mỗi \(n\) từ 2 đến 16 384, nó lặp lại 200 lần thí nghiệm "lấy \(n\) mẫu rồi tính trung bình", và vẽ sai số trung bình.</p>
+
+<div class="widget" id="simW">
+  <h4>Thử nghiệm: mô phỏng ước lượng trung bình</h4>
+  <div class="l09-ctl" data-g="metric">
+    <span>Đo sai số:</span>
+    <button class="l09-btn" data-v="sq" aria-pressed="true">Bình phương</button>
+    <button class="l09-btn" data-v="abs" aria-pressed="false">Tuyệt đối</button>
+  </div>
+  <div class="l09-ctl" data-g="axes">
+    <span>Trục:</span>
+    <button class="l09-btn" data-v="log" aria-pressed="true">Log–log</button>
+    <button class="l09-btn" data-v="lin" aria-pressed="false">Thường</button>
+  </div>
+  <div class="l09-ctl" data-g="sigma">
+    <span>Độ lệch chuẩn σ:</span>
+    <button class="l09-btn" data-v="1" aria-pressed="true">1</button>
+    <button class="l09-btn" data-v="3" aria-pressed="false">3</button>
+    <button class="l09-btn ghost" id="simRe" aria-pressed="false">↻ Mô phỏng lại</button>
+  </div>
+  <div class="l09-plot" id="simP"></div>
+  <div class="l09-legend"><span><i class="o" style="background:var(--accent)"></i>đo được (trung bình 200 lần)</span><span><i class="d" style="border-color:var(--muted)"></i>lý thuyết</span></div>
+  <div class="l09-stats" id="simS"></div>
+  <p class="l09-msg" id="simM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('simW'); if (!box || !window.L09P) return;
+  const P = window.L09P, st = { metric: 'sq', axes: 'log', sigma: 1 };
+  let data = null;
+  function gauss() { let u = 0, v = 0; while (u === 0) u = Math.random(); v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function simulate() {
+    const T = 200, out = [];
+    for (let k = 1; k <= 14; k++) {
+      const n = Math.pow(2, k); let sq = 0, ab = 0;
+      for (let t = 0; t < T; t++) { let s = 0; for (let i = 0; i < n; i++) s += gauss(); const e = s / n; sq += e * e; ab += Math.abs(e); }
+      out.push({ n, sq: sq / T, ab: ab / T });
+    }
+    data = out;
+  }
+  function slope(pts) {
+    const xs = pts.map(p => Math.log10(p[0])), ys = pts.map(p => Math.log10(p[1])), k = xs.length;
+    const mx = xs.reduce((a, b) => a + b) / k, my = ys.reduce((a, b) => a + b) / k;
+    let num = 0, den = 0; xs.forEach((x, i) => { num += (x - mx) * (ys[i] - my); den += (x - mx) * (x - mx); });
+    return num / den;
+  }
+  function render() {
+    const s = st.sigma, sq = st.metric === 'sq';
+    const pts = data.map(d => [d.n, sq ? d.sq * s * s : d.ab * s]);
+    const th = n => sq ? s * s / n : s * Math.sqrt(2 / (Math.PI * n));
+    const ns = P.range(2, 16384, 60, true);
+    const log = st.axes === 'log';
+    const ymax = Math.max(...pts.map(p => p[1])) * 1.15;
+    const fmtY = v => v === 0 ? '0' : v >= 1 ? P.nf(v, 1) : v >= 0.01 ? P.nf(v, 3) : P.sci(v);
+    P.plot(box.querySelector('#simP'), {
+      aria: 'Sai số ước lượng trung bình theo số mẫu',
+      x: log ? { min: 1.5, max: 22000, log: true, label: 'số mẫu n' } : { min: 0, max: 16384, label: 'số mẫu n', ticks: [0, 4096, 8192, 12288, 16384], fmt: v => P.nf(v, 0) },
+      y: log ? { min: sq ? 1e-5 * s * s : 3e-3 * s, max: sq ? 1.2 * s * s : 1.2 * s, log: true, label: sq ? 'sai số bình phương' : 'sai số tuyệt đối' } : { min: 0, max: ymax, label: sq ? 'sai số bình phương' : 'sai số tuyệt đối', fmt: fmtY },
+      series: [
+        { pts: ns.map(n => [n, th(n)]), color: 'var(--muted)', dash: '6 5', width: 1.6, tip: false, label: sq ? 'σ²/n' : 'σ·√(2/πn)', labelAt: log ? 'mid' : 'start', ldx: log ? 6 : 8, ldy: log ? -10 : 4 },
+        { pts, color: 'var(--accent)', line: false, dots: 5 }
+      ],
+      tip: p => `n = <b>${P.nf(p[0], 0)}</b><br>sai số: <b>${fmtY(p[1])}</b><br>lý thuyết: ${fmtY(th(p[0]))}`
+    });
+    const sl = slope(pts), r2 = Math.pow(2, sl);
+    box.querySelector('#simS').innerHTML = `
+      <div><b>${P.nf(sl, 3)}</b><small>độ dốc đo được trên log–log</small></div>
+      <div><b>${sq ? '−1' : '−0,5'}</b><small>độ dốc lý thuyết</small></div>
+      <div><b>${P.nf(r2 * 100, 0)}%</b><small>gấp đôi dữ liệu thì sai số còn</small></div>
+      <div><b>${P.nf(Math.pow(10, -1 / sl), 0)} ×</b><small>dữ liệu cần để sai số giảm 10 lần</small></div>`;
+    box.querySelector('#simM').innerHTML = log
+      ? (sq ? 'Các chấm nằm trên một đường thẳng dốc −1. Đổi σ từ 1 sang 3 chỉ <b>tịnh tiến</b> đường lên (hằng số 2 log σ), độ dốc giữ nguyên. ' : 'Đo bằng sai số tuyệt đối thì độ dốc thành −0,5, vì |μ̂ − μ| tỉ lệ với căn của σ²/n. <b>Số mũ phụ thuộc cách đo lỗi</b>, nên khi so số mũ giữa các bài báo phải xem họ đo cái gì. ')
+        + 'Chấm hơi lệch khỏi đường là do ngẫu nhiên. Bấm "Mô phỏng lại" để thấy chúng nhảy quanh đường lý thuyết.'
+      : 'Trên trục thường, gần như mọi thứ xảy ra ở vài trăm mẫu đầu, phần còn lại trông như "không thay đổi gì nữa". Thật ra từ 4 096 lên 16 384 mẫu, sai số vẫn giảm thêm 4 lần. Đó là lý do mọi scaling law đều vẽ trên trục log–log.';
+  }
+  box.querySelectorAll('.l09-ctl[data-g]').forEach(g => g.querySelectorAll('.l09-btn[data-v]').forEach(b => b.addEventListener('click', () => {
+    const k = g.dataset.g; st[k] = k === 'sigma' ? +b.dataset.v : b.dataset.v;
+    g.querySelectorAll('.l09-btn[data-v]').forEach(x => x.setAttribute('aria-pressed', x === b)); render();
+  })));
+  box.querySelector('#simRe').addEventListener('click', () => { simulate(); render(); });
+  simulate(); render();
+})();
+</script>
+
+<h2 id="l09-exponent" data-short="Bí ẩn của số mũ"><span>Bí ẩn của số mũ: vì sao mạng nơ-ron dốc ít hơn nhiều?</span><span class="slide-range">slide 18–20</span></h2>
+<div class="slides" data-s="18"></div>
+<p>Lập luận như trên cho thấy hầu hết các mô hình "cổ điển" (hồi quy tuyến tính, v.v.) có sai số giảm theo \(1/n\), tức độ dốc \(-1\) trên log–log (slide 18). Nhưng các scaling law của mạng nơ-ron dốc ít hơn rất nhiều:</p>
+<div class="tbl"><table>
+  <tr><th>Bài toán</th><th>Công thức đo được</th><th>Độ dốc</th></tr>
+  <tr><td>Dịch máy (Hestness)</td><td>\(\varepsilon(m) = 3{,}87\, m^{-0{,}13}\)</td><td>−0,13</td></tr>
+  <tr><td>Nhận dạng giọng nói (Hestness)</td><td>\(\varepsilon(m) \propto m^{-0{,}30}\)</td><td>khoảng −0,3</td></tr>
+  <tr><td>Mô hình ngôn ngữ (Kaplan)</td><td>\(L = (D/5{,}4\cdot10^{13})^{-0{,}095}\)</td><td>−0,095</td></tr>
+  <tr><td>Ước lượng trung bình (lý thuyết)</td><td>\(\sigma^2/n\)</td><td>−1</td></tr>
+</table></div>
+<p>Khác hẳn dự đoán. Vì sao?</p>
+
+<div class="slides" data-s="19"></div>
+<p>Thầy đi đường vòng qua <dfn>học phi tham số</dfn> (slide 19): mạng nơ-ron xấp xỉ được gần như mọi hàm, nên hãy xem một phương pháp "học mọi hàm" có scaling law ra sao.</p>
+<ul>
+  <li><b>Đầu vào</b>: \(n\) điểm \(x_i\) rải đều trong hình vuông đơn vị 2 chiều, với \(y_i = f(x_i) + \text{nhiễu}\). <b>Nhiệm vụ</b>: ước lượng hàm \(f\).</li>
+  <li><b>Cách làm</b>: chia hình vuông thành các ô vuông nhỏ cạnh \(n^{-1/4}\), rồi ở mỗi ô lấy trung bình các \(y_i\) rơi vào ô đó.</li>
+  <li><b>Sai số</b>: có \((n^{1/4})^2 = \sqrt{n}\) ô, mỗi ô nhận khoảng \(n/\sqrt{n} = \sqrt{n}\) mẫu. Ước lượng trung bình trong mỗi ô có sai số cỡ \(1/\sqrt{n}\) (theo ví dụ trên), cộng thêm phần sai số do hàm thay đổi bên trong một ô.</li>
+</ul>
+<p>Trong \(d\) chiều, sai số trở thành \(n^{-1/d}\), tức độ dốc \(-1/d\). <mark>Học "mềm dẻo", không giả định trước dạng hàm, có scaling law phụ thuộc số chiều.</mark> Càng nhiều chiều thì càng cần nhiều dữ liệu để phủ kín không gian: đây là <dfn>lời nguyền số chiều</dfn>.</p>
+<div class="note life"><p>Hình dung bạn muốn vẽ bản đồ nhiệt độ. Trên một con đường (1 chiều), 10 trạm đo cách đều là đủ. Trên một tỉnh (2 chiều), muốn cùng độ dày thì cần 10 × 10 = 100 trạm. Thêm độ cao (3 chiều): 1 000 trạm. Mỗi chiều thêm vào nhân số mẫu cần thiết lên. Đảo lại: với cùng số mẫu, sai số giảm chậm hơn khi số chiều tăng.</p></div>
+
+<div class="slides" data-s="20"></div>
+<p>Từ đó, một số tác giả (Bahri và cộng sự, 2021) lập luận như sau (slide 20):</p>
+<ol>
+  <li>Scaling law xuất hiện vì tốc độ học là đa thức \(1/n^{\alpha}\).</li>
+  <li>Độ dốc \(\alpha\) gắn chặt với <dfn>số chiều nội tại</dfn> (<span class="en">intrinsic dimension</span>) của dữ liệu. Ảnh 256 × 256 điểm ảnh có hàng chục nghìn chiều trên giấy, nhưng ảnh "thật" chỉ nằm trên một mặt cong có ít chiều hơn nhiều trong không gian đó.</li>
+</ol>
+<p>Biểu đồ vẽ \(4/\alpha_D\) theo số chiều nội tại ước lượng. Với dữ liệu tổng hợp (teacher–student, chấm hồng), các điểm nằm khá sát đường \(4/\alpha_D = d\), tức \(\alpha_D \approx 4/d\). Với dữ liệu thật (CIFAR, SVHN, MNIST…) thì phân tán hơn.</p>
+<div class="note warn"><p>Thầy nhắc: các phương pháp ước lượng số chiều nội tại khá "lởm", nên lập luận này chưa chặt chẽ. Hãy coi nó là một <i>trực giác hữu ích</i>: \(\alpha\) nhỏ (dốc ít) nghĩa là bài toán "khó phủ kín", cần cực nhiều dữ liệu.</p></div>
+<p>Ô dưới đây giúp cảm nhận một số mũ nhỏ thực sự có nghĩa là gì.</p>
+
+<div class="widget" id="expW">
+  <h4>Thử nghiệm: độ dốc nói gì về lượng dữ liệu cần thêm</h4>
+  <div class="row" id="expPre"></div>
+  <p style="margin:12px 0 4px"><label for="expA">Độ dốc α (lỗi ∝ n<sup>−α</sup>): <span class="chip" id="expAv"></span></label></p>
+  <input type="range" id="expA" min="0" max="100" value="18">
+  <div class="l09-stats" id="expS"></div>
+  <div class="l09-plot" id="expP"></div>
+  <div class="l09-legend"><span><i style="border-color:var(--accent)"></i>α bạn chọn</span><span><i class="d" style="border-color:var(--muted)"></i>α = 1 (ước lượng trung bình)</span></div>
+  <p class="l09-msg" id="expM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('expW'); if (!box || !window.L09P) return;
+  const P = window.L09P, sl = box.querySelector('#expA');
+  const pre = [['Ước lượng trung bình', 1], ['Phi tham số, d = 2', 0.5], ['Giọng nói', 0.30], ['Dịch máy', 0.13], ['LM theo dữ liệu', 0.095], ['LM theo tham số', 0.076]];
+  const A = v => Math.pow(10, -2 + v / 100 * 2) ; // 0,01 → 1
+  const V = a => Math.round((Math.log10(a) + 2) / 2 * 100);
+  box.querySelector('#expPre').innerHTML = pre.map(p => `<button class="l09-btn" data-a="${p[1]}" aria-pressed="false">${p[0]}</button>`).join('');
+  const fx = x => x >= 1e6 ? P.big(x) : P.nf(x, x < 10 ? 1 : 0);
+  function upd() {
+    const a = A(+sl.value);
+    box.querySelector('#expAv').textContent = P.nf(a, a < 0.1 ? 3 : 2);
+    box.querySelectorAll('#expPre .l09-btn').forEach(b => b.setAttribute('aria-pressed', Math.abs(+b.dataset.a - a) / a < 0.03));
+    const ten = Math.pow(10, -a), half = Math.pow(2, 1 / a), p10 = Math.pow(1 / 0.9, 1 / a);
+    box.querySelector('#expS').innerHTML = `
+      <div><b>${P.nf(ten * 100, 1)}%</b><small>dữ liệu ×10 thì lỗi còn</small></div>
+      <div><b>${fx(p10)} ×</b><small>dữ liệu cần để lỗi giảm 10%</small></div>
+      <div class="${half > 1000 ? 'bad' : ''}"><b>${fx(half)} ×</b><small>dữ liệu cần để lỗi giảm một nửa</small></div>
+      <div><b>≈ ${P.nf(4 / a, 0)}</b><small>số chiều nội tại nếu α ≈ 4/d (Bahri)</small></div>`;
+    const ns = P.range(1, 1e6, 80, true);
+    P.plot(box.querySelector('#expP'), {
+      aria: 'Lỗi tương đối theo dữ liệu tương đối',
+      H: 220,
+      x: { min: 1, max: 1e6, log: true, label: 'dữ liệu (gấp bao nhiêu lần ban đầu)', every: 1 },
+      y: { min: 1e-6, max: 1.5, log: true, label: 'lỗi (so với ban đầu)', every: 2 },
+      series: [
+        { pts: ns.map(n => [n, 1 / n]), color: 'var(--muted)', dash: '6 5', width: 1.6, tip: p => `α = 1: dữ liệu ×${fx(p[0])} → lỗi ${P.nf(p[1] * 100, 4)}%` },
+        { pts: ns.map(n => [n, Math.pow(n, -a)]), color: 'var(--accent)', width: 2.5, tip: p => `α = ${P.nf(a, 3)}: dữ liệu ×${fx(p[0])} → lỗi còn <b>${P.nf(p[1] * 100, 1)}%</b>` }
+      ]
+    });
+    let m = `Với α = ${P.nf(a, 3)}, muốn lỗi giảm một nửa phải có <b>${fx(half)} lần</b> dữ liệu. `;
+    if (a < 0.2) m += 'Số mũ nhỏ như của mô hình ngôn ngữ nghĩa là <b>dữ liệu phải tăng theo cấp số nhân để tiến bộ đều đặn</b>. Đây là lý do các phòng thí nghiệm đi từ hàng tỉ lên hàng chục nghìn tỉ token. ';
+    else if (a >= 0.9) m += 'Đây là tốc độ "dễ chịu" của các bài toán cổ điển: gấp đôi dữ liệu là lỗi giảm gần một nửa. ';
+    m += 'Lưu ý: số mũ của Kaplan đo trên <i>toàn bộ</i> loss, gồm cả phần không thể giảm, nên con số "giảm một nửa" ở đây chỉ để cảm nhận độ dốc, không phải một dự đoán thật.';
+    box.querySelector('#expM').innerHTML = m;
+  }
+  box.querySelectorAll('#expPre .l09-btn').forEach(b => b.addEventListener('click', () => { sl.value = V(+b.dataset.a); upd(); }));
+  sl.addEventListener('input', upd);
+  sl.value = V(0.095); upd();
+})();
+</script>
+
+<h2 id="l09-composition" data-short="Thành phần dữ liệu"><span>Thành phần dữ liệu: đổi độ cao, không đổi độ dốc</span><span class="slide-range">slide 21–23</span></h2>
+<div class="slides" data-s="21,22"></div>
+<p>Đến giờ ta chỉ hỏi về <i>lượng</i> dữ liệu. Một câu hỏi liên quan (slide 21): <b>thành phần</b> dữ liệu (bao nhiêu phần web, sách, code…) ảnh hưởng thế nào? Ba hướng:</p>
+<ul>
+  <li>Chọn tỉ lệ trộn dữ liệu tốt nhất bằng mô hình nhỏ.</li>
+  <li>Quyết định có nên lặp lại dữ liệu hay không.</li>
+  <li>Kết hợp hai điều trên: cân bằng chất lượng với số lần lặp.</li>
+</ul>
+<p>Hashimoto (2021) cho một câu trả lời gọn (slide 22): <mark>thành phần dữ liệu thay đổi <b>độ cao</b> (hằng số phía trước) của đường scaling, không thay đổi <b>độ dốc</b>.</mark> Hình trái: ba tỉ lệ trộn \(q\) khác nhau cho ba đường thẳng song song. Hình phải: hằng số \(\log C(q)\) theo tỉ lệ trộn có dạng chữ U, thấp nhất khi trộn khoảng nửa–nửa, cao vọt khi chỉ dùng một nguồn (\(q = 0\) hoặc \(q = 1\)). Bài học: <b>dữ liệu đa dạng thì tốt hơn</b>, và lợi ích đó không mất đi khi dữ liệu tăng.</p>
+<div class="note key"><p>Đây là một tin rất tốt cho thực hành: nếu chỉ độ cao thay đổi, thì <b>tỉ lệ trộn tốt nhất ở quy mô nhỏ cũng là tỉ lệ tốt nhất ở quy mô lớn</b>. Hai đường song song không bao giờ cắt nhau.</p></div>
+
+<div class="slides" data-s="23"></div>
+<p>Trên thực tế, chọn tỉ lệ trộn bằng scaling law lại khó (slide 23). Hai cách tiếp cận:</p>
+<ul>
+  <li><b>Ý tưởng tự nhiên: xây "data mixing law"</b> (Ye và cộng sự, 2024). Quy trình ba bước: từ mô hình nhỏ chạy ít bước, dùng định luật theo số bước để dự đoán khi chạy nhiều bước, dùng định luật theo cỡ mô hình để dự đoán cho mô hình lớn, rồi dùng định luật trộn dữ liệu để dự đoán cho tỉ lệ trộn chưa thử. Cuối cùng chọn tỉ lệ có loss dự đoán thấp nhất.</li>
+  <li><b>Đánh giá thực nghiệm: cứ lấy bộ dữ liệu thắng ở quy mô nhỏ</b> (DataDecide, Magnusson và cộng sự, 2025). Huấn luyện 25 bộ dữ liệu ở cỡ 150 triệu tham số, xếp hạng, rồi dùng thứ hạng đó để đoán cặp nào thắng ở cỡ 1 tỉ: đúng khoảng 80%. Các phương pháp ngoại suy phức tạp hơn không thắng được cách đơn giản này một cách rõ ràng.</li>
+</ul>
+
+<h2 id="l09-repeat" data-short="Lặp lại dữ liệu"><span>Khi dữ liệu có hạn: lặp lại được bao nhiêu lần?</span><span class="slide-range">slide 24–27</span></h2>
+<div class="slides" data-s="24"></div>
+<p>Dữ liệu chất lượng tốt trên internet có hạn. Nếu muốn huấn luyện lâu hơn lượng dữ liệu đang có, ta phải cho mô hình đọc lại, tức huấn luyện nhiều <dfn>epoch</dfn> (một epoch là một lượt đọc hết bộ dữ liệu). Dữ liệu đọc lại có giá trị như dữ liệu mới không? Muennighoff và cộng sự (2023) đo kỹ (slide 24, hình trái):</p>
+<ul>
+  <li><b>Tới khoảng 4 epoch</b>: lặp lại gần như tốt bằng dữ liệu mới.</li>
+  <li><b>Sau đó</b>: lợi ích giảm nhanh.</li>
+  <li><b>Khoảng 40 epoch</b>: lặp thêm gần như vô ích.</li>
+</ul>
+<p>Họ đề xuất <dfn>lượng dữ liệu hiệu dụng</dfn> \(D'\): đọc lại \(R_D\) lần thì tương đương bao nhiêu dữ liệu mới?</p>
+<p>\[ D' = U_D + U_D\, R_D^{*}\big(1 - e^{-R_D/R_D^{*}}\big), \]</p>
+<p>với \(U_D\) là số token khác nhau (unique), \(R_D\) là số lần <i>lặp lại</i> (bằng số epoch trừ 1), và \(R_D^{*} \approx 15{,}4\) là một hằng số khớp từ thí nghiệm. Đọc công thức: lần lặp thứ \(r\) chỉ đáng \(e^{-r/R_D^*}\) phần một lượt dữ liệu mới, giá trị giảm dần theo hàm mũ. Dù lặp vô hạn lần, \(D'\) không vượt quá \(U_D(1 + R_D^*) \approx 16{,}4\, U_D\).</p>
+<p>Hình phải của slide 24 cho hệ quả với việc phân bổ tính toán. Ở ngân sách \(10^{22}\) FLOP, nếu coi dữ liệu lặp lại có giá trị như dữ liệu mới, ta sẽ chọn mô hình 8,67 tỉ tham số (ngôi sao vàng, loss 2,376). Định luật mới chọn mô hình <b>nhỏ hơn</b> 6,34 tỉ nhưng đọc nhiều epoch hơn (ngôi sao đỏ, loss 2,359, tốt hơn). Lý do: họ thấy tham số "thừa" mất giá trị còn nhanh hơn dữ liệu lặp lại, nên khi thiếu dữ liệu, tiêu thêm tính toán vào epoch có lợi hơn là vào tham số.</p>
+
+<div class="widget" id="repW">
+  <h4>Thử nghiệm: dữ liệu lặp lại đáng bao nhiêu dữ liệu mới?</h4>
+  <div class="l09-ctl" data-g="u">
+    <span>Số token khác nhau U<sub>D</sub>:</span>
+    <button class="l09-btn" data-v="1e11" aria-pressed="false">100 tỉ</button>
+    <button class="l09-btn" data-v="1e12" aria-pressed="true">1 nghìn tỉ</button>
+    <button class="l09-btn" data-v="1e13" aria-pressed="false">10 nghìn tỉ</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="repE">Số epoch: <span class="chip" id="repEv"></span></label></p>
+  <input type="range" id="repE" min="0" max="200" value="60">
+  <div class="l09-plot" id="repP"></div>
+  <div class="l09-legend"><span><i style="border-color:var(--accent)"></i>dữ liệu hiệu dụng D′ (Muennighoff)</span><span><i class="d" style="border-color:var(--muted)"></i>nếu lặp lại có giá trị như dữ liệu mới</span></div>
+  <div class="l09-stats" id="repS"></div>
+  <p class="l09-msg" id="repM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('repW'); if (!box || !window.L09P) return;
+  const P = window.L09P, sl = box.querySelector('#repE'), RS = 15.4;
+  let U = 1e12;
+  const EP = v => Math.pow(10, v / 100);            // 1 → 100 epoch
+  const Dp = ep => 1 + RS * (1 - Math.exp(-(ep - 1) / RS));
+  function upd() {
+    const ep = EP(+sl.value), d = Dp(ep), eff = d / ep, next = Math.exp(-(ep - 1) / RS);
+    box.querySelector('#repEv').textContent = P.nf(ep, ep < 10 ? 1 : 0);
+    const es = P.range(1, 100, 90, true);
+    P.plot(box.querySelector('#repP'), {
+      aria: 'Dữ liệu hiệu dụng theo số epoch',
+      x: { min: 1, max: 100, log: true, label: 'số epoch (tổng token đã đọc ÷ U)', ticks: [1, 2, 4, 10, 20, 40, 100], fmt: v => P.nf(v, 0) },
+      y: { min: 0, max: 20, label: 'dữ liệu hiệu dụng (÷ U)', ticks: [0, 4, 8, 12, 16, 20], fmt: v => P.nf(v, 0) },
+      series: [
+        { pts: es.map(e => [e, e]), color: 'var(--muted)', dash: '6 5', width: 1.6, tip: false },
+        { pts: es.map(e => [e, Dp(e)]), color: 'var(--accent)', width: 2.5, label: 'trần ≈ 16,4 × U', labelAt: 'end', anchor: 'end', ldy: -10, tip: p => `${P.nf(p[0], 1)} epoch → D′ = <b>${P.nf(p[1], 2)} × U</b><br>hiệu quả ${P.nf(p[1] / p[0] * 100, 0)}%` }
+      ],
+      marks: [{ x: ep, y: d, tip: `Bạn chọn: ${P.nf(ep, 1)} epoch<br>D′ = <b>${P.big(d * U)}</b> token` }]
+    });
+    box.querySelector('#repS').innerHTML = `
+      <div><b>${P.big(ep * U)}</b><small>token đã đọc</small></div>
+      <div><b>${P.big(d * U)}</b><small>tương đương token mới</small></div>
+      <div class="${eff < 0.5 ? 'bad' : eff > 0.9 ? 'good' : ''}"><b>${P.nf(eff * 100, 0)}%</b><small>hiệu quả trung bình</small></div>
+      <div class="${next < 0.2 ? 'bad' : ''}"><b>${P.nf(next * 100, 0)}%</b><small>giá trị của epoch kế tiếp</small></div>`;
+    let m;
+    if (ep <= 4.05) m = `Ở ${P.nf(ep, 1)} epoch, lặp lại gần như "miễn phí": mỗi token đọc lại vẫn đáng ít nhất ${P.nf(Math.exp(-3 / RS) * 100, 0)}% token mới.`;
+    else if (ep < 30) m = `Bắt đầu lãng phí: đọc ${P.big(ep * U)} token nhưng chỉ đáng ${P.big(d * U)} token mới. Lúc này nên tìm thêm dữ liệu, hoặc dồn tính toán vào chỗ khác.`;
+    else m = `Gần như vô ích: đọc thêm một epoch chỉ đáng ${P.nf(next * 100, 0)}% một epoch mới. Đường cong đã chạm trần ${P.big(16.4 * U)} token.`;
+    box.querySelector('#repM').innerHTML = m + ' (Công thức khớp trên mô hình tới vài tỉ tham số. Đừng coi các con số là chính xác ở quy mô khác.)';
+  }
+  box.querySelectorAll('[data-g="u"] .l09-btn').forEach(b => b.addEventListener('click', () => {
+    U = +b.dataset.v; box.querySelectorAll('[data-g="u"] .l09-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<div class="slides" data-s="25"></div>
+<p>Slide 25 (Kim, Kotha, Liang, Hashimoto, 2025, "Pre-training under infinite compute") hỏi tiếp: nếu dữ liệu cố định nhưng tính toán <i>không giới hạn</i> thì sao? Hai lưu ý quan trọng:</p>
+<ol>
+  <li><b>Scaling law có thể "gãy" nếu áp dụng mù quáng.</b> Với công thức huấn luyện tiêu chuẩn, tăng số epoch lúc đầu giúp (loss thấp nhất ở khoảng 8 epoch), rồi loss tăng vọt trở lại vì mô hình học thuộc lòng (<dfn>overfitting</dfn>): 128 epoch còn tệ hơn 1 epoch. Tăng số tham số cũng chững lại gần như ngay lập tức (hình giữa).</li>
+  <li><b>Scaling law chỉ mô tả công thức huấn luyện bạn đang dùng.</b> Nó là "mức tối thiểu bạn đạt được", không phải giới hạn của bài toán. Đổi công thức thì có thể tốt hơn. Hình phải: điều chỉnh lại (regularization mạnh hơn nhiều, đặc biệt weight decay) cho đường tốt hơn, và gộp nhiều mô hình (<dfn>ensemble</dfn>) còn tốt hơn nữa, ở cùng lượng dữ liệu gốc.</li>
+</ol>
+
+<div class="slides" data-s="26"></div>
+<p>Vì dữ liệu lặp lại kém giá trị dần, <mark>việc chọn lọc dữ liệu phải phụ thuộc vào quy mô</mark> (Goyal và cộng sự, 2024, slide 26). Dữ liệu web không đồng đều: chia thành các "bể" theo chất lượng, E tốt nhất rồi D, C, A, B, F. Có một sự đánh đổi chất lượng–số lượng:</p>
+<ul>
+  <li><b>Ít tính toán</b>: lọc thật gắt, chỉ dùng bể E. Đọc vài lượt dữ liệu tốt nhất là đủ.</li>
+  <li><b>Tính toán vừa</b>: E + D. Bể E đã bị đọc nhiều lần nên mất giá trị, dữ liệu D chưa đọc lần nào lại đáng hơn.</li>
+  <li><b>Nhiều tính toán</b>: E + D + C, lọc nhẹ tay hơn.</li>
+</ul>
+<p>Biểu đồ phải (huấn luyện CLIP, đo trên ImageNet) cho thấy các đường cắt nhau: "chỉ E" (xanh lá) tốt nhất lúc đầu rồi chững lại, còn các bể rộng hơn vượt lên khi tính toán tăng. Đây là ví dụ ngược với slide 22: ở đây thành phần dữ liệu thay đổi cả hình dạng đường cong, vì có lặp lại.</p>
+
+<div class="slides" data-s="27"></div>
+<div class="note key">
+  <p><b>Tóm tắt về scaling law theo dữ liệu</b> (slide 27):</p>
+  <ul>
+    <li>Log cỡ dữ liệu và log lỗi có quan hệ tuyến tính đến bất ngờ.</li>
+    <li>Điều này đúng trên nhiều lĩnh vực và nhiều loại mô hình.</li>
+    <li>Về lý thuyết, nó giống các cận tổng quát hoá: ví dụ ước lượng trung bình cho độ dốc −1, học phi tham số cho độ dốc phụ thuộc số chiều.</li>
+    <li>Ứng dụng: quyết định thu thập và chọn lọc dữ liệu (trộn thế nào, lặp bao nhiêu, lọc gắt cỡ nào).</li>
+  </ul>
+</div>
+
+
+<div class="part" id="l09-part3" data-short="Phần 3 · Chọn siêu tham số">Phần 3 · Dùng scaling law để chọn siêu tham số<small>So hai lựa chọn bằng cách so hai đường thẳng: đường nào thấp hơn, đường nào dốc hơn.</small></div>
+
+<h2 id="l09-engineering" data-short="Scaling law để thiết kế"><span>Scaling law như một công cụ thiết kế</span><span class="slide-range">slide 28–29</span></h2>
+<div class="slides" data-s="28,29"></div>
+<p>Giờ đến phần thầy hứa từ đầu: scaling theo <b>mô hình</b> (slide 28). Động lực là: làm sao thiết kế hiệu quả một mô hình ngôn ngữ khổng lồ?</p>
+<ul>
+  <li>Chọn kiến trúc nào: LSTM hay Transformer? Chọn optimizer nào: Adam hay SGD?</li>
+  <li>Phân bổ tài nguyên có hạn thế nào: huấn luyện lâu hơn hay mô hình to hơn? Thu thập thêm dữ liệu hay mua thêm GPU?</li>
+</ul>
+<p>Scaling law cho một quy trình đơn giản để trả lời. Phần này đi qua các lựa chọn trong bối cảnh bài báo kinh điển của Kaplan (slide 29): kiến trúc, optimizer, tỉ lệ rộng/sâu, batch size, và thêm learning rate.</p>
+<div class="note key"><p>Mẹo đọc mọi biểu đồ trong phần này: mỗi lựa chọn cho một đường thẳng trên log–log. <b>Hai đường song song</b> nghĩa là một lựa chọn tốt hơn một <i>hằng số</i>, ở mọi quy mô. <b>Hai đường khác độ dốc</b> thì quan trọng hơn nhiều: chênh lệch lớn dần khi tăng quy mô, và có thể đổi thứ hạng (như Banko và Brill đã thấy).</p></div>
+
+<h2 id="l09-arch" data-short="Kiến trúc và optimizer"><span>Kiến trúc và optimizer: Transformer hay LSTM, Adam hay SGD</span><span class="slide-range">slide 30–32</span></h2>
+<div class="slides" data-s="30"></div>
+<p><b>Transformer có tốt hơn LSTM không?</b> Cách "trâu bò": bỏ ra hàng chục triệu đô huấn luyện một LSTM cỡ GPT-3 để so. Cách scaling law (slide 30, từ Kaplan 2020): huấn luyện một loạt LSTM và Transformer nhỏ, vẽ test loss theo số tham số. Đường Transformer (xanh) nằm dưới và <b>dốc hơn</b> các đường LSTM (đỏ). Khoảng cách mở rộng khi mô hình lớn lên, nên không cần huấn luyện LSTM khổng lồ cũng biết kết quả.</p>
+<div class="note warn"><p>Slide ghi "[Kaplan+ 2021]", nhưng bài báo "Scaling Laws for Neural Language Models" ra tháng 1 năm <b>2020</b>, cũng là bài được trích ở các slide khác.</p></div>
+
+<div class="slides" data-s="31"></div>
+<p>Tay và cộng sự (2022) làm điều này một cách có hệ thống (slide 31): so hơn mười kiến trúc (ALBERT, Performer, MLP-Mixer, Switch Transformer, Universal Transformer, Transformer-GLU…) với Transformer thường, ở nhiều mức FLOP. Trong các hình nhỏ, đường xanh lá là Transformer thường. Hầu hết kiến trúc khác nằm dưới hoặc chạm vào nó. Vài biến thể như GLU hay Switch theo kịp hoặc nhỉnh hơn một chút. Một số kiến trúc trông ổn ở cỡ nhỏ nhưng scale kém hơn hẳn (như Performer, MLP-Mixer).</p>
+
+<div class="slides" data-s="32"></div>
+<p><b>Adam hay SGD?</b> (slide 32, Hestness 2017, trên mạng hồi quy RHN, trước thời Transformer.) Hai đường gần như <b>song song</b>:</p>
+<p>\[ \text{SGD: } \varepsilon(m) = 5{,}37\, m^{-0{,}094}, \qquad \text{Adam: } \varepsilon(m) = 5{,}25\, m^{-0{,}095}. \]</p>
+<p>Cùng độ dốc, Adam có hằng số nhỏ hơn. Nghĩa là Adam tốt hơn SGD một <i>tỉ lệ cố định</i> ở mọi cỡ dữ liệu, giống như thành phần dữ liệu ở slide 22.</p>
+
+<h2 id="l09-shape" data-short="Sâu hay rộng, tham số nào đáng"><span>Sâu hay rộng, và không phải tham số nào cũng như nhau</span><span class="slide-range">slide 33–35</span></h2>
+<div class="slides" data-s="33"></div>
+<p><b>Độ sâu có quan trọng không?</b> (slide 33, Kaplan.) Vẽ test loss theo số tham số cho mô hình 1, 2, 3, 6 và hơn 6 lớp:</p>
+<ul>
+  <li>Từ 1 lớp lên 2 lớp tạo khác biệt rất lớn: đường 1 lớp nằm trên hẳn.</li>
+  <li>Thêm lớp nữa thì lợi ích giảm dần. Ở cỡ dưới khoảng \(10^7\) tham số, 3 lớp, 6 lớp, hay hơn 6 lớp gần như trùng nhau. Ở cỡ lớn hơn, mô hình sâu hơn mới nhỉnh hơn chút ít.</li>
+</ul>
+
+<div class="slides" data-s="34"></div>
+<p><b>Các siêu tham số về hình dạng có phụ thuộc quy mô không?</b> (slide 34, Hình 5 của Kaplan.) Giữ cố định số tham số không tính embedding \(N\), rồi thay đổi hình dạng và đo loss tăng bao nhiêu so với hình dạng tốt nhất:</p>
+<ul>
+  <li><b>Tỉ lệ FFN</b> \(d_{ff}/d_{model}\): khoảng 1 đến 10 đều tốt, vượt quá thì loss tăng nhanh. (Xem lại <a href="#l03-dff">\(d_{ff} = 4\, d_{model}\)</a> ở Lecture 3.)</li>
+  <li><b>Tỉ lệ khung</b> \(d_{model}/n_{layer}\): thay đổi tới 40 lần mà loss chỉ tăng vài phần trăm. Mô hình 6 lớp × 4 288 chiều đạt loss chỉ kém 3% so với 48 lớp × 1 600 chiều (cấu hình GPT-2). Điều này khớp với vùng "điểm ngọt" 100–200 ở <a href="#l03-aspect">Lecture 3</a>: vùng tốt rất rộng, và ba cỡ mô hình (50 triệu, 274 triệu, 1,5 tỉ) có đáy gần như cùng chỗ.</li>
+  <li><b>Head dim</b> \(d_{model}/n_{head}\): cũng gần như phẳng trên một khoảng rộng (xem <a href="#l03-heads">Lecture 3</a>).</li>
+</ul>
+<div class="note num"><p>Chú thích trong hình: "22% tính toán thêm bù được cho 1% loss tăng thêm". Kiểm tra bằng scaling law theo tính toán: \(L \propto C^{-0{,}050}\), nên muốn loss giảm 1% cần \(C\) nhân với \((1/0{,}99)^{1/0{,}050} = 1{,}01^{20} \approx 1{,}22\). Đúng 22%. Một lựa chọn hình dạng làm loss tệ đi 3% tương đương phí khoảng \(1{,}03^{20} - 1 \approx 80\%\) tính toán.</p></div>
+
+<div class="slides" data-s="35"></div>
+<p><b>Không phải tham số nào cũng như nhau</b> (slide 35). Hình trái đếm cả tham số embedding (bảng tra từ → vector): các đường không chồng lên nhau, và mô hình 0 lớp có cả triệu tham số embedding mà loss gần như không giảm. Hình phải chỉ đếm tham số <i>không</i> thuộc embedding: các đường gần như chập làm một. Kaplan vì thế dùng \(N\) không tính embedding. Lựa chọn tưởng nhỏ này sẽ quay lại thành một phần lời giải cho cuộc tranh luận Kaplan–Chinchilla ở <a href="#l09-discrepancy">Phần 4</a>.</p>
+<p>Cũng vì thế, tham số của MoE "đáng giá" khác tham số dense.</p>
+
+<h2 id="l09-moe" data-short="Giá trị tham số trong MoE"><span>Ghi chú bên lề: giá trị của tham số trong MoE</span><span class="slide-range">slide 36</span></h2>
+<div class="slides" data-s="36"></div>
+<p>Với <a href="#l04-moe-what">Mixture of Experts</a>, mỗi token chỉ đi qua một phần nhỏ tham số. Ta có hai con số: tổng số tham số \(N\), và số tham số <i>hoạt động</i> \(N_a\) (số tham số mỗi token thực sự dùng, quyết định FLOP). <dfn>Độ thưa</dfn> \(S\) là tỉ lệ expert không được dùng cho mỗi token.</p>
+<p>Abnar và cộng sự (Apple, 2025) vẽ các đường isoFLOP (giữ cố định lượng tính toán, thay đổi cỡ mô hình, khái niệm này sẽ quay lại ở <a href="#l09-methods">Phần 4</a>) cho nhiều độ thưa khác nhau (slide 36):</p>
+<ul>
+  <li><b>Theo tổng tham số</b> (hình b): càng thưa (màu đậm) thì cỡ tối ưu càng lớn, và loss tối ưu càng thấp. Với cùng FLOP, mô hình thưa có thể chứa nhiều tham số hơn nhiều.</li>
+  <li><b>Theo tham số hoạt động</b> (hình c): càng thưa thì số tham số hoạt động tối ưu càng <i>nhỏ</i>. Phần tính toán tiết kiệm được dồn vào việc đọc thêm dữ liệu.</li>
+</ul>
+<p>Hệ quả: một scaling law cho dense không áp dụng thẳng cho MoE được. "Số tham số" phải được hiểu lại.</p>
+
+<h2 id="l09-batch" data-short="Critical batch size"><span>Batch size: critical batch size</span><span class="slide-range">slide 37–39</span></h2>
+<div class="slides" data-s="37"></div>
+<p><a href="#l08-dplimits">Lecture 8</a> đã gặp khái niệm này: batch lớn cho phép chia cho nhiều GPU, nhưng lợi ích của batch lớn có giới hạn. Slide 37 (McCandlish, Kaplan, Amodei, 2018) giải thích bằng hình:</p>
+<ul>
+  <li><b>Batch nhỏ</b> (đỏ): gradient tính trên ít ví dụ nên nhiễu, hướng đi có thể lệch xa hướng tốt nhất. Tăng gấp đôi batch thì gradient bớt nhiễu đáng kể, và ta đi được bước lớn gấp đôi. Đây là vùng <i>scaling hoàn hảo</i>: batch ×2 thì số bước ÷2.</li>
+  <li><b>Batch lớn</b> (xanh): gradient đã gần đúng rồi. Thêm ví dụ không làm hướng đi tốt hơn mấy. Đây là vùng <i>scaling kém hiệu quả</i>: tốn gấp đôi dữ liệu mà số bước gần như không giảm.</li>
+</ul>
+<p><dfn>Critical batch size</dfn> là ranh giới giữa hai vùng: số ví dụ tối thiểu trước khi lợi ích bắt đầu giảm dần.</p>
+
+<div class="slides" data-s="38"></div>
+<p>Định nghĩa chính xác hơn (slide 38). Chọn một mức loss mục tiêu. Với mỗi batch size \(B\), đo hai thứ: <b>số bước</b> \(S\) và <b>số ví dụ</b> \(E = B \cdot S\) cần để đạt mục tiêu. Kết quả gần đúng theo đường</p>
+<p>\[ \frac{S}{S_{min}} - 1 = \left(\frac{E}{E_{min}} - 1\right)^{-1}, \qquad \mathcal{B}_{crit} = \frac{E_{min}}{S_{min}}. \]</p>
+<ul>
+  <li>\(S_{min}\): số bước ít nhất có thể (khi batch cực lớn).</li>
+  <li>\(E_{min}\): số ví dụ ít nhất có thể (khi batch cực nhỏ).</li>
+</ul>
+<p>Giải ra theo \(B\) sẽ dễ hiểu hơn: \(S = S_{min}\,(1 + \mathcal{B}_{crit}/B)\) và \(E = E_{min}\,(1 + B/\mathcal{B}_{crit})\). Ở đúng \(B = \mathcal{B}_{crit}\), cả hai bằng <b>gấp đôi</b> mức tối thiểu. Đây là điểm cân bằng giữa "tốn thời gian" (nhiều bước) và "tốn tính toán" (nhiều ví dụ). Ghi chú cuối slide: \(\mathcal{B}_{crit}\) được cho là gần bằng tỉ số giữa vết của ma trận hiệp phương sai gradient và bình phương độ dài gradient, tức "độ nhiễu" chia cho "độ lớn tín hiệu" của gradient.</p>
+
+<div class="slides" data-s="39"></div>
+<p>Phát hiện quan trọng (slide 39, Kaplan 2020): <mark>loss mục tiêu càng thấp thì critical batch càng lớn.</mark> Kaplan khớp được</p>
+<p>\[ \mathcal{B}_{crit}(L) \approx \frac{2{,}1 \times 10^{8} \text{ token}}{L^{4{,}8}}. \]</p>
+<p>(Chú ý trục ngang của slide đi từ loss cao bên trái sang loss thấp bên phải.) Khi mô hình đã tốt, những gì còn lại để học là các tín hiệu tinh tế, gradient nhiễu hơn so với tín hiệu, nên cần trung bình trên nhiều ví dụ hơn. Vì vậy các lần huấn luyện lớn thường <b>tăng batch dần trong quá trình huấn luyện</b>. Ví dụ Llama 3 405B bắt đầu với batch 4 triệu token, rồi tăng lên 8 triệu và 16 triệu.</p>
+<p>Công thức \(C_{min}(C) = C / (1 + B/\mathcal{B}_{crit}(L))\) ở cuối slide quy đổi một lần chạy với batch \(B\) bất kỳ về "lượng tính toán tối thiểu" nếu chạy với batch rất nhỏ. Kaplan dùng nó để vẽ scaling law theo tính toán mà không bị ảnh hưởng bởi batch size.</p>
+
+<div class="widget" id="batchW">
+  <h4>Thử nghiệm: đánh đổi giữa số bước và lượng dữ liệu</h4>
+  <div class="l09-ctl" data-g="loss">
+    <span>Loss mục tiêu (WebText2):</span>
+    <button class="l09-btn" data-v="4" aria-pressed="false">4,0</button>
+    <button class="l09-btn" data-v="3.5" aria-pressed="false">3,5</button>
+    <button class="l09-btn" data-v="3" aria-pressed="true">3,0</button>
+    <button class="l09-btn" data-v="2.5" aria-pressed="false">2,5</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="batchB">Batch size B: <span class="chip" id="batchBv"></span></label></p>
+  <input type="range" id="batchB" min="0" max="100" value="50">
+  <div class="l09-plot" id="batchP"></div>
+  <div class="l09-stats" id="batchS"></div>
+  <p class="l09-msg" id="batchM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('batchW'); if (!box || !window.L09P) return;
+  const P = window.L09P, sl = box.querySelector('#batchB');
+  let L = 3;
+  const R = v => Math.pow(10, -2 + v / 25);   // B / Bcrit: 0,01 → 100
+  function upd() {
+    const r = R(+sl.value), bc = 2.1e8 * Math.pow(L, -4.8), B = r * bc;
+    const s = 1 + 1 / r, e = 1 + r;
+    box.querySelector('#batchBv').textContent = P.big(B) + ' token (' + P.nf(r, r < 1 ? 2 : 1) + ' × B_crit)';
+    const rs = P.range(0.01, 100, 120, true);
+    P.plot(box.querySelector('#batchP'), {
+      aria: 'Số bước và số ví dụ cần để đạt loss mục tiêu',
+      x: { min: 1, max: 101, log: true, label: 'số ví dụ E ÷ E_min (chi phí tính toán)', ticks: [1, 2, 5, 10, 20, 50, 100], fmt: v => P.nf(v, 0) },
+      y: { min: 1, max: 101, log: true, label: 'số bước S ÷ S_min (thời gian)', ticks: [1, 2, 5, 10, 20, 50, 100], fmt: v => P.nf(v, 0) },
+      series: [{ pts: rs.map(q => [1 + q, 1 + 1 / q]), color: 'var(--accent)', width: 2.5, tip: p => `B = ${P.nf(p[0] - 1, 2)} × B_crit<br>bước ×${P.nf(p[1], 2)}, ví dụ ×${P.nf(p[0], 2)}` }],
+      marks: [
+        { x: 2, y: 2, color: 'var(--muted)', r: 5, label: 'B = B_crit (2×, 2×)', dx: 10, dy: -8, tip: 'B = B_crit: gấp đôi bước tối thiểu, gấp đôi ví dụ tối thiểu' },
+        { x: e, y: s, tip: `Bạn chọn: B = ${P.big(B)} token<br>bước ×<b>${P.nf(s, 2)}</b>, ví dụ ×<b>${P.nf(e, 2)}</b>` }
+      ]
+    });
+    box.querySelector('#batchS').innerHTML = `
+      <div><b>${P.big(bc)}</b><small>critical batch (token) ở loss ${P.nf(L, 1)}</small></div>
+      <div class="${s > 3 ? 'bad' : s < 1.25 ? 'good' : ''}"><b>× ${P.nf(s, 2)}</b><small>số bước so với tối thiểu</small></div>
+      <div class="${e > 3 ? 'bad' : e < 1.25 ? 'good' : ''}"><b>× ${P.nf(e, 2)}</b><small>dữ liệu / tính toán so với tối thiểu</small></div>`;
+    let m;
+    if (r < 0.3) m = 'Batch nhỏ: gần như không phí dữ liệu, nhưng phải chạy rất nhiều bước nối tiếp nhau. Khó chia cho nhiều GPU (Lecture 8), nên huấn luyện lâu.';
+    else if (r <= 3) m = 'Vùng cân bằng quanh B_crit: tốn thêm một chút dữ liệu để giảm mạnh số bước. Các lần huấn luyện lớn thường chọn ở đây.';
+    else m = 'Batch quá lớn: số bước gần chạm mức tối thiểu, nhưng tính toán tăng gần tỉ lệ thuận với batch. Thêm GPU lúc này chủ yếu là đốt tiền.';
+    box.querySelector('#batchM').innerHTML = m + ` Đổi loss mục tiêu để thấy B_crit lớn lên khi mục tiêu khắt khe hơn: từ loss 4,0 xuống 2,5, B_crit tăng khoảng ${P.nf(Math.pow(4 / 2.5, 4.8), 0)} lần.`;
+  }
+  box.querySelectorAll('[data-g="loss"] .l09-btn').forEach(b => b.addEventListener('click', () => {
+    L = +b.dataset.v; box.querySelectorAll('[data-g="loss"] .l09-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<div class="note warn"><p>Công thức \(\mathcal{B}_{crit}(L)\) khớp trên dữ liệu WebText2 và tokenizer của GPT-2 trong bài báo Kaplan. Loss ở bộ dữ liệu khác, tokenizer khác không so trực tiếp được. Ô trên chỉ để thấy hình dạng của sự đánh đổi.</p></div>
+
+<h2 id="l09-mup" data-short="Learning rate và muP"><span>Learning rate: muP và cách chọn theo quy mô</span><span class="slide-range">slide 40</span></h2>
+<div class="slides" data-s="40"></div>
+<p>Nếu tăng quy mô một cách "ngây thơ" (slide 40, hình trái, cách làm tiêu chuẩn), <mark>learning rate tốt nhất thay đổi theo độ rộng của mô hình</mark>. Mỗi đường là một độ rộng từ 128 đến 8 192. Đáy của các đường (learning rate tốt nhất) trôi dần sang trái khi mô hình rộng hơn: mô hình rộng cần learning rate nhỏ hơn. Tệ hơn, chọn learning rate hơi lớn một chút là loss vọt lên. Tìm learning rate ở mô hình nhỏ rồi dùng cho mô hình lớn sẽ sai.</p>
+<p><dfn>muP</dfn> (µP, <span class="en">Maximal Update Parametrization</span>, Yang và cộng sự 2022) sửa điều này (hình giữa): đổi cách khởi tạo và cách nhân learning rate theo độ rộng, sao cho đáy của mọi đường nằm cùng một chỗ. Khi đó ta tinh chỉnh learning rate trên mô hình nhỏ rồi <b>dùng thẳng</b> cho mô hình lớn.</p>
+<p>Bảng bên phải (Yao và cộng sự 2024 tóm tắt) cho quy tắc khi mô hình \(M'\) rộng gấp \(r\) lần mô hình \(M\):</p>
+<div class="tbl"><table>
+  <tr><th>Siêu tham số</th><th>Mô hình gốc \(M\)</th><th>Mô hình rộng \(r\) lần \(M'\)</th></tr>
+  <tr><td>Learning rate AdamW, tham số "dạng ma trận"</td><td>\(l\)</td><td class="hi">\(l / r\)</td></tr>
+  <tr><td>Learning rate AdamW, tham số khác</td><td>\(l\)</td><td>\(l\)</td></tr>
+  <tr><td>Phương sai khởi tạo, dạng ma trận</td><td>\(\sigma\)</td><td class="hi">\(\sigma / r\)</td></tr>
+  <tr><td>Phương sai khởi tạo, khác</td><td>\(\sigma\)</td><td>\(\sigma\)</td></tr>
+  <tr><td>Hệ số nhân ở lớp đầu ra</td><td>\(\tau\)</td><td class="hi">\(\tau / r\)</td></tr>
+  <tr><td>Hệ số nhân khác</td><td>\(\tau\)</td><td>\(\tau\)</td></tr>
+</table></div>
+<p>"Dạng ma trận" là tham số có <i>hai</i> chiều cùng lớn lên khi mô hình rộng ra (ví dụ ma trận \(d_{model} \times d_{ff}\) trong MLP). Embedding, bias, tham số của norm thuộc nhóm "khác" vì chỉ có một chiều lớn lên. Lớp đầu ra biến chiều lớn \(d_{model}\) thành chiều cố định (từ vựng).</p>
+<div class="note life"><p>Trực giác: một ma trận rộng gấp \(r\) lần thì mỗi đầu ra là tổng của gấp \(r\) lần số hạng. Nếu giữ nguyên learning rate, mỗi bước cập nhật làm đầu ra thay đổi gấp \(r\) lần, dễ "nổ". Chia learning rate cho \(r\) giữ cho mức thay đổi mỗi bước của đầu ra như nhau ở mọi độ rộng.</p></div>
+
+<h2 id="l09-downstream" data-short="Cẩn thận với tác vụ thật"><span>Cẩn thận: tác vụ thực tế có thể không theo quy luật</span><span class="slide-range">slide 41–42</span></h2>
+<div class="slides" data-s="41"></div>
+<p>Đến giờ, scaling trông rất dễ đoán và phụ thuộc chủ yếu vào số tham số. Nhưng có một cái bẫy (slide 41, Tay và cộng sự): <mark>hiệu năng trên tác vụ thật (downstream) có thể khó đoán hơn nhiều so với loss.</mark></p>
+<ul>
+  <li><b>Hình trái</b>: log-perplexity khi tiền huấn luyện (upstream) gần như chỉ phụ thuộc số tham số. Mô hình to hơn thì tốt hơn, các điểm xếp hàng gọn gàng.</li>
+  <li><b>Hình phải</b>: độ chính xác SuperGLUE sau fine-tune lại lộn xộn. NL32-XL (32 lớp) thắng cả những mô hình to hơn nhiều. NL6-XXXL (chỉ 6 lớp nhưng rất rộng) có perplexity tốt nhưng kết quả SuperGLUE kém. Mô hình lớn nhất (nhãn bị cắt "NL12-…", khoảng 17 tỉ tham số) có perplexity tốt nhất, nhưng SuperGLUE vẫn thua NL32-XL nhỏ hơn nhiều.</li>
+</ul>
+<p>Nghĩa là hình dạng mô hình (sâu hay rộng), dù gần như không ảnh hưởng tới loss (slide 34), lại có thể ảnh hưởng tới khả năng chuyển sang tác vụ khác.</p>
+
+<div class="slides" data-s="42"></div>
+<div class="note key">
+  <p><b>Điều bất ngờ</b> (slide 42): ảnh hưởng của siêu tham số lên mô hình lớn có thể dự đoán <i>trước khi</i> huấn luyện: optimizer, độ sâu, kiến trúc.</p>
+  <p><b>Quy trình thiết kế dựa trên scaling law:</b></p>
+  <ol>
+    <li>Huấn luyện vài mô hình nhỏ.</li>
+    <li>Lập scaling law cho từng lựa chọn (ví dụ một đường cho Adam, một đường cho SGD).</li>
+    <li>Chọn siêu tham số tốt nhất theo dự đoán của scaling law ở quy mô đích.</li>
+  </ol>
+</div>
+
+
+<div class="part" id="l09-part4" data-short="Phần 4 · Dữ liệu hay mô hình">Phần 4 · Dữ liệu hay mô hình: Kaplan và Chinchilla<small>Có một ngân sách tính toán cố định: nên làm mô hình to hơn, hay cho nó đọc nhiều token hơn?</small></div>
+
+<h2 id="l09-joint" data-short="Định luật chung dữ liệu–mô hình"><span>Định luật chung cho cả dữ liệu và cỡ mô hình</span><span class="slide-range">slide 43–44</span></h2>
+<div class="slides" data-s="43"></div>
+<p>Một ứng dụng quan trọng của scaling law (slide 43): <b>ta cần thêm dữ liệu hay mô hình to hơn?</b> Hình trên bên phải (Kaplan) vẽ loss theo số token cho mô hình từ 393 nghìn tới 708 triệu tham số. Mô hình nhỏ (tím đậm) chững lại rất sớm: cho nó đọc thêm cũng vô ích. Rõ ràng <mark>rất nhiều dữ liệu bị lãng phí cho mô hình nhỏ</mark>, và ngược lại một mô hình to mà đọc ít thì lãng phí tham số.</p>
+<p>Ta cần <dfn>định luật chung dữ liệu–mô hình</dfn> mô tả cả hai cùng lúc. Gọi \(n\) là cỡ dữ liệu, \(m\) là cỡ mô hình (cách đặt tên của slide):</p>
+<ul>
+  <li>Rosenfeld và cộng sự (2020): \(\text{Error} = n^{-\alpha} + m^{-\beta} + C\). Hai nguồn lỗi cộng lại, cộng một sàn không thể giảm.</li>
+  <li>Kaplan và cộng sự (2020): \(\text{Error} = \big[m^{-\alpha} + n^{-1}\big]^{\beta}\).</li>
+</ul>
+<p>Cả hai khớp tốt bất ngờ với lỗi đo được trên lưới cỡ dữ liệu × cỡ mô hình (mặt cong 3D trong slide). Với mỗi cỡ mô hình, khi dữ liệu tăng, lỗi tiến tới sàn do mô hình quy định: đúng hiện tượng "chững lại" của mô hình nhỏ.</p>
+
+<div class="slides" data-s="44"></div>
+<p>Và nó ngoại suy được (slide 44, Rosenfeld). Khớp các số mũ chỉ bằng các thí nghiệm nhỏ (chấm xanh: tối đa 1/16 cỡ mô hình và 1/8 cỡ dữ liệu), rồi dự đoán cho các ô lớn hơn (chấm đỏ). Trên ImageNet, sai số dự đoán trung bình −4,5% (độ lệch chuẩn 4,7%). Trên WikiText-103 chỉ 0,5% (độ lệch chuẩn 1,7%). Có định luật rồi thì việc chọn cỡ dữ liệu và cỡ mô hình là một bài toán tối ưu: <b>cực tiểu \(n^{-\alpha} + m^{-\beta} + C\) dưới ràng buộc chi phí</b> của bạn.</p>
+
+<h2 id="l09-chinchilla" data-short="Kaplan và Chinchilla"><span>Tính toán tối ưu: Kaplan nói một đằng, Chinchilla nói một nẻo</span><span class="slide-range">slide 45–46</span></h2>
+<div class="slides" data-s="45"></div>
+<p>Bài toán cụ thể: có ngân sách tính toán \(C\) FLOP. Với Transformer, huấn luyện tốn khoảng</p>
+<p>\[ C \approx 6\,N D \]</p>
+<p>(\(N\) tham số, \(D\) token; số 6 gồm 2 cho lượt forward và 4 cho lượt backward, mỗi tham số mỗi token). Cố định \(C\), nên tăng \(N\) hay \(D\)? Kết quả là hai số mũ: \(N_{opt} \propto C^{a}\) và \(D_{opt} \propto C^{b}\), với \(a + b = 1\).</p>
+<ul>
+  <li><b>Kaplan (2020)</b>: \(N_{opt} \propto C^{0{,}73}\), \(D_{opt} \propto C^{0{,}27}\). Có thêm tính toán thì dồn phần lớn vào cỡ mô hình. Số token mỗi tham số <i>giảm</i> khi \(C\) tăng.</li>
+  <li><b>Chinchilla (Hoffmann và cộng sự, DeepMind, 2022)</b>: các con số của Kaplan lệch khá xa. Tỉ lệ đúng gần với \(a \approx b \approx 0{,}5\): tăng tính toán thì tăng mô hình và dữ liệu <b>đều nhau</b>.</li>
+</ul>
+<p>Hệ quả lớn: theo Kaplan, các mô hình thời đó (GPT-3 175B, Gopher 280B, Megatron-Turing NLG 530B, các ngôi sao trong hình) có cỡ hợp lý. Theo Chinchilla, chúng <b>quá to và đọc quá ít</b>. Để chứng minh, DeepMind huấn luyện Chinchilla 70B trên 1,4 nghìn tỉ token, cùng lượng tính toán với Gopher 280B (300 tỉ token), và Chinchilla thắng Gopher trên hầu hết các bài đánh giá.</p>
+<div class="note warn"><p>Slide viết \(N_{opt} = C^{0{,}73}\), đúng ra là <b>tỉ lệ với</b> (\(\propto\)): còn một hằng số phía trước. Chỉ số mũ được so sánh.</p></div>
+
+<div class="slides" data-s="46"></div>
+<p>Chinchilla đề xuất ba cách khớp, và ba cách cho kết quả gần nhau (slide 46):</p>
+<div class="tbl"><table>
+  <tr><th>Cách</th><th>\(a\) trong \(N_{opt} \propto C^a\)</th><th>\(b\) trong \(D_{opt} \propto C^b\)</th></tr>
+  <tr><td>1. Cực tiểu trên các đường huấn luyện</td><td>0,50</td><td>0,50</td></tr>
+  <tr><td>2. Đường isoFLOP</td><td>0,49</td><td>0,51</td></tr>
+  <tr><td>3. Khớp mô hình tham số cho loss</td><td>0,46</td><td>0,54</td></tr>
+  <tr><td>Kaplan và cộng sự (2020)</td><td>0,73</td><td>0,27</td></tr>
+</table></div>
+<p>Cách 3 lệch hơn một chút, và như ta sẽ thấy ở slide 53, có lẽ vì nó bị làm sai.</p>
+
+<h2 id="l09-methods" data-short="Ba cách khớp của Chinchilla"><span>Ba cách khớp của Chinchilla, và đường isoFLOP</span><span class="slide-range">slide 47–49</span></h2>
+<div class="slides" data-s="47"></div>
+<p><b>Cách 1: lấy cực tiểu trên mọi lần huấn luyện</b> (slide 47). Huấn luyện các mô hình từ 70 triệu đến 10 tỉ tham số, mỗi cỡ với bốn độ dài lịch learning rate cosine khác nhau. Vẽ tất cả các đường loss theo FLOP lên cùng một hình (hình trái). Tại mỗi mức FLOP, lấy đường thấp nhất: tập hợp các điểm thấp nhất đó là <dfn>đường bao</dfn> (<span class="en">envelope</span>), và nó là một luật luỹ thừa. Ghi lại cỡ mô hình và số token tại các điểm đó (hình giữa, hình phải), rồi kéo dài đường thẳng tới ngân sách của Gopher (\(5{,}76\times10^{23}\) FLOP): khoảng <b>67 tỉ tham số, 1,5 nghìn tỉ token</b>.</p>
+
+<div class="slides" data-s="48"></div>
+<p><b>Cách 2: đường isoFLOP</b> (slide 48). Chọn một số mức ngân sách cố định (từ \(6\times10^{18}\) đến \(3\times10^{21}\) FLOP). Ở mỗi mức, huấn luyện nhiều cỡ mô hình, mỗi cỡ đọc đúng số token để tổng FLOP bằng ngân sách (mô hình to thì đọc ít, mô hình nhỏ thì đọc nhiều). Vẽ loss cuối theo cỡ mô hình: mỗi ngân sách cho một đường hình <b>chữ U</b> (hình trái). Đáy chữ U là cỡ mô hình tốt nhất cho ngân sách đó. Nối các đáy lại thì được một luật luỹ thừa. Với ngân sách Gopher: khoảng <b>63 tỉ tham số, 1,4 nghìn tỉ token</b>.</p>
+<div class="note life"><p>Vì sao lại là chữ U? Cố định ngân sách giống như cố định số tiền đi chợ: mua nồi to (mô hình lớn) thì còn ít tiền mua đồ ăn (dữ liệu), mua nhiều đồ ăn thì chỉ đủ tiền nồi nhỏ. Nồi quá nhỏ thì nấu không hết đồ ăn (mô hình không đủ sức học), nồi quá to mà ít đồ ăn thì phí nồi (mô hình chưa được huấn luyện đủ). Ở giữa có một điểm vừa khéo.</p></div>
+
+<div class="slides" data-s="49"></div>
+<p><b>Cách 3: khớp một công thức chung</b> (slide 49). Chạy nhiều mô hình trên lưới (cỡ mô hình, số token), rồi dùng bình phương tối thiểu để khớp</p>
+<p>\[ \hat L(N, D) = E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}}. \]</p>
+<ul>
+  <li>\(E\): loss không thể giảm (entropy của chính ngôn ngữ).</li>
+  <li>\(A/N^\alpha\): phần lỗi do mô hình hữu hạn.</li>
+  <li>\(B/D^\beta\): phần lỗi do dữ liệu hữu hạn.</li>
+</ul>
+<p>Hình trái vẽ các đường đồng mức loss. Đường xanh là <dfn>biên hiệu quả</dfn> (<span class="en">efficient frontier</span>): với mỗi mức FLOP, cỡ mô hình cho loss thấp nhất. Nó là một đường thẳng trên log–log, và chiếu tới ngân sách Gopher cho <b>40 tỉ tham số</b>. Hình phải là các lát cắt isoFLOP của công thức này, so với dữ liệu thật.</p>
+<p>Công thức của cách 3 giải được bằng tay. Thay \(D = C/(6N)\) rồi cho đạo hàm theo \(N\) bằng 0:</p>
+<p>\[ N_{opt} = G\left(\frac{C}{6}\right)^{\frac{\beta}{\alpha+\beta}}, \quad D_{opt} = \frac{1}{G}\left(\frac{C}{6}\right)^{\frac{\alpha}{\alpha+\beta}}, \quad G = \left(\frac{\alpha A}{\beta B}\right)^{\frac{1}{\alpha+\beta}}. \]</p>
+<p>Ô dưới đây vẽ đường isoFLOP từ hai bộ hệ số: bộ gốc trong bài Chinchilla (\(E = 1{,}69\), \(A = 406{,}4\), \(B = 410{,}7\), \(\alpha = 0{,}34\), \(\beta = 0{,}28\)), và bộ khớp lại của Besiroglu và cộng sự 2024 (\(E = 1{,}82\), \(A = 482\), \(B = 2085\), \(\alpha = 0{,}35\), \(\beta = 0{,}37\)), sẽ nói ở <a href="#l09-discrepancy">mục sau</a>.</p>
+
+<div class="widget" id="isoW">
+  <h4>Thử nghiệm: đường isoFLOP và cỡ mô hình tối ưu</h4>
+  <div class="l09-ctl" data-g="fit">
+    <span>Bộ hệ số:</span>
+    <button class="l09-btn" data-v="bes" aria-pressed="true">Besiroglu 2024 (khớp lại)</button>
+    <button class="l09-btn" data-v="hof" aria-pressed="false">Chinchilla 2022 (gốc)</button>
+  </div>
+  <div class="row" id="isoPre" style="margin-top:10px"></div>
+  <p style="margin:12px 0 4px"><label for="isoC">Ngân sách tính toán C: <span class="chip" id="isoCv"></span> FLOP</label></p>
+  <input type="range" id="isoC" min="0" max="90" value="57">
+  <div class="l09-plot" id="isoP"></div>
+  <div class="l09-legend"><span><i style="border-color:var(--accent)"></i>ngân sách bạn chọn</span><span><i style="border-color:color-mix(in oklab, var(--accent) 35%, var(--surface))"></i>ngân sách 10¹⁸ … 10²⁶ (đậm dần)</span><span><i class="d" style="border-color:var(--muted)"></i>đường nối các đáy</span></div>
+  <div class="l09-stats" id="isoS"></div>
+  <p class="l09-msg" id="isoM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('isoW'); if (!box || !window.L09P) return;
+  const P = window.L09P, sl = box.querySelector('#isoC');
+  const FITS = {
+    hof: { E: 1.69, A: 406.4, B: 410.7, a: 0.34, b: 0.28, name: 'Chinchilla 2022' },
+    bes: { E: 1.82, A: 482.01, B: 2085.43, a: 0.3478, b: 0.3658, name: 'Besiroglu 2024' }
+  };
+  const PRE = [['Gopher / Chinchilla', 5.76e23], ['10 000 B200 × 1 tháng', 2.33e25], ['Llama 3 405B', 3.8e25]];
+  let fit = 'bes', cur = 5.76e23;
+  const C = v => Math.pow(10, 18 + v / 10);
+  const V = c => Math.round((Math.log10(c) - 18) * 10);
+  const loss = (f, N, D) => f.E + f.A / Math.pow(N, f.a) + f.B / Math.pow(D, f.b);
+  function opt(f, c) {
+    const G = Math.pow(f.a * f.A / (f.b * f.B), 1 / (f.a + f.b));
+    const N = G * Math.pow(c / 6, f.b / (f.a + f.b)), D = c / 6 / N;
+    return { N, D, L: loss(f, N, D) };
+  }
+  box.querySelector('#isoPre').innerHTML = PRE.map(p => `<button class="l09-btn" data-c="${p[1]}" aria-pressed="false">${p[0]}</button>`).join('');
+  function upd() {
+    const c = cur || C(+sl.value), f = FITS[fit], o = opt(f, c), g = FITS[fit === 'bes' ? 'hof' : 'bes'], og = opt(g, c);
+    box.querySelector('#isoCv').textContent = P.sci(c);
+    box.querySelectorAll('#isoPre .l09-btn').forEach(b => b.setAttribute('aria-pressed', +b.dataset.c === cur));
+    const Ns = P.range(1e7, 1e13, 160, true);
+    const curve = cc => Ns.map(N => [N, loss(f, N, cc / 6 / N)]);
+    const series = [18, 20, 22, 24, 26].map((e, i) => ({ pts: curve(Math.pow(10, e)), color: `color-mix(in oklab, var(--accent) ${25 + i * 12}%, var(--surface))`, width: 1.6, label: P.pow(e), labelAt: 'min', anchor: 'middle', ldx: 0, ldy: 16, tip: false }));
+    const fr = P.range(1e17, 1e28, 60, true).map(cc => { const q = opt(f, cc); return [q.N, q.L]; });
+    series.push({ pts: fr, color: 'var(--muted)', dash: '5 5', width: 1.4, tip: false });
+    series.push({ pts: curve(c), color: 'var(--accent)', width: 3, tip: p => `N = <b>${P.big(p[0])}</b> tham số<br>D = ${P.big(c / 6 / p[0])} token<br>loss = <b>${P.nf(p[1], 3)}</b>` });
+    P.plot(box.querySelector('#isoP'), {
+      aria: 'Loss theo cỡ mô hình ở các ngân sách tính toán cố định',
+      x: { min: 1e7, max: 1e13, log: true, label: 'số tham số N' },
+      y: { min: 1.6, max: 4, label: 'loss dự đoán', ticks: [1.6, 2, 2.4, 2.8, 3.2, 3.6, 4], fmt: v => P.nf(v, 1) },
+      series,
+      marks: [{ x: o.N, y: o.L, tip: `Tối ưu ở ${P.sci(c)} FLOP<br>N = <b>${P.big(o.N)}</b>, D = <b>${P.big(o.D)}</b><br>loss ${P.nf(o.L, 3)}` }]
+    });
+    const r = o.D / o.N;
+    box.querySelector('#isoS').innerHTML = `
+      <div><b>${P.big(o.N)}</b><small>số tham số tối ưu N*</small></div>
+      <div><b>${P.big(o.D)}</b><small>số token tối ưu D*</small></div>
+      <div><b>${P.nf(r, 0)}</b><small>token mỗi tham số</small></div>
+      <div><b>${P.nf(o.L, 3)}</b><small>loss dự đoán</small></div>`;
+    let m = `Theo bộ hệ số ${f.name}, ngân sách ${P.sci(c)} FLOP nên dùng cho mô hình <b>${P.big(o.N)}</b> tham số đọc <b>${P.big(o.D)}</b> token. Bộ ${g.name} thì nói ${P.big(og.N)} tham số, ${P.nf(og.D / og.N, 0)} token mỗi tham số. `;
+    if (fit === 'hof') m += 'Với bộ gốc, số token mỗi tham số <b>tăng dần</b> khi ngân sách tăng (thử kéo thanh trượt), vì β &lt; α. Đó chính là điều Besiroglu thấy là bất thường (slide 53). Ở ngân sách Gopher, bộ hệ số in trong bài cho khoảng 32 tỉ tham số, không khớp con số 40 tỉ của hình 4 trong cùng bài. ';
+    else m += 'Với bộ khớp lại, số token mỗi tham số gần như không đổi, quanh 15–25, khớp với "quy tắc 20 token mỗi tham số" và với cách 1, cách 2. Ở ngân sách Gopher, nó cho khoảng 72 tỉ tham số: gần đúng cỡ Chinchilla 70B. ';
+    if (cur === 2.33e25) m += 'Đây là ngân sách 10 000 B200 trong một tháng của slide 2: nếu chỉ quan tâm chi phí huấn luyện, bạn sẽ chọn một mô hình cỡ vài trăm tỉ tham số. Nhưng hãy đọc tiếp mục "huấn luyện quá mức".';
+    box.querySelector('#isoM').innerHTML = m;
+  }
+  box.querySelectorAll('[data-g="fit"] .l09-btn').forEach(b => b.addEventListener('click', () => {
+    fit = b.dataset.v; box.querySelectorAll('[data-g="fit"] .l09-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  box.querySelectorAll('#isoPre .l09-btn').forEach(b => b.addEventListener('click', () => { cur = +b.dataset.c; sl.value = V(cur); upd(); }));
+  sl.addEventListener('input', () => { cur = null; upd(); });
+  sl.value = V(cur); upd();
+})();
+</script>
+<div class="note warn"><p>Đây là ngoại suy rất xa: các thí nghiệm gốc chỉ tới khoảng \(3\times10^{21}\) FLOP và 16 tỉ tham số. Loss còn phụ thuộc bộ dữ liệu và tokenizer (MassiveText của DeepMind), nên đừng so trực tiếp các con số loss ở đây với mô hình khác.</p></div>
+
+<h2 id="l09-discrepancy" data-short="Vì sao lệch nhau?"><span>Vì sao Kaplan và Chinchilla lệch nhau nhiều thế?</span><span class="slide-range">slide 50–53</span></h2>
+<div class="slides" data-s="50"></div>
+<p>Cả hai nhóm đều khớp định luật chung dữ liệu–mô hình, đều làm cẩn thận. Vậy sao một bên ra 0,73, một bên ra 0,5 (slide 50)? Hai bài báo năm 2024 đưa ra hai lời giải thích bổ sung cho nhau.</p>
+
+<div class="slides" data-s="51"></div>
+<p><b>Giải thích 1</b> (Porian, Wortsman, Jitsev, Schmidt, Carmon, 2024, slide 51). Họ tái hiện kết quả Kaplan, rồi sửa từng chỗ một và xem số mũ \(a\) thay đổi thế nào:</p>
+<div class="tbl"><table>
+  <tr><th>Bước</th><th>Sửa gì</th><th>\(a\) khoảng</th></tr>
+  <tr><td>a</td><td>Tái hiện cách làm của Kaplan</td><td>0,8</td></tr>
+  <tr><td>b</td><td>Tính cả FLOP của lớp cuối (lớp chiếu ra từ vựng) mà Kaplan bỏ qua</td><td>0,7</td></tr>
+  <tr><td>c</td><td>Sửa warmup: ở ngân sách rất nhỏ, warmup của Kaplan quá dài so với cả lần huấn luyện</td><td>0,6</td></tr>
+  <tr><td>d</td><td>Thêm lịch giảm learning rate cosine khớp với độ dài (không tinh chỉnh thêm)</td><td>0,57</td></tr>
+  <tr><td>e</td><td>Tinh chỉnh learning rate, batch size, β₂ của AdamW theo từng cỡ (không cần giảm cosine)</td><td>0,50</td></tr>
+</table></div>
+<p>Bước (e) ra đúng con số của Chinchilla. Bài học phụ: lịch giảm learning rate tự nó có lẽ không quyết định, <i>nếu</i> batch size và learning rate đã được chỉnh đúng cho từng cỡ mô hình. Lỗi nhỏ trong cách đếm hay cách chỉnh siêu tham số ở mô hình nhỏ cũng đủ làm lệch số mũ, và số mũ lệch thì ngoại suy ra quy mô lớn sai rất xa.</p>
+
+<div class="slides" data-s="52"></div>
+<p><b>Giải thích 2</b> (Pearce và Song, 2024, slide 52). Họ lấy công thức Chinchilla (bản khớp lại: \(L = 482/N_T^{0{,}35} + 2085/D^{0{,}37} + 1{,}82\)), rồi <i>mô phỏng</i> lại thí nghiệm của Kaplan với các cỡ mô hình Kaplan dùng (từ vài nghìn tới 1,5 tỉ tham số):</p>
+<ul>
+  <li>Tính theo <b>tổng</b> tham số \(N_T\) như Chinchilla: hệ số ra 0,51, gần 0,50 của Chinchilla.</li>
+  <li>Tính theo tham số <b>không tính embedding</b> \(N_{\setminus E}\) như Kaplan: hệ số <i>cục bộ</i> ra 0,78, gần 0,73 của Kaplan.</li>
+</ul>
+<p>Lý do: ở mô hình nhỏ, embedding chiếm một phần lớn tổng tham số. Bỏ chúng đi làm méo trục \(N\) ở đầu nhỏ, và đường cong trên log–log hơi cong chứ không thẳng hẳn (hình phải: độ dốc 0,78 ở vùng nhỏ, 0,51 ở vùng lớn). Kaplan đo ở vùng nhỏ rồi kéo thẳng ra, nên ra số mũ lớn. <mark>Hai lựa chọn tưởng là chi tiết (đếm tham số nào, đo ở vùng nào) cộng thêm chút phi tuyến đã đủ tạo ra khác biệt.</mark></p>
+
+<div class="slides" data-s="53"></div>
+<p><b>Phụ lục vui: cách 3 của Chinchilla có lỗi</b> (Besiroglu và cộng sự, Epoch AI, 2024, slide 53). Không có dữ liệu gốc, họ "điều tra pháp y": trích lại các điểm dữ liệu từ hình vẽ trong bài báo Chinchilla, rồi khớp lại công thức của cách 3.</p>
+<ul>
+  <li><b>Hình trái</b>: phần dư (dữ liệu thật trừ dự đoán) của công thức gốc lệch hẳn về phía âm (khoảng −0,05): công thức gốc khớp sai một cách có hệ thống. Bản khớp lại có phần dư quanh 0, đúng như một phép khớp tốt.</li>
+  <li><b>Hình phải</b>: công thức gốc ngụ ý số token mỗi tham số tối ưu <i>tăng mạnh</i> theo tính toán (đường xanh lá). Bản khớp lại cho một đường gần phẳng, quanh 20, nhất quán với cách 1, cách 2, và với chính mô hình Chinchilla (chấm đen).</li>
+</ul>
+<p>Họ cũng chỉ ra khoảng tin cậy trong bài gốc hẹp đến mức không thực tế với số lượng thí nghiệm đã chạy. Ô isoFLOP ở trên cho phép chuyển giữa hai bộ hệ số để thấy khác biệt này.</p>
+
+<h2 id="l09-overtrain" data-short="Huấn luyện quá mức có chủ đích"><span>Lưu ý quan trọng: tối ưu cho huấn luyện chưa chắc là thứ bạn muốn</span><span class="slide-range">slide 54</span></h2>
+<div class="slides" data-s="54"></div>
+<p>Chinchilla trả lời câu hỏi: <i>với một ngân sách huấn luyện cố định, mô hình nào tốt nhất?</i> Nhưng trong thực tế, <mark>phần lớn tính toán của một mô hình được dùng thật là ở khâu suy luận</mark> (inference, trả lời người dùng), không phải khâu huấn luyện. Mô hình nhỏ thì mỗi token suy luận rẻ hơn. Vì vậy người ta cố tình huấn luyện "quá" (<dfn>overtrain</dfn>): mô hình nhỏ hơn mức Chinchilla, đọc nhiều token hơn nhiều (slide 54):</p>
+<div class="tbl"><table>
+  <tr><th>Mô hình</th><th>Tham số</th><th>Token</th><th>Token mỗi tham số</th></tr>
+  <tr><td>GPT-3</td><td>175 tỉ</td><td>300 tỉ</td><td>≈ 2</td></tr>
+  <tr><td>Chinchilla</td><td>70 tỉ</td><td>1,4 nghìn tỉ</td><td>20</td></tr>
+  <tr><td>LLaMA 65B</td><td>65 tỉ</td><td>1,4 nghìn tỉ</td><td>≈ 22</td></tr>
+  <tr><td>Llama 2 70B</td><td>70 tỉ</td><td>2 nghìn tỉ</td><td>≈ 29</td></tr>
+  <tr><td>Mistral 7B</td><td>7 tỉ</td><td>không công bố</td><td>≈ 110 (ước đoán)</td></tr>
+  <tr><td>Llama 3 70B</td><td>70 tỉ</td><td>15 nghìn tỉ</td><td>≈ 215</td></tr>
+</table></div>
+<p>Càng nhiều người dùng, càng đáng trả thêm chi phí huấn luyện một lần để có một mô hình nhỏ mà tốt. Ta có thể tính điều này: giữ chất lượng (loss) cố định, rồi tìm cỡ mô hình làm <b>tổng</b> chi phí nhỏ nhất. Mỗi token suy luận tốn khoảng \(2N\) FLOP (chỉ có forward), nên</p>
+<p>\[ \text{Tổng chi phí} = \underbrace{6 N D}_{\text{huấn luyện}} + \underbrace{2 N D_{inf}}_{\text{suy luận}}, \qquad \text{với } D \text{ vừa đủ để } \hat L(N, D) = L_{\text{mục tiêu}}. \]</p>
+<p>Mô hình nhỏ hơn cần nhiều token hơn để đạt cùng loss (huấn luyện tốn hơn), nhưng mỗi token suy luận lại rẻ hơn. Ý tưởng này được Sardana và cộng sự (2023) phân tích kỹ trong "Beyond Chinchilla-optimal".</p>
+
+<div class="widget" id="infW">
+  <h4>Thử nghiệm: nên huấn luyện "quá" bao nhiêu?</h4>
+  <div class="l09-ctl" data-g="c0">
+    <span>Chất lượng mục tiêu = mô hình Chinchilla-tối ưu ở:</span>
+    <button class="l09-btn" data-v="1e22" aria-pressed="false">10²² FLOP</button>
+    <button class="l09-btn" data-v="1e23" aria-pressed="false">10²³</button>
+    <button class="l09-btn" data-v="1e24" aria-pressed="true">10²⁴</button>
+    <button class="l09-btn" data-v="2.33e25" aria-pressed="false">2,3·10²⁵</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="infD">Tổng số token sẽ phục vụ người dùng D<sub>inf</sub>: <span class="chip" id="infDv"></span></label></p>
+  <input type="range" id="infD" min="0" max="80" value="50">
+  <div class="l09-plot" id="infP"></div>
+  <div class="l09-legend"><span><i style="border-color:var(--accent)"></i>tổng chi phí</span><span><i class="d" style="border-color:var(--warn)"></i>huấn luyện 6ND</span><span><i class="d" style="border-color:var(--life)"></i>suy luận 2N·D<sub>inf</sub></span><span><i class="o" style="background:var(--muted)"></i>lựa chọn Chinchilla</span></div>
+  <div class="l09-stats" id="infS"></div>
+  <p class="l09-msg" id="infM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('infW'); if (!box || !window.L09P) return;
+  const P = window.L09P, sl = box.querySelector('#infD');
+  const f = { E: 1.82, A: 482.01, B: 2085.43, a: 0.3478, b: 0.3658 };
+  let C0 = 1e24;
+  const DI = v => v === 0 ? 0 : Math.pow(10, 8 + v / 10);
+  const loss = (N, D) => f.E + f.A / Math.pow(N, f.a) + f.B / Math.pow(D, f.b);
+  const G = Math.pow(f.a * f.A / (f.b * f.B), 1 / (f.a + f.b));
+  function upd() {
+    const di = DI(+sl.value);
+    box.querySelector('#infDv').textContent = di ? P.big(di) + ' token' : '0 (chỉ tính huấn luyện)';
+    const Nc = G * Math.pow(C0 / 6, f.b / (f.a + f.b)), Dc = C0 / 6 / Nc, Lt = loss(Nc, Dc);
+    const Dfor = N => { const r = Lt - f.E - f.A / Math.pow(N, f.a); return r > 0 ? Math.pow(f.B / r, 1 / f.b) : Infinity; };
+    const Ns = P.range(Nc / 30, Nc * 6, 240, true);
+    const rows = Ns.map(N => { const D = Dfor(N); return { N, D, tr: 6 * N * D, inf: 2 * N * di }; }).filter(r => isFinite(r.D));
+    let best = rows[0]; rows.forEach(r => { if (r.tr + r.inf < best.tr + best.inf) best = r; });
+    const chin = { N: Nc, D: Dc, tr: 6 * Nc * Dc, inf: 2 * Nc * di };
+    const tb = best.tr + best.inf, tc = chin.tr + chin.inf;
+    const ymin = tb / 4, ymax = tb * 40;
+    const tip = r => `N = <b>${P.big(r.N)}</b>, D = ${P.big(r.D)}<br>huấn luyện ${P.sci(r.tr)}<br>suy luận ${r.inf ? P.sci(r.inf) : '0'}<br>tổng <b>${P.sci(r.tr + r.inf)}</b> FLOP`;
+    const series = [{ pts: rows.map(r => [r.N, r.tr]), color: 'var(--warn)', dash: '6 5', width: 1.8, tip: false }];
+    if (di) series.push({ pts: rows.map(r => [r.N, r.inf]), color: 'var(--life)', dash: '6 5', width: 1.8, tip: false });
+    series.push({ pts: rows.map(r => [r.N, r.tr + r.inf]), color: 'var(--accent)', width: 2.6, tip: (p) => tip(rows.find(r => r.N === p[0])) });
+    P.plot(box.querySelector('#infP'), {
+      aria: 'Tổng chi phí tính toán theo cỡ mô hình ở chất lượng cố định',
+      x: { min: Nc / 30, max: Nc * 6, log: true, label: 'số tham số N', ticks: [1e8, 1e9, 1e10, 1e11, 1e12, 1e13].filter(t => t >= Nc / 30 && t <= Nc * 6), fmt: v => P.big(v) },
+      y: { min: ymin, max: ymax, log: true, label: 'FLOP', ticks: [1, 2, 3, 4, 5, 6, 7, 8].map(k => Math.pow(10, Math.ceil(Math.log10(ymin)) + k - 1)).filter(t => t <= ymax), fmt: v => P.pow(Math.round(Math.log10(v))) },
+      series,
+      marks: [
+        { x: chin.N, y: tc, color: 'var(--muted)', r: 5.5, tip: 'Chinchilla-tối ưu<br>' + tip(chin) },
+        { x: best.N, y: tb, tip: 'Tối ưu tổng chi phí<br>' + tip(best) }
+      ]
+    });
+    const save = 1 - tb / tc, ratio = best.D / best.N;
+    box.querySelector('#infS').innerHTML = `
+      <div><b>${P.big(best.N)}</b><small>số tham số nên chọn (Chinchilla: ${P.big(Nc)})</small></div>
+      <div><b>${P.big(best.D)}</b><small>số token huấn luyện</small></div>
+      <div class="${ratio > 100 ? 'bad' : ''}"><b>${P.nf(ratio, 0)}</b><small>token mỗi tham số</small></div>
+      <div class="${save > 0.05 ? 'good' : ''}"><b>${P.nf(save * 100, 0)}%</b><small>tiết kiệm so với chọn Chinchilla</small></div>`;
+    let m;
+    if (!di) m = 'Không có suy luận thì lựa chọn tốt nhất trùng với Chinchilla, khoảng 20 token mỗi tham số.';
+    else if (best.N > Nc * 0.9) m = `Lượng suy luận còn nhỏ so với huấn luyện: lựa chọn Chinchilla vẫn gần tối ưu.`;
+    else m = `Khi phục vụ ${P.big(di)} token, nên chọn mô hình <b>nhỏ hơn ${P.nf(Nc / best.N, 1)} lần</b> và cho nó đọc ${P.big(best.D)} token. Huấn luyện tốn thêm ${P.nf((best.tr / chin.tr - 1) * 100, 0)}%, nhưng suy luận rẻ hơn nhiều, nên tổng chi phí giảm ${P.nf(save * 100, 0)}%.`;
+    if (ratio > 100) m += ` Lưu ý: ${P.big(best.D)} token có thể vượt lượng dữ liệu tốt hiện có, khi đó phải lặp lại dữ liệu và giá trị mỗi token giảm (xem <a href="#l09-repeat">mục lặp dữ liệu</a>).`;
+    box.querySelector('#infM').innerHTML = m + ' (Dùng bộ hệ số Besiroglu 2024, ngoại suy xa, chỉ để thấy xu hướng.)';
+  }
+  box.querySelectorAll('[data-g="c0"] .l09-btn').forEach(b => b.addEventListener('click', () => {
+    C0 = +b.dataset.v; box.querySelectorAll('[data-g="c0"] .l09-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<div class="note num"><p>Ví dụ Llama 3 70B: 15 nghìn tỉ token nghĩa là huấn luyện tốn \(6 \times 7\times10^{10} \times 1{,}5\times10^{13} \approx 6{,}3\times10^{24}\) FLOP. Với cùng ngân sách, quy tắc Chinchilla sẽ chọn mô hình khoảng 230 tỉ tham số (\(\sqrt{6{,}3\times10^{24}/120}\)). Mô hình 70B thua một chút về loss, nhưng mỗi token suy luận rẻ hơn 3 lần, và chạy vừa trên ít GPU hơn hẳn. Với một mô hình được hàng triệu người tải về và dùng, đó là đánh đổi rất đáng.</p></div>
+
+<h2 id="l09-isoeverywhere" data-short="IsoFLOP ở khắp nơi"><span>IsoFLOP ở khắp nơi</span><span class="slide-range">slide 55</span></h2>
+<div class="slides" data-s="55"></div>
+<p>Trong ba cách của Chinchilla, cách 2 (isoFLOP) <mark>dễ làm và thường cho kết quả gọn gàng</mark>, nên trở thành công cụ chuẩn (slide 55):</p>
+<ul>
+  <li><b>Mô hình khuếch tán cho văn bản</b> (Gulrajani và Hashimoto, 2023): vẽ đường isoFLOP cho cả mô hình tự hồi quy (trái) và mô hình khuếch tán (phải). Biểu đồ góc phải so hai biên hiệu quả: hai đường thẳng gần song song, đường khuếch tán nằm trên. Mô hình khuếch tán scale được, nhưng cần nhiều tính toán hơn để đạt cùng loss.</li>
+  <li><b>MoE</b> (Abnar và cộng sự, 2025): các mặt isoFLOP theo cả độ thưa lẫn cỡ mô hình, như ở <a href="#l09-moe">slide 36</a>.</li>
+  <li>Llama 3 cũng làm vậy: Meta chạy các đường isoFLOP từ \(6\times10^{18}\) đến \(10^{22}\) FLOP, ngoại suy tới ngân sách \(3{,}8\times10^{25}\) FLOP, và chọn cỡ 405 tỉ tham số gần với dự đoán (khoảng 402 tỉ tham số, 16,55 nghìn tỉ token).</li>
+</ul>
+
+<h2 id="l09-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 56–57</span></h2>
+<div class="slides" data-s="56,57"></div>
+<p>Tính chất log-tuyến tính không chỉ đúng với dữ liệu mà còn với số tham số và lượng tính toán (slide 56). Nhờ đó ta có thể dựa trên mô hình nhỏ để chọn optimizer, kiến trúc, cỡ mô hình, và đưa ra các đánh đổi tài nguyên thông minh: mô hình lớn hay thêm dữ liệu?</p>
+<div class="note key">
+  <ul>
+    <li><b>Scaling law</b> là quan hệ luật luỹ thừa \(L \approx a\,x^{-\alpha}\), tức một đường thẳng trên log–log. Độ dốc \(\alpha\) đo được ở quy mô nhỏ dùng để ngoại suy lên quy mô lớn.</li>
+    <li><b>Theo dữ liệu</b>: lý thuyết ước lượng cho độ dốc −1 (ước lượng trung bình) hoặc −1/d (học phi tham số). Mạng nơ-ron dốc ít hơn nhiều (LM khoảng −0,1), có thể vì số chiều nội tại của dữ liệu lớn.</li>
+    <li><b>Thành phần dữ liệu</b> chủ yếu đổi độ cao, không đổi độ dốc. <b>Lặp dữ liệu</b> tốt tới khoảng 4 epoch, vô ích từ khoảng 40 epoch. <b>Chọn lọc dữ liệu</b> phải phụ thuộc quy mô.</li>
+    <li><b>Siêu tham số</b>: so các đường thẳng. Transformer dốc hơn LSTM. Adam song song với SGD nhưng thấp hơn. Hình dạng mô hình ít ảnh hưởng tới loss. Chỉ đếm tham số không thuộc embedding.</li>
+    <li><b>Batch size</b>: vượt quá critical batch thì lợi ích giảm. Critical batch tăng khi loss giảm. <b>Learning rate</b>: dùng muP để learning rate tối ưu không trôi theo độ rộng.</li>
+    <li><b>Kaplan</b> nói \(N_{opt} \propto C^{0{,}73}\). <b>Chinchilla</b> nói khoảng \(C^{0{,}5}\), tức khoảng 20 token mỗi tham số. Khác biệt đến từ cách đếm tham số, warmup, chỉnh siêu tham số và đo ở vùng nhỏ.</li>
+    <li>Tối ưu cho huấn luyện <b>không</b> tối ưu cho triển khai. Mô hình hiện đại huấn luyện quá mức có chủ đích (Llama 3 70B: khoảng 215 token mỗi tham số).</li>
+    <li>Cẩn thận: loss dễ đoán, tác vụ thực tế thì khó đoán hơn. Scaling law có thể gãy khi áp dụng mù quáng, và chỉ mô tả công thức huấn luyện hiện tại.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao một luật luỹ thừa \(L = a\,n^{-\alpha}\) trông như một đường thẳng trên đồ thị log–log? Đại lượng nào là độ dốc?</summary>
+    <div><p>Lấy log hai vế: \(\log L = \log a - \alpha \log n\). Đây là phương trình bậc nhất theo \(\log n\), độ dốc \(-\alpha\), cắt trục tung ở \(\log a\). Đổi \(a\) thì đường tịnh tiến lên xuống, đổi \(\alpha\) thì đường xoay.</p></div></details>
+  <details><summary>2. Ước lượng trung bình có sai số bình phương \(\sigma^2/n\). Muốn sai số bình phương giảm 100 lần thì cần bao nhiêu dữ liệu? Nếu đo bằng sai số tuyệt đối thì sao?</summary>
+    <div><p>Cần gấp 100 lần dữ liệu. Sai số tuyệt đối tỉ lệ \(1/\sqrt{n}\), nên với 100 lần dữ liệu nó chỉ giảm 10 lần. Cùng một thí nghiệm, nhưng đo lỗi khác nhau thì độ dốc khác nhau (−1 so với −0,5). Khi so số mũ giữa các bài báo phải kiểm tra họ đo đại lượng gì.</p></div></details>
+  <details><summary>3. Mô hình ngôn ngữ có \(L \propto D^{-0{,}095}\). Gấp 10 lần dữ liệu thì loss còn bao nhiêu phần trăm? Vì sao số mũ nhỏ hơn nhiều so với −1 của các mô hình cổ điển?</summary>
+    <div><p>\(10^{-0{,}095} \approx 0{,}80\), còn khoảng 80%. Mạng nơ-ron là phương pháp học "mềm dẻo" kiểu phi tham số. Với phương pháp như vậy, độ dốc khoảng \(-1/d\) và phụ thuộc số chiều (nội tại) của dữ liệu. Ngôn ngữ có số chiều nội tại lớn nên độ dốc nhỏ. Đây là trực giác, chưa phải chứng minh chặt chẽ.</p></div></details>
+  <details><summary>4. Hashimoto (2021) thấy thành phần dữ liệu chỉ đổi độ cao, không đổi độ dốc của đường scaling. Điều đó có ích gì trong thực hành?</summary>
+    <div><p>Các đường song song thì không cắt nhau, nên tỉ lệ trộn tốt nhất ở mô hình nhỏ cũng tốt nhất ở mô hình lớn. Ta có thể chọn tỉ lệ trộn bằng thí nghiệm rẻ. (Điều này không còn đúng khi dữ liệu bị lặp lại nhiều, như slide 26 cho thấy.)</p></div></details>
+  <details><summary>5. Bạn có 1 nghìn tỉ token khác nhau và muốn huấn luyện trên tổng cộng 10 nghìn tỉ token. Theo công thức của Muennighoff, lượng dữ liệu hiệu dụng là bao nhiêu?</summary>
+    <div><p>10 epoch nên \(R_D = 9\). \(D' = U(1 + 15{,}4\,(1 - e^{-9/15{,}4})) = U(1 + 15{,}4 \times 0{,}44) \approx 7{,}8\,U\). Tức khoảng 7,8 nghìn tỉ token mới, hiệu quả khoảng 78%. Lặp thêm nữa thì hiệu quả giảm nhanh.</p></div></details>
+  <details><summary>6. So Transformer với LSTM, và Adam với SGD trên log–log. Loại khác biệt nào quan trọng hơn khi tăng quy mô?</summary>
+    <div><p>Transformer và LSTM khác <b>độ dốc</b>: khoảng cách lớn dần khi tăng quy mô, nên càng lớn càng nên dùng Transformer. Adam và SGD gần như song song, chỉ khác <b>hằng số</b>: Adam tốt hơn một tỉ lệ cố định ở mọi quy mô. Khác độ dốc quan trọng hơn vì nó tích luỹ và có thể đảo thứ hạng.</p></div></details>
+  <details><summary>7. Vì sao Kaplan chỉ đếm tham số không thuộc embedding? Lựa chọn này ảnh hưởng thế nào tới số mũ tối ưu \(N_{opt} \propto C^a\)?</summary>
+    <div><p>Đếm theo tham số không thuộc embedding thì các đường loss của mô hình có số lớp khác nhau chập làm một (slide 35), trông "sạch" hơn. Nhưng ở mô hình nhỏ, embedding chiếm phần lớn tổng tham số, nên trục \(N\) bị méo ở đầu nhỏ. Pearce và Song cho thấy chỉ riêng điều này, đo ở vùng nhỏ, đã đẩy số mũ cục bộ từ khoảng 0,5 lên khoảng 0,78, gần 0,73 của Kaplan.</p></div></details>
+  <details><summary>8. Với batch \(B = \mathcal{B}_{crit}\), cần bao nhiêu bước và bao nhiêu ví dụ so với mức tối thiểu? Còn với \(B = 4\,\mathcal{B}_{crit}\)?</summary>
+    <div><p>Dùng \(S = S_{min}(1 + \mathcal{B}_{crit}/B)\) và \(E = E_{min}(1 + B/\mathcal{B}_{crit})\). Ở \(B = \mathcal{B}_{crit}\): gấp đôi cả hai. Ở \(B = 4\mathcal{B}_{crit}\): bước chỉ còn \(1{,}25\, S_{min}\), nhưng ví dụ lên \(5\, E_{min}\), tức tốn gấp 2,5 lần tính toán so với chạy ở \(\mathcal{B}_{crit}\) để tiết kiệm 37,5% số bước.</p></div></details>
+  <details><summary>9. Với muP, khi tăng độ rộng mô hình lên 4 lần, learning rate của các ma trận ẩn và của embedding thay đổi thế nào?</summary>
+    <div><p>Ma trận ẩn (hai chiều cùng lớn lên) dùng learning rate \(l/4\). Embedding thuộc nhóm "khác" (chỉ một chiều lớn lên) nên giữ nguyên \(l\). Hệ số nhân ở lớp đầu ra chia cho 4. Nhờ vậy learning rate tìm được trên mô hình nhỏ dùng được cho mô hình lớn.</p></div></details>
+  <details><summary>10. Dùng \(C = 6ND\) và quy tắc 20 token mỗi tham số, mô hình tối ưu cho ngân sách \(5{,}76\times10^{23}\) FLOP có bao nhiêu tham số và token?</summary>
+    <div><p>\(D = 20N\) nên \(C = 120 N^2\), \(N = \sqrt{5{,}76\times10^{23}/120} = \sqrt{4{,}8\times10^{21}} \approx 6{,}9\times10^{10}\). Khoảng 70 tỉ tham số và 1,4 nghìn tỉ token: đúng cấu hình của Chinchilla.</p></div></details>
+  <details><summary>11. Nêu hai lý do chính khiến Kaplan và Chinchilla ra số mũ khác nhau.</summary>
+    <div><p>(1) Porian và cộng sự: Kaplan không tính FLOP của lớp cuối, warmup quá dài ở ngân sách nhỏ, và siêu tham số (learning rate, batch) không được chỉnh theo từng cỡ. Sửa lần lượt thì số mũ giảm từ khoảng 0,8 xuống 0,5. (2) Pearce và Song: Kaplan đếm tham số không thuộc embedding và đo ở mô hình nhỏ, nơi đường cong hơi cong, nên số mũ cục bộ lớn hơn số mũ thật ở quy mô lớn.</p></div></details>
+  <details><summary>12. Llama 3 70B huấn luyện trên khoảng 215 token mỗi tham số, xa mức 20 của Chinchilla. Đó có phải là sai lầm không?</summary>
+    <div><p>Không. Chinchilla chỉ tối ưu chi phí huấn luyện. Khi mô hình phục vụ rất nhiều token, chi phí suy luận (\(2N\) mỗi token) chiếm phần lớn. Mô hình nhỏ hơn mà huấn luyện lâu hơn đạt chất lượng gần như vậy với chi phí suy luận thấp hơn nhiều, nên tổng chi phí nhỏ hơn. Giới hạn thực tế là lượng dữ liệu tốt có sẵn.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Scaling law</td><td>Quy tắc đơn giản, dự đoán được, cho biết hiệu năng thay đổi thế nào khi tăng dữ liệu, tham số, hay tính toán</td></tr>
+  <tr><td>Power law (luật luỹ thừa)</td><td>\(y = a\,x^{-\alpha}\): đường thẳng trên đồ thị log–log, độ dốc \(-\alpha\)</td></tr>
+  <tr><td>Scale-free</td><td>Gấp \(k\) lần đầu vào thì đầu ra luôn nhân cùng một hệ số, bất kể đang ở quy mô nào</td></tr>
+  <tr><td>Sample complexity</td><td>Cần bao nhiêu mẫu để học tới một độ chính xác cho trước</td></tr>
+  <tr><td>Learning curve</td><td>Đường lỗi theo cỡ dữ liệu huấn luyện</td></tr>
+  <tr><td>Irreducible error</td><td>Phần lỗi không giảm được dù có bao nhiêu dữ liệu (nhiễu vốn có)</td></tr>
+  <tr><td>Emergence</td><td>Năng lực xuất hiện đột ngột sau khi vượt một ngưỡng quy mô</td></tr>
+  <tr><td>Nonparametric learning</td><td>Học không giả định trước dạng hàm, ví dụ chia ô rồi lấy trung bình</td></tr>
+  <tr><td>Intrinsic dimension</td><td>Số chiều "thật" của dữ liệu, thường nhỏ hơn nhiều số chiều trên giấy</td></tr>
+  <tr><td>Data mixture</td><td>Tỉ lệ trộn các nguồn dữ liệu (web, sách, code…)</td></tr>
+  <tr><td>Epoch / Repetition</td><td>Một lượt đọc hết dữ liệu / số lần đọc lại</td></tr>
+  <tr><td>Effective data \(D'\)</td><td>Lượng dữ liệu mới tương đương với dữ liệu đã lặp lại</td></tr>
+  <tr><td>Quality–quantity tradeoff</td><td>Lọc gắt thì dữ liệu tốt nhưng ít và phải lặp lại; lọc nhẹ thì nhiều nhưng kém hơn</td></tr>
+  <tr><td>Non-embedding parameters</td><td>Số tham số không tính bảng embedding, cách Kaplan đếm \(N\)</td></tr>
+  <tr><td>Aspect ratio</td><td>\(d_{model}/n_{layer}\): mô hình rộng hay sâu</td></tr>
+  <tr><td>Sparsity (MoE)</td><td>Tỉ lệ expert không được dùng cho mỗi token</td></tr>
+  <tr><td>Critical batch size</td><td>\(\mathcal{B}_{crit} = E_{min}/S_{min}\): ranh giới giữa scaling hoàn hảo và kém hiệu quả của batch</td></tr>
+  <tr><td>Gradient noise scale</td><td>Độ nhiễu của gradient chia cho độ lớn tín hiệu, gần bằng critical batch</td></tr>
+  <tr><td>muP (µP)</td><td>Cách khởi tạo và chia learning rate theo độ rộng để siêu tham số tối ưu không trôi</td></tr>
+  <tr><td>Upstream / Downstream</td><td>Loss khi tiền huấn luyện / hiệu năng trên tác vụ thật sau đó</td></tr>
+  <tr><td>Compute-optimal</td><td>Cách chia \(N\) và \(D\) cho loss thấp nhất ở một ngân sách FLOP cố định</td></tr>
+  <tr><td>\(C \approx 6ND\)</td><td>Ước lượng FLOP huấn luyện: 2 cho forward, 4 cho backward, mỗi tham số mỗi token</td></tr>
+  <tr><td>IsoFLOP</td><td>Giữ FLOP cố định, thay đổi cỡ mô hình (và số token tương ứng), tìm đáy chữ U</td></tr>
+  <tr><td>Envelope</td><td>Đường bao dưới của nhiều đường huấn luyện (cách 1 của Chinchilla)</td></tr>
+  <tr><td>Efficient frontier</td><td>Cỡ mô hình tốt nhất cho mỗi ngân sách, nối thành một đường</td></tr>
+  <tr><td>Chinchilla rule</td><td>Khoảng 20 token mỗi tham số khi chỉ tối ưu chi phí huấn luyện</td></tr>
+  <tr><td>Overtraining</td><td>Cố tình huấn luyện mô hình nhỏ trên nhiều token hơn mức Chinchilla để suy luận rẻ</td></tr>
+</table></div>

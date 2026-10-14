@@ -55,6 +55,15 @@
       "slides": 73,
       "file": "lectures/l08.html",
       "imgDir": "img/l08"
+    },
+    {
+      "id": "l09",
+      "num": 9,
+      "title": "Scaling laws – basics",
+      "titleVi": "Scaling laws: định luật co giãn",
+      "slides": 57,
+      "file": "lectures/l09.html",
+      "imgDir": "img/l09"
     }
   ]
 }
