@@ -46,6 +46,15 @@
       "unit": "page",
       "file": "lectures/l07.html",
       "imgDir": "img/l07"
+    },
+    {
+      "id": "l08",
+      "num": 8,
+      "title": "Parallelism basics",
+      "titleVi": "Song song hoá cơ bản",
+      "slides": 73,
+      "file": "lectures/l08.html",
+      "imgDir": "img/l08"
     }
   ]
 }

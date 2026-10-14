@@ -1,0 +1,1044 @@
+<style>
+  .l08-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l08-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l08-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l08-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l08-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l08-stats small { color: var(--muted); font-size: 12.5px; }
+  .l08-stats .bad b { color: var(--warn); }
+  .l08-stats .good b { color: var(--life); }
+  .l08-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; margin: 6px 0 4px; }
+  .l08-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .l08-form select { font: 14px var(--f-body); padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .l08-form .ck { flex-direction: row; align-items: center; gap: 6px; align-self: end; padding-bottom: 6px; }
+  .l08-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .l08-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .l08-mem { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; }
+  .l08-memrow { display: grid; grid-template-columns: 112px 1fr 92px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l08-memrow > span:first-child { font-weight: 700; color: var(--ink); }
+  .l08-memrow b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .l08-memrow.bad b { color: var(--warn); }
+  .l08-track { position: relative; height: 18px; border-radius: 6px; background: var(--code-bg); overflow: hidden; display: flex; }
+  .l08-track i { display: block; height: 100%; }
+  .l08-track .p { background: var(--accent); }
+  .l08-track .g { background: var(--warn); opacity: .75; }
+  .l08-track .o { background: var(--life); opacity: .8; }
+  .l08-track .a { background: var(--num); opacity: .8; }
+  .l08-track .x { background: var(--muted); opacity: .45; }
+  .l08-track .lim { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); }
+  .l08-mats { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin: 12px 0 4px; }
+  .l08-gpu { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px 12px; }
+  .l08-gpu h5 { margin: 0 0 8px; font: 700 12px var(--f-display); color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
+  .l08-eq { display: flex; align-items: flex-start; gap: 8px; flex-wrap: nowrap; }
+  .l08-eq > span.op { align-self: center; margin-top: -14px; }
+  .l08-eq > span.op { font: 700 16px var(--f-mono); color: var(--muted); }
+  .l08-mat { display: inline-grid; gap: 2px; }
+  .l08-mat i { min-width: 34px; height: 26px; display: grid; place-items: center; border-radius: 4px; font: 600 12.5px var(--f-mono); font-style: normal; padding: 0 3px; }
+  .l08-mat .x { background: var(--warn-bg); color: var(--warn); }
+  .l08-mat .a { background: var(--num-bg); color: var(--num); }
+  .l08-mat .y { background: var(--life-bg); color: var(--life); }
+  .l08-mat .dim { opacity: .28; }
+  .l08-matlab { display: block; text-align: center; font: 600 11.5px var(--f-mono); color: var(--muted); margin-top: 3px; }
+  .l08-bars { display: flex; flex-direction: column; gap: 7px; margin: 12px 0 4px; }
+  .l08-bar { display: grid; grid-template-columns: 230px 1fr 86px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l08-bar .track { position: relative; height: 14px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l08-bar .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+  .l08-bar.bad .fill { background: var(--warn); }
+  .l08-bar.good .fill { background: var(--life); }
+  .l08-bar .lim { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); }
+  .l08-bar b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .l08-bar.bad b { color: var(--warn); }
+  .l08-cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0 4px; }
+  .l08-cmp > div { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .l08-cmp h5 { margin: 0 0 8px; font: 700 13px var(--f-display); color: var(--ink); }
+  .l08-cmp .ln { display: grid; grid-template-columns: 76px 1fr 70px; gap: 8px; align-items: center; font-size: 12.5px; color: var(--muted); margin: 5px 0; }
+  .l08-cmp .ln .track { height: 12px; border-radius: 5px; background: var(--code-bg); overflow: hidden; }
+  .l08-cmp .ln .fill { height: 100%; border-radius: 5px; }
+  .l08-cmp .ln b { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .l08-cmp .verdict { margin: 8px 0 0; font-size: 13.5px; }
+  .l08-cmp .verdict.bad { color: var(--warn); }
+  .l08-cmp .verdict.good { color: var(--life); }
+  .l08-plan td.bad { color: var(--warn); font-weight: 700; }
+  .l08-plan td.good { color: var(--life); font-weight: 700; }
+  .l08-msg { margin: 10px 0 0; }
+  .l08-msg li { margin: 4px 0; }
+  @media (max-width: 640px) {
+    .l08-memrow { grid-template-columns: 74px 1fr 70px; font-size: 12px; }
+    .l08-bar { grid-template-columns: 120px 1fr 66px; font-size: 12px; }
+    .l08-mat i { min-width: 24px; height: 22px; font-size: 11px; }
+    .l08-eq { gap: 5px; }
+    .l08-gpu { padding: 8px 8px 10px; }
+    .l08-matlab { font-size: 10.5px; }
+  }
+</style>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 8 · 73 slides</span>
+  <h1>Song song hoá cơ bản: từ data parallel, ZeRO/FSDP đến công thức "3D" của các mô hình lớn</h1>
+  <p class="sub">Parallelism basics — vì sao một GPU không đủ, các kiểu chia việc (data, pipeline, tensor, sequence, expert, context), mỗi kiểu tốn gì và tiết kiệm gì, và các mô hình thật như Llama 3, DeepSeek, Qwen 3 ghép chúng lại ra sao.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l08-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">slide 1–3</span></h2>
+<div class="slides" data-s="2,3"></div>
+<p><a href="#l07-overview">Lecture 7</a> là bản in code: ta tự viết các phép collective bằng <code>torch.distributed</code> và thử ba cách chia một MLP nhỏ. Lecture 8 (thầy Tatsu) lùi ra xa hơn. Câu hỏi bây giờ là: <mark>với một mô hình hàng trăm tỉ tham số và hàng nghìn GPU, nên chia việc thế nào cho máy chạy hết công suất?</mark></p>
+<p>Ba mục tiêu của lecture (slide 2):</p>
+<ul>
+  <li>Hiểu vì sao huấn luyện mô hình rất lớn khó về mặt hệ thống.</li>
+  <li>Biết các kiểu song song hoá, và vì sao người ta luôn dùng <b>nhiều kiểu cùng lúc</b>.</li>
+  <li>Biết một lần huấn luyện lớn ngoài đời thường được cấu hình ra sao.</li>
+</ul>
+<p>Lecture chia ba phần (slide 3):</p>
+<ol>
+  <li><b>Phần 1 — Mạng nối các GPU</b> (slide 4–13): vì sao phải dùng nhiều GPU, các phép collective, và các kiểu mạng (GPU so với TPU).</li>
+  <li><b>Phần 2 — Các kiểu song song hoá</b> (slide 14–55): data parallel và ZeRO/FSDP, pipeline, tensor, sequence, expert, context parallel.</li>
+  <li><b>Phần 3 — Ghép lại để huấn luyện mô hình lớn</b> (slide 56–73): quy tắc kinh nghiệm, và cấu hình thật của Llama 3, DeepSeek, Gemma 2, Qwen 3…</li>
+</ol>
+
+<div class="note life">
+  <p>Tài liệu này dùng một hình ảnh xuyên suốt: <b>một bếp ăn công nghiệp phải nấu cho hàng nghìn người</b>. Mỗi GPU là một đầu bếp. Có nhiều cách chia việc:</p>
+  <ul>
+    <li><b>Data parallel</b>: mỗi đầu bếp có trọn cuốn công thức, mỗi người nấu một phần số suất ăn.</li>
+    <li><b>ZeRO/FSDP</b>: cuốn công thức quá dày nên bị xé ra, mỗi người giữ vài trang. Cần trang nào thì mượn của người khác, dùng xong trả lại.</li>
+    <li><b>Pipeline parallel</b>: dây chuyền. Người sơ chế, người nấu, người bày đĩa.</li>
+    <li><b>Tensor parallel</b>: một nồi quá to, hai người cùng khuấy mỗi người một nửa nồi. Phải nói chuyện với nhau liên tục.</li>
+    <li><b>Expert parallel</b>: mỗi người chuyên một món (chiên, nướng, hấp). Đơn hàng được chuyển tới đúng người.</li>
+  </ul>
+  <p>Cách nào cũng có giá: hoặc tốn chỗ để đồ (bộ nhớ), hoặc phải nói chuyện nhiều (giao tiếp), hoặc có người đứng chờ (bong bóng).</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="part" id="l08-part1" data-short="Phần 1 · Mạng nối các GPU">Phần 1 · Mạng nối các GPU<small>Một GPU không đủ. Nhiều GPU thì phải nói chuyện với nhau, và cách nối dây quyết định nói chuyện nhanh hay chậm.</small></div>
+
+<h2 id="l08-limits" data-short="Vì sao một GPU không đủ"><span>Vì sao một GPU không đủ: giới hạn về tính toán và bộ nhớ</span><span class="slide-range">slide 4–6</span></h2>
+<div class="slides" data-s="4"></div>
+<p><b>Slide 4 — giới hạn về tính toán.</b> Hình trái là slide của Bill Dally (NVIDIA): trong 10 năm, tốc độ suy luận của một chip GPU tăng khoảng 1000 lần (từ K20X đến H100). Phần lớn mức tăng đó đến từ đâu?</p>
+<div class="tbl"><table>
+  <tr><th>Nguồn tăng tốc</th><th>Khoảng bao nhiêu lần</th><th>Ý nghĩa</th></tr>
+  <tr><td>Dùng ít bit hơn (FP32 → FP16/BF16 → INT8)</td><td class="hi">~16×</td><td>Số nhỏ hơn thì tính nhanh hơn, chở ít byte hơn</td></tr>
+  <tr><td>Lệnh phức tạp (DP4, HMMA, IMMA)</td><td class="hi">~12,5×</td><td>Lệnh nhân cả khối ma trận trong một lần, tức tensor core</td></tr>
+  <tr><td>Tiến trình sản xuất (28nm → 5nm)</td><td>~2,5×</td><td>Transistor nhỏ hơn</td></tr>
+  <tr><td>Sparsity</td><td>~2×</td><td>Bỏ qua các số 0</td></tr>
+</table></div>
+<p>Hai nguồn lớn nhất (ít bit hơn, lệnh to hơn) không lặp lại mãi được: không thể giảm xuống dưới vài bit, và tensor core đã chiếm phần lớn chip. Hình phải là hiệu năng của các siêu máy tính trong danh sách Top500 (xanh lá: tổng cả 500 máy, cam: máy đứng đầu, xanh dương: máy thứ 500). Máy nhanh nhất thế giới đã đạt <b>exaflop</b> (\(10^{18}\) phép tính mỗi giây), và chúng đạt được nhờ ghép <i>rất nhiều</i> chip chứ không nhờ một chip thật mạnh.</p>
+
+<div class="slides" data-s="5,6"></div>
+<p><b>Slide 5 — giới hạn về bộ nhớ.</b> Cỡ mô hình tăng khoảng 10 lần mỗi năm trong giai đoạn 2018–2021: ELMo 94 triệu tham số, GPT-2 1,5 tỉ, GPT-3 175 tỉ, Megatron-Turing NLG 530 tỉ. Một GPU H100 chỉ có 80 GB. Riêng trọng số của mô hình 530 tỉ tham số ở BF16 đã là 1 TB, chưa kể gradient và trạng thái optimizer (sẽ thấy ở slide 17 là tổng cộng khoảng 16 byte mỗi tham số, tức 8,5 TB).</p>
+<p><b>Slide 6 — lời giải: nhiều GPU, nhiều máy.</b> Chia nhu cầu bộ nhớ và tính toán ra nhiều GPU và nhiều máy. Hình là sơ đồ một máy (node) gồm 2 CPU và 8 GPU:</p>
+<ul>
+  <li><b>Trong node</b>: 8 GPU nối với 6 con NVSwitch bằng NVLink (các đường xanh lá ở dưới). GPU nào cũng nói chuyện trực tiếp với GPU nào, rất nhanh.</li>
+  <li><b>Giữa các node</b>: dữ liệu đi từ GPU qua PLX (bộ chuyển mạch PCIe), tới HCA (card mạng Infiniband), rồi ra switch Infiniband (các mũi tên tím). Đường này chậm hơn nhiều.</li>
+</ul>
+<p>Đây chính là "thứ bậc bộ nhớ có thêm hai tầng" ở <a href="#l07-hierarchy">Lecture 7</a>. Mọi quyết định chia việc trong lecture này đều xoay quanh câu hỏi: <b>phép giao tiếp nào chạy trên đường nhanh, phép nào chạy trên đường chậm.</b></p>
+
+<div class="note num"><p>Llama 3 405B cần khoảng \(3{,}8 \times 10^{25}\) FLOP để huấn luyện. Một GPU H100 chạy thực tế khoảng 400 TFLOP/s, tức \(4 \times 10^{14}\) FLOP mỗi giây. Một GPU sẽ mất \(3{,}8\times10^{25} / 4\times10^{14} \approx 10^{11}\) giây, khoảng <b>3000 năm</b>. Với 16 384 GPU thì còn khoảng 67 ngày, nếu giữ được hiệu suất như một GPU. Phần còn lại của lecture là về chữ "nếu" đó.</p></div>
+
+<h2 id="l08-collectives" data-short="Nhắc lại collective"><span>Nhắc lại các phép collective, và một đẳng thức quan trọng</span><span class="slide-range">slide 7–8</span></h2>
+<div class="slides" data-s="7,8"></div>
+<p>Slide 7 nhắc lại các phép <dfn>collective</dfn> đã gặp ở <a href="#l07-collectives">Lecture 7</a> (ở đó có ô thử nghiệm cho cả tám phép). Lecture này dùng nhiều nhất bốn phép:</p>
+<div class="tbl"><table>
+  <tr><th>Phép</th><th>Trước</th><th>Sau</th><th>Dùng ở đâu trong lecture này</th></tr>
+  <tr><td><b>All-reduce</b></td><td>Mỗi rank một vector</td><td>Mọi rank có tổng của mọi vector</td><td>Data parallel (cộng gradient), tensor parallel</td></tr>
+  <tr><td><b>Reduce-scatter</b></td><td>Mỗi rank một vector</td><td>Rank \(i\) có phần thứ \(i\) của tổng</td><td>ZeRO, FSDP, sequence parallel</td></tr>
+  <tr><td><b>All-gather</b></td><td>Mỗi rank một mảnh</td><td>Mọi rank có cả vector ghép lại</td><td>ZeRO, FSDP (gom tham số), sequence parallel</td></tr>
+  <tr><td><b>All-to-all</b></td><td>Mỗi rank có phần gửi cho từng rank</td><td>Mỗi rank nhận phần của mình từ mọi rank</td><td>Expert parallel (MoE)</td></tr>
+</table></div>
+<p><b>Slide 8 là đẳng thức quan trọng nhất của Phần 1:</b></p>
+<div class="mathbox">\[ \text{all-reduce} = \text{reduce-scatter} + \text{all-gather} \]</div>
+<p>Với 4 GPU giữ A, B, C, D: reduce-scatter cho GPU 0 giữ \(A_0+B_0+C_0+D_0\), GPU 1 giữ \(A_1+B_1+C_1+D_1\)… Sau đó all-gather chép bốn mảnh tổng cho mọi GPU. Kết quả giống hệt all-reduce.</p>
+<p>Câu cuối slide nói: khi bị giới hạn bởi băng thông (tensor lớn), <b>đây là cách tốt nhất có thể</b>. Mỗi GPU gửi và nhận khoảng \(\frac{N-1}{N}S\) cho reduce-scatter và \(\frac{N-1}{N}S\) cho all-gather, tổng \(\approx 2S\). Thuật toán ring ở <a href="#l07-ring">Lecture 7</a> đạt đúng con số này. Khi tensor nhỏ thì độ trễ (số bước) mới là vấn đề, lúc đó các thuật toán dạng cây tốt hơn.</p>
+<div class="note key"><p>Đẳng thức này nghe khô khan nhưng là chìa khoá của cả Phần 2. Nó nói rằng <mark>tách all-reduce thành hai nửa không tốn thêm băng thông</mark>. Ta có thể chen việc khác vào <i>giữa</i> hai nửa. ZeRO chen bước cập nhật tham số vào giữa (slide 20), sequence parallel chen layer norm và dropout vào giữa (slide 48). Cả hai đều tiết kiệm bộ nhớ mà gần như không tốn thêm giao tiếp.</p></div>
+
+<h2 id="l08-topology" data-short="Mạng TPU và GPU"><span>Nối dây kiểu nào: lưới của TPU, switch của GPU, và vì sao không nối hết</span><span class="slide-range">slide 9–13</span></h2>
+<div class="slides" data-s="9,10"></div>
+<p><b>Slide 9 — hai triết lý nối dây.</b></p>
+<ul>
+  <li><b>TPU: lưới hình xuyến</b> (toroidal mesh). Mỗi chip chỉ nối thẳng với các chip hàng xóm (trên, dưới, trái, phải, và nối vòng ở mép như hình các mũi tên đỏ). Muốn gửi cho chip ở xa thì phải đi qua nhiều chip trung gian.</li>
+  <li><b>GPU: qua switch</b>. Mọi GPU nối vào switch, nên GPU nào cũng tới GPU nào trong một bước. Trong một máy là NVSwitch. Bản SuperPod H100 (hình phải) dùng switch NVLink để nối 32 node, tức 256 GPU, thay cho Infiniband ở bản A100.</li>
+</ul>
+<p>Bảng dưới slide so hai bản SuperPod. Cột <dfn>bisection bandwidth</dfn> nghĩa là: cắt hệ thống làm đôi, hai nửa gửi cho nhau nhanh nhất được bao nhiêu. Đây là trường hợp xấu nhất, khi nửa này cần nói chuyện với nửa kia. Với 256 GPU, bản H100 có 57 600 GB/s so với 6 400 GB/s của bản A100, gấp 9 lần.</p>
+<p><b>Slide 10 — lưới hay cây (switch)?</b></p>
+<ul>
+  <li><b>Ưu điểm của lưới</b>: rẻ hơn (dây ngắn, không cần switch to), và rất nhanh cho kiểu giao tiếp "có cấu trúc": mỗi chip chủ yếu nói chuyện với hàng xóm, như tensor parallel hay all-reduce kiểu vòng.</li>
+  <li><b>Ưu điểm của cây/switch</b>: tốt cho kiểu giao tiếp lộn xộn. Ví dụ expert parallel (MoE): token nào cũng có thể cần tới expert nào, ở bất kỳ đâu.</li>
+</ul>
+<p>Đoạn trích là cuộc trò chuyện giữa Bill Dally (NVIDIA) và Jeff Dean (Google). Dally nói: nếu việc tính toán mang tính cục bộ, mạng nối trực tiếp như lưới 3D là lý tưởng. Nhưng với MoE có nhiều expert nằm rải rác, đi nhiều bước qua lưới rất tốn. Lúc đó đi một bước lên switch rồi một bước xuống expert sẽ tốt hơn. <i>"Không có mạng nào tốt cho mọi kiểu giao tiếp."</i> Dean đồng ý: tuỳ vào công việc.</p>
+
+<div class="slides" data-s="11,12"></div>
+<p><b>Slide 11 — nhưng mọi thứ thay đổi.</b> Theo slide, thế hệ TPU mới (TPU8i/TPU8t) đi gần hơn với kiểu cây:</p>
+<ul>
+  <li><b>TPU8i</b>: 4 TPU nối đầy đủ với nhau trên mỗi board. 8 board nối đầy đủ trong mỗi nhóm (rack). 36 nhóm nối đầy đủ trong một pod, tổng \(4 \times 8 \times 36 = 1152\) chip. Thầy đoán thiết kế này là để phục vụ MoE.</li>
+  <li><b>TPU8t</b>: phần nối giữa các pod (scale-out) dùng mạng "Virgo" có switch hai tầng, không bị nghẽn, rồi nối lên mạng Jupiter của cả trung tâm dữ liệu.</li>
+</ul>
+<p>Thông điệp: khi MoE trở nên phổ biến, ngay cả Google cũng chuyển dần sang kiểu mạng có switch.</p>
+<p><b>Slide 12 — vậy sao không nối tất cả bằng đường nhanh?</b> Bảng của SemiAnalysis so Huawei CloudMatrix 384 với Nvidia GB200 NVL72. Vài dòng đáng chú ý:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>GB200 NVL72</th><th>CloudMatrix 384</th><th>Huawei / Nvidia</th></tr>
+  <tr><td>BF16 mỗi chip</td><td>2 500 TFLOPS</td><td>780 TFLOPS</td><td>0,3×</td></tr>
+  <tr><td>Số chip trong miền nối nhanh (scale-up)</td><td>72</td><td>384</td><td class="hi">5,3×</td></tr>
+  <tr><td>BF16 cả hệ thống</td><td>180 PFLOPS</td><td>300 PFLOPS</td><td>1,7×</td></tr>
+  <tr><td>Điện năng cả hệ thống</td><td>145 kW</td><td>600 kW</td><td>4,1×</td></tr>
+  <tr><td>Điện năng mỗi TFLOP</td><td>0,81 W</td><td>2,00 W</td><td>2,5×</td></tr>
+</table></div>
+<p>Huawei bù chip yếu bằng cách nối rất nhiều chip vào một miền nhanh. Ảnh bên phải ghi hệ thống dùng 6 912 module quang 400G. Đó là cái giá: dây đồng chỉ chạy được vài mét, nên NVL72 gói gọn 72 GPU trong một rack bằng dây đồng. Muốn nối xa hơn một rack thì phải dùng cáp quang, vốn đắt, tốn điện và hay hỏng. Kết quả là CloudMatrix tốn điện gấp 2,5 lần cho mỗi FLOP. <mark>Kích thước miền nối nhanh là một bài toán đánh đổi, không phải "càng to càng tốt".</mark></p>
+<div class="note warn"><p>Đơn vị trong bảng là <b>Gb/s</b> (gigabit) và "uni-di" (mỗi chiều). Băng thông scale-up của GB200 là 7 200 Gb/s, chia 8 được <b>900 GB/s mỗi chiều</b>. Con số này khớp với ghi chú ở <a href="#l07-hardware">Lecture 7</a>: "1,8 TB/s" của NVLink 5 là tổng hai chiều. Còn scale-out (ra ngoài rack) chỉ có 400 Gb/s = 50 GB/s mỗi GPU, <b>chậm hơn 18 lần</b>.</p></div>
+
+<div class="slides" data-s="13"></div>
+<p><b>Slide 13 — tóm tắt Phần 1.</b></p>
+<ul>
+  <li><b>Đơn vị tính toán mới là cả trung tâm dữ liệu</b>, không còn là một GPU.</li>
+  <li>Điều ta muốn khi thêm máy:
+    <ul>
+      <li><b>Bộ nhớ tăng tuyến tính</b>: số tham số tối đa tăng theo số GPU.</li>
+      <li><b>Tính toán tăng tuyến tính</b>: số FLOP xử lý được tăng theo số GPU.</li>
+    </ul>
+  </li>
+  <li>Công cụ để làm điều đó là vài phép collective đơn giản.</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="part" id="l08-part2" data-short="Phần 2 · Các kiểu song song">Phần 2 · Các kiểu song song hoá<small>Mỗi cách chia đổi một loại chi phí lấy một loại khác: bộ nhớ, giao tiếp, hoặc thời gian chờ.</small></div>
+
+<h2 id="l08-map" data-short="Bản đồ Phần 2"><span>Bản đồ Phần 2: ba nhóm ý tưởng</span><span class="slide-range">slide 14</span></h2>
+<div class="slides" data-s="14"></div>
+<p>Slide 14 chia các kiểu song song thành ba nhóm, theo thứ được cắt ra:</p>
+<div class="tbl"><table>
+  <tr><th>Nhóm</th><th>Kiểu</th><th>Cắt cái gì</th><th>Phải gửi qua mạng cái gì</th></tr>
+  <tr><td rowspan="2"><b>Data parallel</b></td><td>Data parallel thường</td><td>Batch</td><td>Gradient</td></tr>
+  <tr><td>ZeRO 1–3 / FSDP</td><td>Batch, và trạng thái mô hình</td><td>Gradient và tham số</td></tr>
+  <tr><td rowspan="3"><b>Model parallel</b></td><td>Pipeline parallel</td><td>Mô hình theo chiều sâu (nhóm layer)</td><td>Activation giữa các nhóm layer</td></tr>
+  <tr><td>Tensor parallel</td><td>Mô hình theo chiều rộng (ma trận)</td><td>Activation ở mỗi layer</td></tr>
+  <tr><td>Expert parallel</td><td>Các expert của MoE</td><td>Token (all-to-all)</td></tr>
+  <tr><td rowspan="2"><b>Activation parallel</b></td><td>Sequence parallel</td><td>Chuỗi, ở các phép tính từng token</td><td>Activation</td></tr>
+  <tr><td>Context parallel</td><td>Chuỗi, cả trong attention</td><td>Các khối K, V</td></tr>
+</table></div>
+
+<h2 id="l08-dp" data-short="Data parallel thường"><span>Data parallel thường: tính toán chia đều, bộ nhớ thì không</span><span class="slide-range">slide 15–16</span></h2>
+<div class="slides" data-s="15,16"></div>
+<p>Điểm xuất phát là SGD:</p>
+<div class="mathbox">\[ \theta_{t+1} = \theta_t - \eta \sum_{i=1}^{B} \nabla f(x_i) \]</div>
+<p>Tổng gradient trên \(B\) ví dụ có thể tách thành \(M\) tổng nhỏ. Mỗi máy tính tổng gradient trên \(B/M\) ví dụ của mình, rồi cả nhóm cộng các tổng nhỏ lại bằng một all-reduce. Mọi máy nhận cùng một gradient, cập nhật giống nhau, nên tham số luôn giống nhau. Code cụ thể ở <a href="#l07-dp">Lecture 7</a>.</p>
+<p>Slide 15 chấm điểm cách này theo ba tiêu chí:</p>
+<ul>
+  <li><b>Tính toán</b>: tốt. Mỗi GPU xử lý \(B/M\) ví dụ.</li>
+  <li><b>Giao tiếp</b>: mỗi bước gửi khoảng <b>2 × số tham số</b> (all-reduce bằng ring, như slide 8). Con số này <i>không phụ thuộc</i> vào batch. Batch càng lớn thì mỗi GPU tính càng lâu, phần giao tiếp càng "rẻ" so với phần tính.</li>
+  <li><b>Bộ nhớ</b>: không tiết kiệm chút nào. Mọi GPU phải giữ ít nhất toàn bộ tham số.</li>
+</ul>
+<p>Slide 16: mỗi GPU giữ một bản sao mô hình. Bộ nhớ có vẻ là vấn đề. Hãy xem kỹ hơn nó tệ đến đâu.</p>
+
+<h2 id="l08-memory" data-short="16 byte mỗi tham số"><span>Bộ nhớ thực sự tệ thế nào: 16 byte cho mỗi tham số</span><span class="slide-range">slide 17</span></h2>
+<div class="slides" data-s="17"></div>
+<p>Khi huấn luyện bằng Adam với mixed precision, mỗi tham số kéo theo <b>5 bản sao</b>, tổng 16 byte:</p>
+<div class="tbl"><table>
+  <tr><th>Thứ cần lưu</th><th>Định dạng</th><th>Byte</th><th>Để làm gì</th></tr>
+  <tr><td>Tham số</td><td>BF16</td><td>2</td><td>Dùng trong forward/backward</td></tr>
+  <tr><td>Gradient</td><td>BF16</td><td>2</td><td>Kết quả backward</td></tr>
+  <tr><td>Master weights</td><td>FP32</td><td>4</td><td>Bản chính xác để cộng dồn các bước cập nhật</td></tr>
+  <tr><td>Moment bậc 1 của Adam (\(m\))</td><td>FP32 (hoặc BF16)</td><td>4 (2)</td><td>Trung bình trượt của gradient</td></tr>
+  <tr><td>Moment bậc 2 của Adam (\(v\))</td><td>FP32 (hoặc BF16)</td><td>4 (2)</td><td>Trung bình trượt của bình phương gradient</td></tr>
+</table></div>
+<p>Ba dòng cuối gọi chung là <dfn>trạng thái optimizer</dfn> (optimizer state): 12 trên 16 byte. Bài báo ZeRO gọi con số này là \(K = 12\).</p>
+<p><b>Vì sao cần master weights FP32?</b> BF16 chỉ có khoảng 3 chữ số thập phân có nghĩa. Một trọng số bằng 1,0 cộng với bước cập nhật 0,0001 vẫn ra 1,0 trong BF16: bước cập nhật biến mất. Cộng dồn trên bản FP32 thì không mất.</p>
+<div class="note num"><p>Mô hình 7,5 tỉ tham số: \(16 \times 7{,}5 = 120\) GB. Không vừa một GPU 80 GB, mà đó là <i>chưa tính activation</i>. Data parallel thường thì 64 GPU cũng như 1 GPU: mỗi GPU vẫn cần 120 GB.</p></div>
+
+<h2 id="l08-zero" data-short="ZeRO stage 1 và 2"><span>ZeRO: bỏ bớt các bản sao thừa (stage 1 và 2)</span><span class="slide-range">slide 18–23</span></h2>
+<div class="slides" data-s="18"></div>
+<p>Trong data parallel, cả \(N\) GPU giữ \(N\) bản sao <i>giống hệt nhau</i> của trạng thái optimizer. Thật lãng phí. <dfn>ZeRO</dfn> (Zero Redundancy Optimizer, Rajbhandari và cộng sự, 2019) có ý tưởng chính: <mark>chia nhỏ các phần đắt tiền ra các GPU, rồi dùng đẳng thức reduce-scatter + all-gather để không tốn thêm giao tiếp</mark>.</p>
+<p>Bảng ở slide 18, với \(\Psi\) = số tham số = 7,5 tỉ, \(K = 12\), \(N_d\) = 64 GPU:</p>
+<div class="tbl"><table>
+  <tr><th>Cấu hình</th><th>Chia nhỏ cái gì</th><th>Bộ nhớ mỗi GPU</th><th>Với số liệu ví dụ</th></tr>
+  <tr><td>Data parallel thường</td><td>Không gì cả</td><td>\((2 + 2 + K)\Psi\)</td><td>120 GB</td></tr>
+  <tr><td>Stage 1 (\(P_{os}\))</td><td>Trạng thái optimizer</td><td>\(2\Psi + 2\Psi + \frac{K\Psi}{N_d}\)</td><td>31,4 GB</td></tr>
+  <tr><td>Stage 2 (\(P_{os+g}\))</td><td>+ gradient</td><td>\(2\Psi + \frac{(2+K)\Psi}{N_d}\)</td><td>16,6 GB</td></tr>
+  <tr><td>Stage 3 (\(P_{os+g+p}\))</td><td>+ tham số</td><td>\(\frac{(2+2+K)\Psi}{N_d}\)</td><td class="hi">1,9 GB</td></tr>
+</table></div>
+<p>Chỉ riêng stage 1 đã giảm từ 120 GB xuống 31,4 GB, vì trạng thái optimizer là phần to nhất.</p>
+
+<h3>Stage 1: chia trạng thái optimizer</h3>
+<div class="slides" data-s="19,20"></div>
+<p>Mỗi GPU vẫn giữ đủ tham số và gradient, nhưng chỉ giữ \(1/N\) trạng thái optimizer. GPU \(i\) <b>chịu trách nhiệm cập nhật</b> phần tham số thứ \(i\). Một bước huấn luyện gồm (slide 20):</p>
+<ol>
+  <li>Mỗi GPU tính gradient đầy đủ trên phần batch của mình.</li>
+  <li><b>Reduce-scatter</b> gradient: GPU \(i\) nhận tổng gradient của phần thứ \(i\). Tốn khoảng 1 × số tham số giao tiếp.</li>
+  <li>Mỗi GPU cập nhật phần tham số của mình bằng gradient và trạng thái Adam của phần đó.</li>
+  <li><b>All-gather</b> tham số: mọi GPU nhận lại đủ tham số mới. Tốn thêm 1 × số tham số.</li>
+</ol>
+<div class="slides" data-s="21"></div>
+<p>So sánh ở slide 21:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>Data parallel thường</th><th>ZeRO stage 1</th></tr>
+  <tr><td>Phép giao tiếp</td><td>Một all-reduce (gradient)</td><td>Một reduce-scatter (gradient) + một all-gather (tham số)</td></tr>
+  <tr><td>Lượng giao tiếp</td><td>2 × số tham số</td><td>2 × số tham số</td></tr>
+  <tr><td>Bộ nhớ</td><td>\((4 + K) \times\) số tham số</td><td>\((4 + K/N) \times\) số tham số</td></tr>
+</table></div>
+<p>Giao tiếp y hệt, bộ nhớ giảm mạnh. Khi bị giới hạn bởi băng thông, <b>stage 1 là "miễn phí"</b>. Chỗ khác duy nhất là ta chen bước cập nhật vào giữa reduce-scatter và all-gather, đúng như đẳng thức ở slide 8.</p>
+
+<h3>Stage 2: chia luôn gradient</h3>
+<div class="slides" data-s="22,23"></div>
+<p>Được đà, chia thêm gradient. Nhưng có một khó khăn: mỗi GPU vẫn phải tính <i>gradient đầy đủ</i> (vì đây là data parallel, mỗi GPU chạy backward trên cả mô hình), mà lại không được giữ cả vector gradient trong bộ nhớ. Cách làm (slide 23):</p>
+<ol>
+  <li>Chạy backward từng layer một. Tính xong gradient của một layer thì <b>gửi ngay</b> (reduce) tới GPU chịu trách nhiệm phần đó.</li>
+  <li>Gradient nào không còn cần cho backward nữa thì <b>giải phóng ngay</b>.</li>
+  <li>Mỗi GPU cập nhật phần tham số của mình.</li>
+  <li>All-gather tham số.</li>
+</ol>
+<p>Tổng lượng giao tiếp vẫn khoảng 2 × số tham số. Nhưng thay vì một phép lớn, giờ là nhiều phép nhỏ theo từng layer, nên tốn thêm một chút chi phí đồng bộ. Vì vậy slide 27 gọi stage 2 là "gần như miễn phí".</p>
+
+<h2 id="l08-fsdp" data-short="ZeRO stage 3 = FSDP"><span>ZeRO stage 3 (FSDP): chia mọi thứ, mượn tham số khi cần</span><span class="slide-range">slide 24–27</span></h2>
+<div class="slides" data-s="24,25"></div>
+<p>Stage 3 chia nốt <b>tham số</b>. PyTorch gọi cách này là <dfn>FSDP</dfn> (Fully Sharded Data Parallel). Mỗi GPU chỉ giữ \(1/N\) của mọi thứ. Khi chạy tới layer nào, GPU <b>mượn</b> đủ tham số của layer đó từ các GPU khác, tính xong thì <b>trả lại</b> (xoá bản đầy đủ).</p>
+<p>Slide 25 là bản đơn giản. Mô hình được chia thành các "FSDP unit" (mỗi unit vài layer). Với mỗi unit:</p>
+<ul>
+  <li><b>Forward</b>: all-gather tham số → forward → xoá tham số đầy đủ.</li>
+  <li><b>Backward</b>: all-gather tham số lần nữa → backward → reduce-scatter gradient → xoá tham số đầy đủ.</li>
+  <li>Cuối bước: mỗi GPU tự cập nhật phần tham số của mình.</li>
+</ul>
+<p>Giao tiếp: 2 lần all-gather (mỗi lần 1 × số tham số) + 1 reduce-scatter = <b>3 × số tham số</b>, gấp 1,5 lần data parallel thường.</p>
+
+<div class="slides" data-s="26"></div>
+<p><b>Slide 26 — vì sao chi phí đó chấp nhận được.</b> Hai mẹo:</p>
+<ul>
+  <li><b>Mượn từng phần</b>: tham số và gradient được gửi/nhận theo từng unit rồi giải phóng ngay. Lúc nào bộ nhớ cũng chỉ chứa phần của mình cộng tham số đầy đủ của một hai unit.</li>
+  <li><b>Chồng giao tiếp lên tính toán</b>: GPU có hai "luồng" chạy song song, một luồng tính và một luồng giao tiếp. Trong hình, luồng giao tiếp (dưới) chạy AG0, AG1, AG2 <i>trước</i>, trong khi luồng tính (giữa) đang chạy FWD0, FWD1. Khi đang tính unit 0 thì đã gom sẵn tham số của unit 1. Nếu gom kịp, thời gian giao tiếp bị "giấu" hoàn toàn sau thời gian tính.</li>
+</ul>
+<p>Ví dụ trong hình là \((W_1 W_0 + W_2 W_0)x = y\), với ba unit 0, 1, 2. Ở lượt backward, luồng giao tiếp chạy RS2 (reduce-scatter gradient của unit 2), AG1, RS1, RS0.</p>
+
+<div class="slides" data-s="27"></div>
+<p><b>Slide 27 — tóm lại:</b></p>
+<ul>
+  <li><b>Stage 1</b>: 2 × số tham số, miễn phí. Nên luôn dùng.</li>
+  <li><b>Stage 2</b>: 2 × số tham số, gần như miễn phí (bỏ qua chi phí đồng bộ).</li>
+  <li><b>Stage 3</b>: 3 × số tham số, đắt hơn 1,5 lần, nhưng không tệ (bỏ qua độ trễ).</li>
+</ul>
+<p>FSDP còn rất đơn giản về mặt ý tưởng: chỉ cần "bọc" từng block của mô hình. Với PyTorch hiện nay:</p>
+<pre><code>from torch.distributed.fsdp import fully_shard
+
+for block in model.layers:
+    fully_shard(block)   # mỗi block là một FSDP unit: gom tham số khi cần, xoá khi xong
+fully_shard(model)       # phần còn lại (embedding, lớp ra…)</code></pre>
+
+<h2 id="l08-zerofit" data-short="ZeRO: vừa được bao nhiêu?"><span>ZeRO trong thực tế: mô hình cỡ nào thì vừa?</span><span class="slide-range">slide 28</span></h2>
+<div class="slides" data-s="28"></div>
+<p>Slide 28 giả sử ta dùng BF16 cho mọi thứ trừ master weights, tức <b>12 byte mỗi tham số</b>: tham số 2 + gradient 2 + master weights 4 + \(m\) 2 + \(v\) 2. Huấn luyện thuần BF16 cũng chạy được nếu dùng <dfn>Kahan summation</dfn>: giữ thêm một biến nhỏ để "nhặt lại" phần bị làm tròn mất mỗi lần cộng. Trên một máy 8 × A100 80 GB (tổng 640 GB):</p>
+<div class="tbl"><table>
+  <tr><th></th><th>Byte mỗi tham số trên mỗi GPU</th><th>Mô hình lớn nhất</th></tr>
+  <tr><td>Data parallel thường</td><td>12</td><td>80 / 12 = 6,66 tỉ</td></tr>
+  <tr><td>ZeRO stage 1</td><td>2 + 2 + 8/8 = 5</td><td>16 tỉ</td></tr>
+  <tr><td>ZeRO stage 2</td><td>2 + (2 + 8)/8 = 3,25</td><td>24,6 tỉ</td></tr>
+  <tr><td>ZeRO stage 3</td><td>12/8 = 1,5</td><td class="hi">53,3 tỉ</td></tr>
+</table></div>
+<p>Thử với ô dưới đây. Kéo số GPU lên, đổi cỡ mô hình, và xem mỗi stage tiết kiệm phần nào.</p>
+
+<div class="widget" id="zeroW">
+  <h4>Thử nghiệm: bộ nhớ mỗi GPU theo từng stage của ZeRO</h4>
+  <p style="margin:0 0 4px"><label for="zP">Số tham số: <span class="chip" id="zPv"></span></label></p>
+  <input type="range" id="zP" min="0" max="100" value="44">
+  <p style="margin:12px 0 4px"><label for="zN">Số GPU data parallel \(N_d\): <span class="chip" id="zNv"></span></label></p>
+  <input type="range" id="zN" min="0" max="10" value="6">
+  <div class="row" style="margin-top:12px">
+    <span style="font-size:13px;color:var(--muted)">Byte mỗi tham số:</span>
+    <button class="l08-btn" data-k="12" aria-pressed="true">16 (Adam FP32)</button>
+    <button class="l08-btn" data-k="8" aria-pressed="false">12 (Adam BF16)</button>
+  </div>
+  <div class="l08-mem" id="zBars"></div>
+  <div class="l08-legend">
+    <span><i style="background:var(--accent)"></i>tham số</span>
+    <span><i style="background:var(--warn);opacity:.75"></i>gradient</span>
+    <span><i style="background:var(--life);opacity:.8"></i>trạng thái optimizer</span>
+    <span><i style="background:var(--warn);width:2px"></i>80 GB (một GPU)</span>
+  </div>
+  <p class="l08-msg" id="zMsg"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('zeroW'); if (!box) return;
+  const pS = box.querySelector('#zP'), nS = box.querySelector('#zN');
+  let K = 12;
+  const NS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+  const P = v => 1e9 * Math.pow(10, v / 100 * 3);  // 1 tỉ → 1000 tỉ
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k });
+  const fB = b => b >= 1e12 ? nf(b / 1e12, 1) + ' TB' : b >= 1e9 ? nf(b / 1e9, b < 1e10 ? 1 : 0) + ' GB' : nf(b / 1e6, 0) + ' MB';
+  const fP = p => p >= 1e12 ? nf(p / 1e12, 2) + ' nghìn tỉ' : nf(p / 1e9, p < 1e10 ? 1 : 0) + ' tỉ';
+  const LIM = 80e9;
+  function upd() {
+    const p = P(+pS.value), N = NS[+nS.value];
+    box.querySelector('#zPv').textContent = fP(p);
+    box.querySelector('#zNv').textContent = N;
+    const rows = [
+      ['DP thường', 2, 2, K, '2Ψ'],
+      ['Stage 1', 2, 2, K / N, '2Ψ'],
+      ['Stage 2', 2, 2 / N, K / N, '2Ψ'],
+      ['Stage 3', 2 / N, 2 / N, K / N, '3Ψ']
+    ].map(r => ({ name: r[0], p: r[1] * p, g: r[2] * p, o: r[3] * p, c: r[4] }));
+    const max = Math.max(rows[0].p + rows[0].g + rows[0].o, LIM * 1.15);
+    box.querySelector('#zBars').innerHTML = rows.map(r => {
+      const t = r.p + r.g + r.o, w = x => (x / max * 100).toFixed(2) + '%';
+      return `<div class="l08-memrow${t > LIM ? ' bad' : ''}"><span>${r.name}</span><div class="l08-track"><i class="p" style="width:${w(r.p)}"></i><i class="g" style="width:${w(r.g)}"></i><i class="o" style="width:${w(r.o)}"></i><span class="lim" style="left:${w(LIM)}"></span></div><b>${fB(t)}</b></div>`;
+    }).join('');
+    const fit = rows.filter(r => r.p + r.g + r.o <= LIM).map(r => r.name);
+    let msg = `Mỗi bước, giao tiếp khoảng 2 × số tham số cho DP thường, stage 1 và stage 2, và 3 × số tham số cho stage 3. `;
+    if (!fit.length) msg += `Chưa cấu hình nào vừa 80 GB. Thêm GPU, hoặc phải cắt mô hình theo cách khác (pipeline/tensor parallel). `;
+    else if (fit.length === 4) msg += `Mọi cấu hình đều vừa 80 GB (chưa tính activation). `;
+    else msg += `Vừa 80 GB: <b>${fit.join(', ')}</b> (chưa tính activation). `;
+    if (N === 1) msg += 'Với 1 GPU, chia nhỏ không giúp gì: mọi dòng bằng nhau.';
+    else msg += `Để ý: stage 1 và 2 không bao giờ xuống dưới ${fB(2 * p)} (tham số BF16 đầy đủ), dù thêm bao nhiêu GPU. Chỉ stage 3 giảm tuyến tính theo số GPU.`;
+    box.querySelector('#zMsg').innerHTML = msg;
+  }
+  box.querySelectorAll('.l08-btn').forEach(b => b.addEventListener('click', () => {
+    K = +b.dataset.k; box.querySelectorAll('.l08-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  [pS, nS].forEach(s => s.addEventListener('input', upd));
+  upd();
+})();
+</script>
+<div class="note warn"><p>Các con số này <b>chưa tính activation</b>, bộ đệm tạm, và phần bộ nhớ bị phân mảnh. Mô hình thực sự huấn luyện được sẽ nhỏ hơn. Slide 30 và 44–49 sẽ cho thấy activation có thể còn lớn hơn cả trạng thái mô hình.</p></div>
+
+<h2 id="l08-dplimits" data-short="Giới hạn của data parallel"><span>Data parallel vẫn còn hai giới hạn</span><span class="slide-range">slide 29–30</span></h2>
+<div class="slides" data-s="29,30"></div>
+<p><b>Slide 29 — giới hạn về tính toán.</b> Data parallel chia batch, nên số GPU không thể vượt quá batch size (mỗi GPU cần ít nhất một ví dụ). Khi gần tới giới hạn đó, mỗi GPU tính rất ít mà vẫn phải gửi 2 × số tham số, nên giao tiếp chiếm phần lớn thời gian.</p>
+<p>Vậy cứ tăng batch là xong? Không. Biểu đồ (McCandlish và cộng sự, 2018) cho thấy lợi ích của batch lớn giảm dần. Trục ngang là batch size chia cho "noise scale" \(\mathcal{B}\) (gọi nôm na là <dfn>critical batch size</dfn>):</p>
+<ul>
+  <li>Batch nhỏ hơn \(\mathcal{B}\): gấp đôi batch thì cần một nửa số bước. Đây là "perfect scaling".</li>
+  <li>Batch lớn hơn \(\mathcal{B}\): gấp đôi batch gần như không giảm số bước nữa. Ta chỉ tốn gấp đôi tính toán cho mỗi bước mà không được gì.</li>
+</ul>
+<p><b>Slide 30 — giới hạn về bộ nhớ.</b> Stage 1 và 2 không giảm bộ nhớ của tham số. Stage 3 giảm được, nhưng <i>không giảm bộ nhớ của activation</i>. Biểu đồ (Narayanan và cộng sự, 2021) đo tốc độ đạt được trên mỗi GPU khi tăng số GPU, giữ nguyên batch tổng:</p>
+<ul>
+  <li><b>ZeRO-3</b> (xanh): tụt từ khoảng 140 xuống 45 TFLOP/s mỗi GPU.</li>
+  <li><b>PTD-P</b> (cam, tức pipeline + tensor + data parallel): giữ gần như phẳng ở khoảng 150–170.</li>
+</ul>
+<p>Vì sao ZeRO-3 tụt? Batch tổng cố định, thêm GPU thì mỗi GPU có ít token hơn để tính, nhưng mỗi GPU vẫn phải gom đủ 3 × số tham số. Tính ít đi mà giao tiếp không đổi, nên giao tiếp không còn giấu được sau tính toán. Ô thử nghiệm ở <a href="#l08-batch">slide 56</a> sẽ tính chính xác ngưỡng này. Kết luận của slide: <b>cần cách chia mô hình tốt hơn.</b></p>
+
+<h2 id="l08-modelpar" data-short="Model parallel là gì"><span>Model parallel: chia tham số, nhưng gửi activation</span><span class="slide-range">slide 31</span></h2>
+<div class="slides" data-s="31"></div>
+<p>Model parallel cũng chia tham số ra các GPU như ZeRO-3. Điểm khác:</p>
+<ul>
+  <li><b>ZeRO-3 mang tham số tới dữ liệu</b>: mỗi GPU mượn tham số của layer, tính trên dữ liệu của mình.</li>
+  <li><b>Model parallel mang dữ liệu tới tham số</b>: tham số đứng yên, activation chạy qua các GPU.</li>
+</ul>
+<p>Cách nào rẻ hơn tuỳ vào cái nào nhỏ hơn: activation (tỉ lệ với batch × độ dài chuỗi × chiều ẩn) hay tham số (tỉ lệ với chiều ẩn bình phương). Ba kiểu model parallel tương ứng với ba cách cắt mô hình: <b>pipeline</b> (theo chiều sâu), <b>tensor</b> (theo chiều rộng, kèm sequence parallel), và <b>expert</b> (theo các expert của MoE).</p>
+
+<h2 id="l08-pp" data-short="Pipeline parallel"><span>Pipeline parallel: cắt theo chiều sâu</span><span class="slide-range">slide 32–36</span></h2>
+<div class="slides" data-s="32,33"></div>
+<p><b>Slide 32</b>: chia các layer cho các GPU. GPU 0 giữ layer 0, GPU 1 giữ layer 1… Lượt forward chuyền activation sang phải, lượt backward chuyền gradient sang trái.</p>
+<p><b>Slide 33 — vấn đề</b>: với \(n\) GPU, mỗi GPU chỉ làm việc \(1/n\) thời gian. GPU 0 tính \(F_0\) xong thì ngồi chờ cho tới khi lượt backward quay về. Hệt như dây chuyền chỉ có một món hàng: người sơ chế xong thì đứng không trong lúc người nấu và người bày đĩa làm.</p>
+
+<div class="slides" data-s="34"></div>
+<p><b>Slide 34 — lời giải: chia batch thành nhiều <dfn>micro-batch</dfn></b> (ở đây là 4). GPU 0 tính xong micro-batch 0 thì gửi đi và tính ngay micro-batch 1. \(F_{i,j}\) nghĩa là forward của micro-batch \(j\) trên GPU \(i\). Phần ô trống ở giữa là <dfn>bong bóng</dfn> (bubble): GPU không có việc.</p>
+<p>Slide cho tỉ lệ thời gian bong bóng so với thời gian làm việc có ích:</p>
+<div class="mathbox">\[ \frac{\text{bong bóng}}{\text{có ích}} = \frac{n_\text{stages} - 1}{n_\text{micro}} \]</div>
+<p>Lecture 7 viết cùng ý đó theo cách khác: phần thời gian bị phí trên <i>tổng</i> thời gian là \(\frac{N-1}{m+N-1}\). Với 4 stage và 4 micro-batch: tỉ lệ \(3/4\), tức \(3/7 \approx 43\%\) tổng thời gian bị phí. Muốn bong bóng nhỏ thì cần <b>nhiều micro-batch, tức batch lớn</b>. Ô thử nghiệm lịch chạy pipeline ở <a href="#l07-pp">Lecture 7</a> vẽ đúng hình này.</p>
+
+<div class="slides" data-s="35,36"></div>
+<p><b>Slide 35 — pipeline trông tệ, vậy sao vẫn dùng?</b></p>
+<ol>
+  <li><b>Tiết kiệm bộ nhớ</b> so với data parallel: mỗi GPU chỉ giữ \(1/p\) số layer.</li>
+  <li><b>Giao tiếp rất nhẹ</b> so với FSDP: chỉ gửi activation cỡ \(b \times s \times h\) (micro-batch × độ dài chuỗi × chiều ẩn), và chỉ gửi cho <b>một hàng xóm</b> (point-to-point), không cần cả nhóm cùng tham gia.</li>
+</ol>
+<p>Vì vậy pipeline thường được đặt trên <b>đường nối chậm</b> (giữa các node) để chia bộ nhớ mà không cần nhiều băng thông.</p>
+<div class="note num"><p>GPT-3 175B: \(s = 2048\), \(h = 12288\), \(b = 1\). Activation gửi qua mỗi ranh giới pipeline: \(2048 \times 12288 \times 2\) byte \(\approx 50\) MB. So với FSDP: gom tham số của <i>một</i> layer là \(12h^2 \times 2\) byte \(\approx 3{,}6\) GB. Chênh nhau khoảng 70 lần.</p></div>
+<p><b>Slide 36</b>: hiệu năng pipeline phụ thuộc mạnh vào batch. Với batch 128, tăng pipeline từ 1 lên 8 stage gần như không mất gì (175 → 160 TFLOP/s). Với batch 8, tụt từ 165 xuống còn 87: không đủ micro-batch để lấp bong bóng.</p>
+
+<h2 id="l08-ppadv" data-short="Pipeline nâng cao"><span>Pipeline nâng cao: interleaved và zero bubble</span><span class="slide-range">slide 37–38</span></h2>
+<div class="slides" data-s="37"></div>
+<p><b>Slide 37 — đổi băng thông lấy hiệu suất.</b> Hình trên là lịch <dfn>1F1B</dfn> (one forward, one backward): sau vài forward khởi động, mỗi GPU xen kẽ một forward rồi một backward. Bong bóng giống kiểu GPipe, nhưng mỗi GPU chỉ phải giữ activation của tối đa \(p\) micro-batch đang dở, thay vì cả \(m\) micro-batch.</p>
+<p>Hình dưới là lịch <dfn>interleaved</dfn> (Narayanan 2021): mỗi GPU giữ <b>nhiều nhóm layer không liền nhau</b>. Ví dụ với 4 GPU và 16 layer, GPU 1 giữ layer 1–2 và 9–10 thay vì 1–4. Mỗi stage nhỏ hơn nên dây chuyền đầy nhanh hơn: bong bóng giảm \(v\) lần (\(v\) = số nhóm trên mỗi GPU). Cái giá là mỗi micro-batch phải đi qua mạng nhiều lần hơn: giao tiếp tăng \(v\) lần.</p>
+
+<div class="slides" data-s="38"></div>
+<p><b>Slide 38 — "zero bubble" pipeline</b> (Qi và cộng sự, 2023). Ý tưởng: tách backward thành hai phần. Với một layer \(z = Wx\), \(y = \sigma(z)\):</p>
+<ul>
+  <li><b>B</b>: tính gradient theo activation, \(\nabla_z L\) và \(\nabla_x L = W^\top \nabla_z L\). Stage phía trước <b>đang chờ</b> \(\nabla_x L\), nên phải tính ngay.</li>
+  <li><b>W</b>: tính gradient theo trọng số, \(\nabla_W L = \nabla_z L\, x^\top\). Chỉ cần có trước bước cập nhật tham số, nên <b>làm lúc nào cũng được</b>.</li>
+</ul>
+<p>Lịch ZB-H1 và ZB-H2 nhét các ô W vào chỗ bong bóng, gần như xoá hết bong bóng. DeepSeek-V2 dùng pipeline zero bubble 16 stage, DeepSeek-V3 dùng biến thể DualPipe.</p>
+
+<h2 id="l08-tp" data-short="Tensor parallel"><span>Tensor parallel: cắt theo chiều rộng</span><span class="slide-range">slide 39–43</span></h2>
+<div class="slides" data-s="39"></div>
+<p>Pipeline cắt mô hình theo chiều sâu. Cắt theo chiều rộng thì sao? <b>Slide 39</b> dựa trên một quan sát đơn giản về nhân ma trận: chia ma trận thành các khối, nhân từng khối, rồi cộng các tổng con lại.</p>
+<div class="mathbox">\[ XA = \begin{bmatrix} X_1 & X_2 \end{bmatrix} \begin{bmatrix} A_1 \\ A_2 \end{bmatrix} = X_1 A_1 + X_2 A_2 \]</div>
+<p>Có hai cách cắt ma trận trọng số \(A\), và mỗi cách cần một phép collective khác nhau để ghép kết quả. Thử ở ô dưới (dùng đúng các con số trong slide 39):</p>
+
+<div class="widget" id="tpW">
+  <h4>Thử nghiệm: cắt ma trận trọng số cho 2 GPU</h4>
+  <div class="row">
+    <button class="l08-btn" data-m="row" aria-pressed="true">Cắt A theo hàng (như slide 39)</button>
+    <button class="l08-btn" data-m="col" aria-pressed="false">Cắt A theo cột</button>
+    <button class="l08-btn" id="tpRnd">Đổi số ngẫu nhiên</button>
+  </div>
+  <div class="l08-mats" id="tpMats"></div>
+  <p class="l08-msg" id="tpMsg"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('tpW'); if (!box) return;
+  let mode = 'row';
+  let X = [[0, 1, 2, 3], [4, 5, 6, 7]], A = [[10, 14], [11, 15], [12, 16], [13, 17]];
+  const mul = (P, Q) => P.map(r => Q[0].map((_, j) => r.reduce((s, v, k) => s + v * Q[k][j], 0)));
+  const mat = (M, cls, lab, dim) => `<div><div class="l08-mat" style="grid-template-columns:repeat(${M[0].length},auto)">${M.map((r, i) => r.map((v, j) => `<i class="${cls}${dim && dim(i, j) ? ' dim' : ''}">${v}</i>`).join('')).join('')}</div><span class="l08-matlab">${lab}</span></div>`;
+  const op = s => `<span class="op">${s}</span>`;
+  function upd() {
+    const Y = mul(X, A);
+    let h = '', msg = '';
+    if (mode === 'row') {
+      const X1 = X.map(r => r.slice(0, 2)), X2 = X.map(r => r.slice(2)), A1 = A.slice(0, 2), A2 = A.slice(2);
+      const Y1 = mul(X1, A1), Y2 = mul(X2, A2);
+      h += `<div class="l08-gpu"><h5>GPU 0</h5><div class="l08-eq">${mat(X1, 'x', 'X₁ (cột 1–2)')}${op('·')}${mat(A1, 'a', 'A₁ (hàng 1–2)')}${op('=')}${mat(Y1, 'y', 'Y₁ (tổng con)')}</div></div>`;
+      h += `<div class="l08-gpu"><h5>GPU 1</h5><div class="l08-eq">${mat(X2, 'x', 'X₂ (cột 3–4)')}${op('·')}${mat(A2, 'a', 'A₂ (hàng 3–4)')}${op('=')}${mat(Y2, 'y', 'Y₂ (tổng con)')}</div></div>`;
+      h += `<div class="l08-gpu"><h5>All-reduce (cộng)</h5><div class="l08-eq">${mat(Y1, 'y', 'Y₁')}${op('+')}${mat(Y2, 'y', 'Y₂')}${op('=')}${mat(Y, 'y', 'Y = XA')}</div></div>`;
+      msg = `<b>Cắt theo hàng (row-parallel).</b> Mỗi GPU giữ một nửa số hàng của A và chỉ cần nửa cột tương ứng của X. Kết quả trên mỗi GPU có <b>đúng hình dạng của Y</b> nhưng chỉ là <b>tổng con</b>: ${Y1[0][0]} + ${Y2[0][0]} = ${Y[0][0]}. Phải <b>all-reduce (cộng)</b> mới ra Y. Lưu ý: không thể áp GeLU lên Y₁ và Y₂ riêng rồi cộng, vì GeLU(a) + GeLU(b) ≠ GeLU(a + b).`;
+    } else {
+      const A1 = A.map(r => [r[0]]), A2 = A.map(r => [r[1]]);
+      const Y1 = mul(X, A1), Y2 = mul(X, A2);
+      h += `<div class="l08-gpu"><h5>GPU 0</h5><div class="l08-eq">${mat(X, 'x', 'X (đủ)')}${op('·')}${mat(A1, 'a', 'A₁ (cột 1)')}${op('=')}${mat(Y1, 'y', 'Y₁ (cột 1)')}</div></div>`;
+      h += `<div class="l08-gpu"><h5>GPU 1</h5><div class="l08-eq">${mat(X, 'x', 'X (đủ)')}${op('·')}${mat(A2, 'a', 'A₂ (cột 2)')}${op('=')}${mat(Y2, 'y', 'Y₂ (cột 2)')}</div></div>`;
+      h += `<div class="l08-gpu"><h5>All-gather (ghép)</h5><div class="l08-eq">${mat(Y1, 'y', 'Y₁')}${op('|')}${mat(Y2, 'y', 'Y₂')}${op('=')}${mat(Y, 'y', 'Y = XA')}</div></div>`;
+      msg = `<b>Cắt theo cột (column-parallel).</b> Mỗi GPU cần <b>cả X</b>, giữ một nửa số cột của A, và ra <b>các cột hoàn chỉnh</b> của Y. Không cần cộng gì: ghép lại bằng all-gather. Hơn nữa, các cột đã hoàn chỉnh nên áp GeLU lên từng phần được luôn, <b>chưa cần giao tiếp</b>. Megatron tận dụng đúng điều này: cắt cột ở ma trận thứ nhất, cắt hàng ở ma trận thứ hai (xem slide 40 bên dưới).`;
+    }
+    box.querySelector('#tpMats').innerHTML = h;
+    box.querySelector('#tpMsg').innerHTML = msg;
+  }
+  box.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.m; box.querySelectorAll('[data-m]').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  box.querySelector('#tpRnd').addEventListener('click', () => {
+    const r = () => Math.floor(Math.random() * 10);
+    X = X.map(row => row.map(r)); A = A.map(row => row.map(r)); upd();
+  });
+  upd();
+})();
+</script>
+
+<div class="slides" data-s="40,41"></div>
+<p><b>Slide 40 — tensor parallel kiểu Megatron cho MLP.</b> MLP có hai ma trận: \(Y = \text{GeLU}(XA)\), \(Z = \text{Dropout}(YB)\).</p>
+<ul>
+  <li>Cắt \(A\) theo <b>cột</b>: \(A = [A_1, A_2]\). GPU \(i\) tính \(Y_i = \text{GeLU}(XA_i)\). GeLU tính riêng từng phần tử nên làm được ngay, không cần giao tiếp.</li>
+  <li>Cắt \(B\) theo <b>hàng</b>: \(B = \begin{bmatrix} B_1 \\ B_2 \end{bmatrix}\). GPU \(i\) đã có đúng \(Y_i\) cần thiết để tính tổng con \(Z_i = Y_i B_i\). Cộng \(Z_1 + Z_2\) bằng một all-reduce.</li>
+</ul>
+<p>Hai khối \(f\) và \(g\) trong hình đánh dấu chỗ giao tiếp:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>\(f\) (đầu khối)</th><th>\(g\) (cuối khối)</th></tr>
+  <tr><td>Lượt forward</td><td>Không làm gì (mọi GPU đã có X)</td><td><b>All-reduce</b> (cộng các \(Z_i\))</td></tr>
+  <tr><td>Lượt backward</td><td><b>All-reduce</b> (gradient theo X đến từ cả hai nhánh, phải cộng lại)</td><td>Không làm gì</td></tr>
+</table></div>
+<p>Mỗi MLP chỉ tốn <b>một all-reduce ở forward và một ở backward</b>. So với <a href="#l07-tp">Lecture 7</a>, nơi code all-gather sau <i>mỗi</i> ma trận, cặp cột → hàng của Megatron giảm giao tiếp đi một nửa.</p>
+<p><b>Slide 41 — cả khối transformer.</b> Attention cũng cắt được theo cùng kiểu: chia các head cho các GPU. \(Q, K, V\) cắt theo cột (mỗi GPU giữ trọn một số head), mỗi head tính attention độc lập, rồi ma trận đầu ra cắt theo hàng và all-reduce. Tóm lại:</p>
+<ul>
+  <li><b>Cắt cột</b>: \(Q, K, V\), up-projection của MLP.</li>
+  <li><b>Cắt hàng</b>: đầu ra attention, down-projection của MLP.</li>
+  <li><b>Sao chép ở mọi GPU</b>: layer norm, router của MoE, và các phần nhỏ khác.</li>
+</ul>
+
+<div class="slides" data-s="42,43"></div>
+<p><b>Slide 42 — tensor parallel đặt ở đâu?</b> Trên GPU, tensor parallel gần như luôn ở <b>trong một node</b> (tối đa 8 GPU), vì cần đường NVLink nhanh. Biểu đồ đo một mô hình 3B: từ TP 2 lên 4 mất 10,8% tốc độ mỗi GPU, từ 4 lên 8 mất 12,2%. Nhưng từ 8 lên 16, tức vượt ra ngoài node, mất tới 42,7%, và lên 32 mất thêm 65,6%.</p>
+<p><b>Slide 43 — so với pipeline.</b></p>
+<ul>
+  <li><b>Ưu</b>: không có bong bóng (mạng đủ nhanh thì không ai phải chờ ai). Dễ "bọc" vào mô hình mà không phải đổi nhiều hạ tầng. Không cần batch lớn.</li>
+  <li><b>Nhược</b>: giao tiếp <i>nhiều hơn hẳn</i> pipeline.
+    <ul>
+      <li>Pipeline: \(bsh\) mỗi micro-batch, point-to-point.</li>
+      <li>Tensor: \(8bsh\left(\frac{n-1}{n}\right)\) <i>mỗi layer</i>, dạng all-reduce.</li>
+    </ul>
+  </li>
+</ul>
+<p>Số 8 đến từ đâu? Mỗi layer có 4 all-reduce: 2 ở forward (sau attention, sau MLP) và 2 ở backward. Mỗi all-reduce một tensor \(bsh\) bằng ring tốn \(2\frac{n-1}{n}bsh\). Tổng: \(4 \times 2 = 8\).</p>
+<div class="note num"><p>GPT-3 175B (\(h = 12288\), 96 layer), một chuỗi 2048 token, TP = 8: mỗi layer gửi \(8 \times 2048 \times 12288 \times \frac{7}{8} \times 2\) byte \(\approx 350\) MB. Cả 96 layer: khoảng 34 GB cho mỗi chuỗi. Qua NVLink 450 GB/s mất khoảng 75 ms, trong khi phần tính của chuỗi đó trên mỗi GPU mất khoảng 0,5 giây: chậm thêm khoảng 15%, khớp với biểu đồ slide 42. Qua Infiniband 50 GB/s thì mất 0,7 giây, <b>lâu hơn cả phần tính</b>.</p></div>
+<p>Kết luận: <mark>dùng tensor parallel khi có đường nối độ trễ thấp, băng thông cao.</mark></p>
+
+<h2 id="l08-act" data-short="Activation & sequence parallel"><span>Bộ nhớ activation, và sequence parallel</span><span class="slide-range">slide 44–49</span></h2>
+<div class="slides" data-s="44,45"></div>
+<p><b>Slide 44 — bộ nhớ thay đổi theo thời gian.</b> Hình chụp bộ nhớ GPU trong vài bước huấn luyện:</p>
+<ul>
+  <li><b>Tham số</b> (xanh lá) cố định suốt quá trình.</li>
+  <li><b>Trạng thái optimizer</b> (vàng) xuất hiện sau bước đầu tiên, khi Adam tạo \(m\) và \(v\).</li>
+  <li><b>Activation</b> (đỏ) phình lên trong lượt forward (lưu lại để dùng cho backward) rồi xẹp xuống trong lượt backward.</li>
+  <li><b>Gradient</b> (xanh dương) xuất hiện trong lượt backward.</li>
+</ul>
+<p>Đỉnh bộ nhớ thường nằm ở cuối forward, đầu backward. Đây là phần ta chưa tính tới.</p>
+<p><b>Slide 45</b> (Korthikanti và cộng sự, 2022): với các mô hình 22B đến 1T đã chia bằng tensor và pipeline parallel, tham số và trạng thái optimizer (xanh dương) chỉ khoảng 30–45 GB mỗi GPU. Nhưng activation (xanh lá) đẩy tổng lên 105–165 GB, vượt xa 80 GB. Kỹ thuật của bài báo ("present work") đưa tất cả về dưới 60 GB.</p>
+
+<div class="slides" data-s="46,47"></div>
+<p><b>Slide 46 — activation của mỗi layer</b>, nếu lưu hết (tính bằng byte, số 16 bit):</p>
+<div class="mathbox">\[ \text{Activation mỗi layer} = sbh\left(34 + 5\frac{as}{h}\right) \]</div>
+<p>Với \(s\) = độ dài chuỗi, \(b\) = cỡ micro-batch, \(h\) = chiều ẩn, \(a\) = số head. Con số 34 và 5 đến từ việc đếm từng tensor phải giữ lại cho backward:</p>
+<div class="tbl"><table>
+  <tr><th>Phần</th><th>Những gì phải lưu</th><th>Byte</th></tr>
+  <tr><td>Attention</td><td>Input của Q/K/V (\(2sbh\)), Q và K cho \(QK^\top\) (\(4sbh\)), V (\(2sbh\)), input của ma trận đầu ra (\(2sbh\)), mặt nạ dropout cuối (\(sbh\))</td><td>\(11sbh\)</td></tr>
+  <tr><td>Ma trận attention</td><td>Kết quả softmax (\(2as^2b\)), mặt nạ dropout (\(as^2b\)), kết quả dropout (\(2as^2b\))</td><td>\(5as^2b\)</td></tr>
+  <tr><td>MLP</td><td>Input của ma trận 1 (\(2sbh\)), input GeLU (\(8sbh\)), input ma trận 2 (\(8sbh\)), mặt nạ dropout (\(sbh\))</td><td>\(19sbh\)</td></tr>
+  <tr><td>Hai layer norm</td><td>Input của mỗi cái (\(2sbh\))</td><td>\(4sbh\)</td></tr>
+</table></div>
+<p>Cộng lại: \(34sbh + 5as^2b = sbh(34 + 5as/h)\). Phần \(5as/h\) đến từ ma trận attention \(s \times s\), tăng theo bình phương độ dài chuỗi. Giống <a href="#l05-recompute">FlashAttention</a>, ta có thể bỏ hẳn phần này bằng cách <b>tính lại</b> ở lượt backward thay vì lưu.</p>
+<p><b>Slide 47 — dưới tensor parallel</b> với \(t\) GPU:</p>
+<div class="mathbox">\[ sbh\left(10 + \frac{24}{t} + 5\frac{as}{ht}\right) \]</div>
+<p>Tensor parallel chia được các phần nằm <i>trong</i> vùng đã cắt (attention, MLP). Còn lại số <b>10</b> không chia được: input của hai layer norm (\(4sbh\)), hai mặt nạ dropout (\(2sbh\)), và input của khối attention và MLP (\(4sbh\)). Các tensor này nằm ngoài vùng tensor parallel, nên GPU nào cũng giữ một bản đầy đủ. Mô hình càng to (\(h\) càng lớn), phần này càng lớn, và thêm GPU không giúp được.</p>
+
+<div class="slides" data-s="48,49"></div>
+<p><b>Slide 48 — sequence parallel.</b> Nhận xét: phần \(10sbh\) toàn là các phép tính <b>riêng từng token</b> (layer norm, dropout, cộng residual). Token 1 không cần biết token 2. Vậy chia chúng <b>theo chiều chuỗi</b> cho \(t\) GPU: mỗi GPU giữ \(s/t\) token.</p>
+<p>Ở ranh giới giữa vùng sequence parallel và vùng tensor parallel cần đổi cách chia:</p>
+<ul>
+  <li>\(g\) (vào vùng tensor parallel): <b>all-gather</b> theo chiều chuỗi, vì mỗi GPU cần cả chuỗi để nhân với lát ma trận của mình.</li>
+  <li>\(\bar g\) (ra khỏi vùng tensor parallel): <b>reduce-scatter</b>. Cộng các tổng con như trước, nhưng mỗi GPU chỉ giữ phần token của mình.</li>
+  <li>Ở lượt backward thì đổi ngược lại.</li>
+</ul>
+<p>Lúc trước \(g\) là một all-reduce. Giờ nó tách thành reduce-scatter + all-gather, và đẳng thức ở slide 8 cho biết <mark>tổng giao tiếp không đổi</mark>. Ta được chia bộ nhớ mà gần như không tốn thêm gì.</p>
+<p><b>Slide 49 — ghép lại</b>, activation mỗi layer:</p>
+<div class="tbl"><table>
+  <tr><th>Cấu hình</th><th>Activation mỗi layer</th></tr>
+  <tr><td>Không song song</td><td>\(sbh\left(34 + 5\frac{as}{h}\right)\)</td></tr>
+  <tr><td>Tensor parallel</td><td>\(sbh\left(10 + \frac{24}{t} + 5\frac{as}{ht}\right)\)</td></tr>
+  <tr><td>Tensor + sequence parallel</td><td>\(sbh\left(\frac{34}{t} + 5\frac{as}{ht}\right)\)</td></tr>
+  <tr><td>Tensor parallel + tính lại có chọn lọc</td><td>\(sbh\left(10 + \frac{24}{t}\right)\)</td></tr>
+  <tr><td>Tensor + sequence parallel + tính lại có chọn lọc</td><td class="hi">\(sbh\,\frac{34}{t}\)</td></tr>
+</table></div>
+<p><dfn>Tính lại có chọn lọc</dfn> (selective recomputation): chỉ tính lại phần ma trận attention (tốn ít FLOP mà chiếm nhiều bộ nhớ), phần còn lại vẫn lưu. Dòng cuối cùng giảm tuyến tính hoàn toàn theo \(t\).</p>
+
+<div class="widget" id="actW">
+  <h4>Thử nghiệm: activation trên mỗi GPU theo từng cấu hình</h4>
+  <div class="l08-form">
+    <label>Mô hình<select id="aM">
+      <option value="64,6144,48">22B</option>
+      <option value="96,12288,96" selected>175B (GPT-3)</option>
+      <option value="128,20480,105">530B</option>
+      <option value="160,25600,128">1T</option>
+    </select></label>
+    <label>Độ dài chuỗi \(s\)<select id="aS"><option selected>2048</option><option>8192</option><option>32768</option><option>131072</option></select></label>
+    <label>Micro-batch \(b\)<select id="aB"><option selected>1</option><option>2</option><option>4</option></select></label>
+    <label>Tensor parallel \(t\)<select id="aT"><option>1</option><option>2</option><option>4</option><option selected>8</option></select></label>
+  </div>
+  <div class="l08-bars" id="aBars"></div>
+  <div class="l08-legend"><span><i style="background:var(--warn);width:2px"></i>80 GB (một GPU)</span></div>
+  <p class="l08-msg" id="aMsg"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('actW'); if (!box) return;
+  const g = id => box.querySelector('#' + id).value;
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k });
+  const fB = b => b >= 1e12 ? nf(b / 1e12, 1) + ' TB' : b >= 1e9 ? nf(b / 1e9, b < 1e10 ? 1 : 0) + ' GB' : nf(b / 1e6, 0) + ' MB';
+  const LIM = 80e9;
+  function upd() {
+    const [a, h, L] = g('aM').split(',').map(Number), s = +g('aS'), b = +g('aB'), t = +g('aT');
+    const sbh = s * b * h, q = 5 * a * s / h;
+    const rows = [
+      ['Không song song', 34 + q],
+      ['Tensor parallel', 10 + 24 / t + q / t],
+      ['Tensor + sequence parallel', 34 / t + q / t],
+      ['Tensor + tính lại chọn lọc', 10 + 24 / t],
+      ['Tensor + sequence + tính lại', 34 / t]
+    ].map(r => ({ n: r[0], per: sbh * r[1], tot: sbh * r[1] * L }));
+    const max = Math.max(Math.min(rows[0].tot, LIM * 4), LIM * 1.1);  // thanh quá dài bị cắt ở mép
+    box.querySelector('#aBars').innerHTML = rows.map(r =>
+      `<div class="l08-bar ${r.tot > LIM ? 'bad' : 'good'}"><span>${r.n}</span><div class="track"><div class="fill" style="width:${Math.min(100, r.tot / max * 100).toFixed(2)}%"></div><span class="lim" style="left:${(LIM / max * 100).toFixed(2)}%"></span></div><b>${fB(r.tot)}</b></div>`).join('');
+    const att = q / (34 + q);
+    box.querySelector('#aMsg').innerHTML =
+      `Mỗi layer (cấu hình tốt nhất): ${fB(rows[4].per)}. Thanh là tổng của ${L} layer, vì với lịch 1F1B, stage pipeline đầu tiên giữ activation của ≤ p micro-batch, mỗi micro-batch L/p layer, cộng lại vẫn khoảng L layer, <b>dù pipeline có bao nhiêu stage</b>. ` +
+      `Ở độ dài ${s.toLocaleString('vi-VN')}, ma trận attention chiếm ${Math.round(att * 100)}% activation khi không song song: chuỗi càng dài, tính lại attention càng đáng giá.` +
+      (t === 1 ? ' Với t = 1, tensor và sequence parallel không chia được gì: chỉ còn tác dụng của việc tính lại.' : '');
+  }
+  box.querySelectorAll('select').forEach(s => s.addEventListener('change', upd));
+  upd();
+})();
+</script>
+<div class="note warn"><p>Đây là ước lượng theo công thức của slide: chưa tính lớp embedding, lớp đầu ra, bộ đệm tạm, và các yếu tố phụ của lịch pipeline. Số thật trong bài báo cao hơn một chút. Ví dụ, với 175B, \(s = 2048\), \(t = 8\), ô trên cho khoảng 56 GB ở dòng "Tensor parallel", còn slide 45 ghi khoảng 67 GB.</p></div>
+
+<h2 id="l08-ep" data-short="Expert parallel"><span>Expert parallel: chia các expert, chuyển token tới đúng chỗ</span><span class="slide-range">slide 50–53</span></h2>
+<div class="slides" data-s="50,51"></div>
+<p><b>Slide 50.</b> Nhắc lại từ <a href="#l04-moe-what">Lecture 4</a>: lớp MoE có nhiều expert (mỗi expert là một MLP), và router chọn vài expert cho mỗi token. <dfn>Expert parallel</dfn> (EP) không cắt nhỏ phép nhân ma trận, mà đặt <b>các expert khác nhau lên các GPU khác nhau</b>, rồi chuyển token tới đúng GPU:</p>
+<ol>
+  <li>Router (Gating) quyết định mỗi token đi tới expert nào.</li>
+  <li><b>All-to-all dispatch</b>: gửi token tới GPU đang giữ expert đó.</li>
+  <li>Mỗi GPU chạy expert của mình trên các token vừa nhận.</li>
+  <li><b>All-to-all combine</b>: gửi kết quả về GPU ban đầu của token.</li>
+</ol>
+<p>Phần attention vẫn chạy kiểu data parallel trên từng GPU. Như bếp có đầu bếp chuyên món: đơn nào có món chiên thì chuyển sang người chiên, chiên xong trả về bàn ban đầu.</p>
+<p><b>Slide 51 — vì sao dùng EP cho các lớp expert?</b> Với MLP, EP <i>gần giống</i> tensor parallel: cần băng thông cao và cũng chia nhỏ activation. Nhưng hướng dẫn của Megatron (NVIDIA) khuyên dùng EP thay cho TP ở các lớp expert, vì:</p>
+<ul>
+  <li><b>Phép nhân ma trận hiệu quả hơn</b>: mỗi GPU nhân ma trận nguyên của expert, to hơn lát ma trận của TP, nên GPU chạy hiệu quả hơn.</li>
+  <li><b>Giao tiếp ít hơn</b> TP ở lớp MoE.</li>
+  <li><b>Đồ thị tính toán đơn giản hơn</b>, dễ chồng giao tiếp lên tính toán.</li>
+  <li>Khi số GPU EP bằng số expert, mỗi GPU giữ đúng một expert, khỏi phải sắp xếp lại token trên máy.</li>
+</ul>
+<p>Ví dụ: với Mixtral 8x7B, EP 8 × TP 1 nhanh hơn EP 4 × TP 2. Nói chung, cắt nhỏ phép nhân ma trận làm giảm hiệu quả so với chuyển activation đi.</p>
+
+<div class="slides" data-s="52,53"></div>
+<p><b>Slide 52 — kết hợp EP với các kiểu khác.</b> Về lý thuyết thì ghép được EP với mọi kiểu khác. Nhưng có hai lưu ý:</p>
+<ul>
+  <li><b>EP thường dùng chung GPU với DP</b>, nên EP ≤ DP. Cùng một nhóm GPU: ở phần attention, mỗi GPU giữ bản sao và xử lý batch riêng (DP). Đến lớp MoE, chính các GPU đó lại mỗi người giữ một nhóm expert khác nhau (EP).</li>
+  <li><b>DP và TP có thể "đá" nhau</b>, làm giảm hiệu suất.</li>
+</ul>
+<p>Hình (trích từ một bài tổng quan về MoE) vẽ bốn kiểu ghép: (a) data + expert, (b) data + expert + tensor, (c) data + expert + pipeline, (d) expert + tensor.</p>
+<p><b>Slide 53 — tách cách chia attention khỏi cách chia expert.</b> MoE chỉ áp dụng cho MLP, không cho attention. Điều này gây lệch nhau:</p>
+<ul>
+  <li>Attention muốn <b>TP cao</b> (vì không dùng EP được).</li>
+  <li>Lớp MoE muốn <b>TP thấp</b> (thà dùng EP còn hơn TP).</li>
+</ul>
+<p>Megatron giải quyết bằng <dfn>MoE Parallel Folding</dfn>: cùng một tập GPU nhưng nhóm theo hai kiểu khác nhau. Lớp attention dùng TP × CP × DP × PP, lớp MoE dùng ETP × EP × EDP × PP (expert-TP, expert-parallel, expert-DP). Ví dụ 64 GPU: attention có thể dùng TP 8 × DP 8, còn lớp MoE dùng ETP 1 × EP 8 × EDP 8.</p>
+
+<h2 id="l08-cp" data-short="Context parallel"><span>Context parallel (ring attention): chia một chuỗi rất dài</span><span class="slide-range">slide 54</span></h2>
+<div class="slides" data-s="54"></div>
+<p>Khi chuỗi rất dài (ví dụ 128K hay 1 triệu token), activation của một chuỗi đã không vừa một GPU. <dfn>Context parallel</dfn> chia chuỗi thành các khối, mỗi GPU giữ một khối query:</p>
+<ul>
+  <li>Mỗi GPU tính attention của khối query của mình với khối K, V đang có, bằng cách tính theo từng khối và online softmax như <a href="#l05-online-softmax">FlashAttention</a>.</li>
+  <li>Đồng thời gửi khối K, V cho GPU bên cạnh và nhận khối mới từ GPU bên kia (các mũi tên xám "Key Value Block").</li>
+  <li>Sau \(N\) vòng, mỗi khối query đã gặp đủ mọi khối K, V. Gửi và tính chạy song song, nên giao tiếp được giấu sau tính toán.</li>
+</ul>
+<p>Khác với sequence parallel (chỉ chia các phép tính từng token như layer norm, dropout), context parallel chia <b>cả attention</b>, phần duy nhất mà các token phải "nhìn" nhau.</p>
+
+<h2 id="l08-recap" data-short="Bảng tổng kết Phần 2"><span>Bảng tổng kết các kiểu song song</span><span class="slide-range">slide 55</span></h2>
+<div class="slides" data-s="55"></div>
+<div class="tbl"><table>
+  <tr><th>Kiểu</th><th>Giao tiếp / đồng bộ</th><th>Tham số mỗi GPU</th><th>Activation mỗi GPU</th><th>Băng thông chính tốn vào</th><th>Tăng batch tổng?</th><th>Dễ dùng?</th></tr>
+  <tr><td><b>DDP / ZeRO-1</b></td><td>All-reduce gradient mỗi bước</td><td class="hi">Không giảm (ZeRO-1 chỉ chia trạng thái optimizer)</td><td>Không giảm</td><td>Gradient, cỡ số tham số</td><td>Có, tuyến tính theo DP</td><td>Rất dễ</td></tr>
+  <tr><td><b>FSDP / ZeRO-3</b></td><td>All-reduce gradient, chồng lên tính toán được</td><td>~1/DP cho tham số, gradient, trạng thái</td><td>Không giảm</td><td>Tham số, cỡ số tham số, nhiều hơn DDP</td><td>Có, tuyến tính theo DP</td><td>Vừa phải</td></tr>
+  <tr><td><b>Pipeline</b></td><td>Activation giữa các layer, có bong bóng</td><td>~1/PP</td><td>Tuỳ bộ đệm pipeline</td><td>Activation giữa các stage</td><td>Không, nhưng cần nhiều micro-batch</td><td>Khó</td></tr>
+  <tr><td><b>Tensor</b></td><td>Giao tiếp activation <b>chặn</b> tính toán</td><td>~1/TP cho các ma trận bị cắt</td><td>~1/TP (cần sequence parallel)</td><td>Collective cỡ activation ở mỗi block</td><td>Không</td><td>Khó</td></tr>
+  <tr><td><b>Sequence / Context</b></td><td>Trao đổi các mảnh chuỗi ở mỗi layer</td><td>Không giảm</td><td>~1/SP hoặc 1/CP</td><td>Activation / KV</td><td>Không</td><td>Khó</td></tr>
+  <tr><td><b>Expert (MoE)</b></td><td>All-to-all chuyển token ở mỗi lớp MoE</td><td>~1/EP, chỉ cho trọng số expert</td><td>Không giảm</td><td>All-to-all chuyển token</td><td>Không, nhưng cần đủ token cho mỗi expert</td><td>Khó</td></tr>
+</table></div>
+<p>Đọc theo cột: không kiểu nào giảm được mọi thứ. Chỉ data parallel giúp <b>tăng batch</b> (tức tăng tính toán), còn các kiểu khác giúp <b>chia bộ nhớ</b>. Đó là lý do Phần 3 luôn ghép nhiều kiểu.</p>
+
+<!-- ============================================================ -->
+<div class="part" id="l08-part3" data-short="Phần 3 · Ghép lại">Phần 3 · Ghép lại để huấn luyện mô hình lớn<small>Vài quy tắc kinh nghiệm đơn giản, và các mô hình thật đã làm theo chúng ra sao.</small></div>
+
+<h2 id="l08-batch" data-short="Batch mỗi GPU quyết định"><span>Đại lượng quyết định: batch trên mỗi chip</span><span class="slide-range">slide 56</span></h2>
+<div class="slides" data-s="56"></div>
+<p>Slide 56 lấy từ cuốn "How to Scale Your Model" (Google DeepMind, hay gọi là "TPU book"). Ý chính: <mark>khi chọn kiểu song song, đại lượng quan trọng nhất là batch tổng chia cho số chip</mark>.</p>
+<p>Bảng bên trái tính cho một MLP với chiều \(D\) và \(F\), \(X\) chip theo trục data/FSDP, \(Y\) chip theo trục model:</p>
+<ul>
+  <li><b>FSDP</b>: tính toán mỗi chip tỉ lệ với \(BDF/X\), còn giao tiếp (gom tham số) tỉ lệ với \(DF\). Tỉ số tính/giao tiếp tỉ lệ với \(B/X\), tức <b>batch trên mỗi chip</b>. Batch mỗi chip đủ lớn thì giấu được giao tiếp.</li>
+  <li><b>Model parallel</b> (tensor parallel): tính toán tỉ lệ với \(BDF/Y\), giao tiếp (activation) tỉ lệ với \(BD\). Tỉ số tỉ lệ với \(F/Y\), <b>không phụ thuộc batch</b>. Mạng không đủ nhanh thì tăng batch cũng vô ích.</li>
+</ul>
+<p>Biểu đồ bên phải (lưới TPU 4×4×4 = 64 chip): trục dọc là thời gian tính chia thời gian giao tiếp. Trên 1 nghĩa là tính lâu hơn giao tiếp, giấu được hết.</p>
+<ul>
+  <li>MP đơn thuần (cam): nằm ngang ở khoảng 0,55, luôn bị nghẽn giao tiếp.</li>
+  <li>FSDP đơn thuần (xanh dương): cần batch mỗi chip trên khoảng 850.</li>
+  <li>FSDP + MP (xanh lá): chỉ cần trên khoảng 400.</li>
+  <li>Dưới 400: không cách nào đủ.</li>
+</ul>
+<p>Ô dưới tính cùng ý đó cho GPU. Với FSDP, tỉ số tính/giao tiếp rút gọn rất đẹp. Mỗi token tốn \(6\) FLOP cho mỗi tham số (forward + backward), còn FSDP gửi khoảng \(3 \times 2\) byte cho mỗi tham số mỗi bước. Với \(T\) token mỗi GPU, tốc độ tính \(F\) và băng thông \(W\):</p>
+<div class="mathbox">\[ \frac{\text{thời gian tính}}{\text{thời gian giao tiếp}} = \frac{6T\Psi / F}{6\Psi / W} = \frac{T \cdot W}{F} \quad\Rightarrow\quad \text{cần } T \geq \frac{F}{W} \]</div>
+
+<div class="widget" id="commW">
+  <h4>Thử nghiệm: tính toán có che được giao tiếp không?</h4>
+  <div class="l08-form">
+    <label>Tốc độ tính thực tế mỗi GPU<select id="cF"><option value="400e12" selected>400 TFLOP/s (thực tế)</option><option value="989e12">989 TFLOP/s (đỉnh H100)</option></select></label>
+    <label>FSDP chạy trên<select id="cW"><option value="450e9">NVLink (450 GB/s)</option><option value="50e9" selected>Infiniband (50 GB/s)</option><option value="25e9">Mạng 200 Gb/s (25 GB/s)</option></select></label>
+    <label>Chiều ẩn \(h\) (cho tensor parallel)<select id="cH"><option>4096</option><option>8192</option><option selected>12288</option><option>16384</option></select></label>
+    <label>Tensor parallel \(t\)<select id="cT"><option>2</option><option>4</option><option selected>8</option><option value="16">16 (vượt node)</option></select></label>
+  </div>
+  <p style="margin:12px 0 4px"><label for="cTok">Token mỗi GPU mỗi bước (batch tổng × độ dài chuỗi ÷ số GPU): <span class="chip" id="cTokv"></span></label></p>
+  <input type="range" id="cTok" min="7" max="17" step="0.25" value="12">
+  <div class="l08-cmp" id="cOut"></div>
+  <p class="l08-msg" id="cMsg"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('commW'); if (!box) return;
+  const g = id => box.querySelector('#' + id).value;
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k });
+  const fT = t => t < 1e-3 ? nf(t * 1e6, 0) + ' µs' : t < 1 ? nf(t * 1e3, t < 0.01 ? 2 : 1) + ' ms' : nf(t, 2) + ' s';
+  const card = (title, c, m, eff, overlap, verdict, good) => {
+    const mx = Math.max(c, m), w = x => (x / mx * 100).toFixed(1) + '%';
+    return `<div><h5>${title}</h5>` +
+      `<div class="ln"><span>Tính</span><div class="track"><div class="fill" style="width:${w(c)};background:var(--accent)"></div></div><b>${fT(c)}</b></div>` +
+      `<div class="ln"><span>Giao tiếp</span><div class="track"><div class="fill" style="width:${w(m)};background:var(--warn)"></div></div><b>${fT(m)}</b></div>` +
+      `<div class="ln"><span>Hiệu suất</span><div class="track"><div class="fill" style="width:${(eff * 100).toFixed(1)}%;background:var(--life)"></div></div><b>${Math.round(eff * 100)}%</b></div>` +
+      `<p class="verdict ${good ? 'good' : 'bad'}">${verdict}</p><p style="margin:4px 0 0;font-size:12.5px;color:var(--muted)">${overlap}</p></div>`;
+  };
+  function upd() {
+    const F = +g('cF'), W = +g('cW'), h = +g('cH'), t = +g('cT'), T = Math.round(Math.pow(2, +box.querySelector('#cTok').value));
+    box.querySelector('#cTokv').textContent = T.toLocaleString('vi-VN');
+    const Pl = 12 * h * h;                       // tham số mỗi layer
+    // FSDP: tính 6·T·Pl FLOP; gửi ~3 × Pl × 2 byte (2 all-gather + 1 reduce-scatter, BF16)
+    const fc = 6 * T * Pl / F, fm = 6 * Pl / W, fe = Math.min(1, fc / fm), Tstar = F / W;
+    // TP: nhóm t GPU cùng xử lý T token; mỗi GPU tính 1/t; gửi 8·T·h·(t−1)/t số BF16 mỗi layer
+    const Wtp = t > 8 ? 50e9 : 450e9;
+    const tc = 6 * T * Pl / t / F, tm = 16 * T * h * (t - 1) / t / Wtp, te = tc / (tc + tm);
+    box.querySelector('#cOut').innerHTML =
+      card('FSDP (mỗi layer)', fc, fm, fe, 'Giao tiếp chồng lên tính toán được: hiệu suất = tính ÷ max(tính, giao tiếp).',
+        fe >= 1 ? `Đủ: ${nf(T / Tstar, 1)} lần ngưỡng ${nf(Tstar, 0)} token/GPU.` : `Thiếu: cần ít nhất ${nf(Tstar, 0)} token mỗi GPU.`, fe >= 1) +
+      card(`Tensor parallel t = ${t} (mỗi layer)`, tc, tm, te, `Giao tiếp chặn tính toán: hiệu suất = tính ÷ (tính + giao tiếp). Chạy trên ${t > 8 ? 'Infiniband 50 GB/s vì vượt node' : 'NVLink 450 GB/s'}.`,
+        te > 0.75 ? 'Chấp nhận được.' : 'Mất quá nhiều thời gian chờ mạng.', te > 0.75);
+    box.querySelector('#cMsg').innerHTML =
+      `Kéo thanh token: hai thanh của FSDP đổi tỉ lệ (giao tiếp không đổi, tính tăng theo token). Hai thanh của tensor parallel thì <b>tăng cùng nhau</b>, nên hiệu suất không đổi: tỉ số chỉ phụ thuộc h, t và mạng: 4,5·h·W ÷ ((t − 1)·F) = ${nf(tc / tm, 2)}. ` +
+      `Thử chọn t = 16 để thấy tensor parallel sụp khi phải đi qua Infiniband, giống biểu đồ slide 42.`;
+  }
+  box.querySelectorAll('select').forEach(s => s.addEventListener('change', upd));
+  box.querySelector('#cTok').addEventListener('input', upd);
+  upd();
+})();
+</script>
+<div class="note warn"><p>Ô này chỉ ước lượng thô: coi \(N\) lớn nên \((N-1)/N \approx 1\), bỏ qua độ trễ, giả sử chồng giao tiếp lên tính toán hoàn hảo, và chỉ tính các ma trận của mỗi layer (\(12h^2\) tham số). Nhưng các ngưỡng nó cho ra khớp với thực tế. Với 400 TFLOP/s, FSDP qua Infiniband cần khoảng 8 000 token mỗi GPU. Llama 3 (slide 66) dùng 16 triệu token mỗi bước trên 16 384 GPU, tức khoảng 1 000 token mỗi GPU. Vì vậy họ không chỉ dùng FSDP mà ghép thêm tensor và pipeline parallel.</p></div>
+
+<h2 id="l08-3d" data-short="Quy tắc song song 3D"><span>Song song "3D" (hay 4D): quy tắc kinh nghiệm</span><span class="slide-range">slide 57–58</span></h2>
+<div class="slides" data-s="57"></div>
+<p>Slide 57 tóm lại các bài báo thành hai bước đơn giản:</p>
+<ol>
+  <li><b>Cho tới khi mô hình vừa bộ nhớ:</b>
+    <ul>
+      <li>Tensor parallel (hoặc expert parallel) tới số GPU trong một máy (thường 8).</li>
+      <li>Pipeline parallel giữa các máy.</li>
+      <li>Hoặc dùng ZeRO-3 thay cho pipeline, tuỳ băng thông.</li>
+    </ul>
+  </li>
+  <li><b>Sau đó, cho tới khi hết GPU:</b> dùng data parallel cho phần còn lại.</li>
+</ol>
+<p>Nếu batch nhỏ, dùng <dfn>gradient accumulation</dfn>: chạy vài micro-batch, cộng dồn gradient, rồi mới đồng bộ một lần. Batch hiệu dụng lớn hơn nên đỡ tốn giao tiếp.</p>
+<p>Hình bên phải là cấu hình kiểu này: 2 nhóm data parallel, mỗi nhóm là một pipeline 3 stage (mỗi stage 8 layer), mỗi stage cắt bằng tensor parallel 4 GPU (MP-0 đến MP-3). Các mũi tên "ZeRO" dọc nối các GPU cùng vị trí ở hai nhóm data parallel.</p>
+
+<div class="slides" data-s="58"></div>
+<p><b>Slide 58 — khuyến nghị hiện nay của Megatron</b> (NVIDIA):</p>
+<div class="tbl"><table>
+  <tr><th>Hướng dẫn</th><th>Nội dung</th></tr>
+  <tr><td>1. Giảm model parallel, tăng data parallel</td><td>Giữ TP/EP/PP nhỏ nhất có thể miễn không tràn bộ nhớ, vì model parallel tốn giao tiếp. Dùng distributed optimizer (ZeRO-1) để có chỗ cho DP lớn hơn.</td></tr>
+  <tr><td>2. EP và TP nằm trong miền NVLink</td><td>EP × TP vừa trong một node (thường 8 GPU). Vượt ra ngoài node thì tăng PP thay vì TP/EP.</td></tr>
+  <tr><td>3. Pipeline cho nhiều node</td><td>Dùng PP để chia layer giữa các node. Bật virtual pipeline (interleaved, slide 37) khi PP ≥ 2.</td></tr>
+  <tr><td>4. Ưu tiên EP hơn TP cho lớp expert</td><td>Như slide 51.</td></tr>
+  <tr><td>5. Context parallel cho chuỗi dài</td><td>Dùng khi chuỗi từ 8K token trở lên.</td></tr>
+</table></div>
+
+<h2 id="l08-narayanan" data-short="Bài học từ Megatron-LM"><span>Bài học từ Narayanan 2021 (Megatron-LM)</span><span class="slide-range">slide 59–62</span></h2>
+<div class="slides" data-s="59"></div>
+<p>Slide 59 là bảng cấu hình từ bài báo Megatron-LM, cho các mô hình GPT từ 1,7 tỉ đến 1 nghìn tỉ tham số trên GPU A100. Cột "DP size" bên phải do thầy tự tính: số GPU ÷ (TP × PP). Ví dụ dòng cuối: \(3072 / (8 \times 64) = 6\). Ba quy luật:</p>
+<ul>
+  <li><b>Tensor parallel tăng dần tới 8 rồi dừng</b> ở 8, đúng bằng số GPU trong một node.</li>
+  <li><b>Pipeline parallel tăng để mô hình vừa bộ nhớ</b>: 1 → 2 → 4 → … → 64.</li>
+  <li><b>Data parallel giảm dần</b> khi mô hình lớn lên: từ 32 xuống còn 6 ở mô hình lớn nhất.</li>
+</ul>
+<p>Mọi cấu hình đều đạt 44–52% tốc độ đỉnh của GPU. Mô hình càng lớn càng hiệu quả hơn một chút, vì các phép nhân ma trận to hơn.</p>
+
+<div class="slides" data-s="60,61,62"></div>
+<p><b>Slide 60</b>: biểu đồ giống slide 30. Ghép 3D cẩn thận (PTD-P) cho tốc độ mỗi GPU gần như không đổi khi thêm GPU, tức tổng tốc độ tăng tuyến tính.</p>
+<p><b>Slide 61 — TP = 8 thường là tốt nhất.</b> Mô hình 162,2 tỉ tham số trên 64 GPU, thử các cặp (PP, TP) có tích bằng 64. Tốt nhất là (8, 8). TP 2 với PP 32 thì pipeline quá dài, bong bóng lớn. TP 16 hay 32 thì tensor parallel phải đi qua Infiniband.</p>
+<p><b>Slide 62 — tính lại activation có thể tự trả giá.</b> Tính lại tốn thêm khoảng 33% FLOP, nên ở cùng batch thì chậm hơn (đường cam cao hơn đường xanh ở batch 1–8). Nhưng không tính lại thì chỉ chạy được tới batch 8 rồi hết bộ nhớ. Tính lại cho phép batch tới 256, và tốc độ cao gấp đôi mức tốt nhất khi không tính lại (khoảng 7,8 so với 3,9 chuỗi/giây).</p>
+
+<p>Ô dưới ghép mọi thứ trong lecture thành một công cụ lập cấu hình. Chọn mô hình và số GPU, chia TP và PP, phần còn lại là DP. Mỗi lần đổi mô hình, ô sẽ nạp đúng dòng tương ứng trong bảng slide 59. Bấm "Cấu hình của bài báo" để quay về cấu hình đó sau khi đã thử đổi.</p>
+<div class="widget" id="planW">
+  <h4>Thử nghiệm: lập cấu hình song song 3D</h4>
+  <div class="l08-form">
+    <label>Mô hình (theo bảng slide 59)<select id="pMod"></select></label>
+    <label>Số GPU<select id="pG"></select></label>
+    <label>Tensor parallel (TP)<select id="pT"></select></label>
+    <label>Pipeline parallel (PP)<select id="pP"></select></label>
+    <label>Batch tổng (số chuỗi 2048 token)<select id="pB"></select></label>
+    <label>Cách giữ activation<select id="pA">
+      <option value="sel" selected>SP + tính lại chọn lọc</option>
+      <option value="tp">Chỉ TP, lưu hết</option>
+      <option value="full">Tính lại toàn bộ</option>
+    </select></label>
+    <label class="ck"><input type="checkbox" id="pZ" checked> ZeRO-1 (chia trạng thái optimizer theo DP)</label>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="l08-btn" id="pPreset">Cấu hình của bài báo</button></div>
+  <div class="l08-stats" id="pStats" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr))"></div>
+  <div class="l08-mem" id="pBar"></div>
+  <div class="l08-legend">
+    <span><i style="background:var(--accent)"></i>tham số + gradient</span>
+    <span><i style="background:var(--life);opacity:.8"></i>trạng thái optimizer</span>
+    <span><i style="background:var(--num);opacity:.8"></i>activation</span>
+    <span><i style="background:var(--warn);width:2px"></i>80 GB</span>
+  </div>
+  <ul class="l08-msg" id="pMsg"></ul>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('planW'); if (!box) return;
+  // [tên, số head a, chiều ẩn h, số layer L, cấu hình bài báo: GPU, TP, PP, batch]
+  const MODELS = [
+    ['1,7B', 24, 2304, 24, 32, 1, 1, 512], ['7,5B', 32, 4096, 36, 128, 4, 1, 512],
+    ['18,4B', 48, 6144, 40, 256, 8, 1, 1024], ['39,1B', 64, 8192, 48, 512, 8, 2, 1536],
+    ['145,6B', 96, 12288, 80, 1536, 8, 8, 2304], ['310,1B', 128, 16384, 96, 1920, 8, 16, 2160],
+    ['529,6B', 128, 20480, 105, 2520, 8, 35, 2520], ['1008B', 160, 25600, 128, 3072, 8, 64, 3072]
+  ];
+  const GS = [8, 16, 32, 64, 128, 256, 512, 1024, 1536, 1920, 2048, 2520, 3072, 4096];
+  const TS = [1, 2, 4, 8, 16], PS = [1, 2, 4, 8, 16, 32, 35, 64], BS = [256, 512, 1024, 1536, 2048, 2160, 2304, 2520, 3072, 4096];
+  const $ = id => box.querySelector('#' + id);
+  const fill = (id, arr, lab) => { $(id).innerHTML = arr.map((v, i) => `<option value="${lab ? i : v}">${lab ? lab(v) : v.toLocaleString('vi-VN')}</option>`).join(''); };
+  fill('pMod', MODELS, m => m[0]); fill('pG', GS); fill('pT', TS); fill('pP', PS); fill('pB', BS);
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k });
+  const fB = b => b >= 1e12 ? nf(b / 1e12, 1) + ' TB' : nf(b / 1e9, b < 1e10 ? 1 : 0) + ' GB';
+  const LIM = 80e9, s = 2048, b = 1, V = 51200;
+  function preset() {
+    const m = MODELS[+$('pMod').value];
+    $('pG').value = m[4]; $('pT').value = m[5]; $('pP').value = m[6]; $('pB').value = m[7];
+    upd();
+  }
+  function upd() {
+    const [name, a, h, L] = MODELS[+$('pMod').value];
+    const G = +$('pG').value, t = +$('pT').value, p = +$('pP').value, B = +$('pB').value, mode = $('pA').value, zero = $('pZ').checked;
+    const P = 12 * L * h * h + 13 * L * h + (V + s) * h;
+    const msgs = [];
+    const dp = G / (t * p);
+    if (!Number.isInteger(dp) || dp < 1) {
+      $('pStats').innerHTML = `<div class="bad"><small>Data parallel = GPU ÷ (TP × PP)</small><b>${nf(dp, 2)}</b></div>`;
+      $('pBar').innerHTML = '';
+      $('pMsg').innerHTML = `<li>${G} GPU không chia hết cho TP × PP = ${t * p}. Chọn lại để số nhóm data parallel là số nguyên.</li>`;
+      return;
+    }
+    const m = B / (dp * b);
+    const lps = Math.ceil(L / p);
+    const sbh = s * b * h, q = 5 * a * s / h;
+    const perLayer = mode === 'sel' ? sbh * 34 / t : mode === 'tp' ? sbh * (10 + 24 / t + q / t) : 2 * sbh / t;
+    const inflight = Math.min(p, Math.max(1, Math.floor(m)));
+    const act = inflight * lps * perLayer;
+    const Pg = P / (t * p);
+    const pg = 4 * Pg, opt = (zero ? 12 / dp : 12) * Pg;
+    const tot = pg + opt + act;
+    const bubble = m >= 1 ? (p - 1) / (m + p - 1) : 1;
+    $('pStats').innerHTML =
+      `<div><small>Số tham số</small><b>${P >= 1e12 ? nf(P / 1e12, 2) + ' nghìn tỉ' : nf(P / 1e9, 1) + ' tỉ'}</b></div>` +
+      `<div><small>Data parallel = GPU ÷ (TP × PP)</small><b>${dp}</b></div>` +
+      `<div class="${m < 1 ? 'bad' : ''}"><small>Micro-batch mỗi pipeline</small><b>${nf(m, 1)}</b></div>` +
+      `<div class="${bubble > 0.2 ? 'bad' : bubble < 0.08 ? 'good' : ''}"><small>Bong bóng (phần thời gian)</small><b>${p === 1 ? '0' : nf(bubble * 100, 1)}%</b></div>` +
+      `<div class="${tot > LIM ? 'bad' : 'good'}"><small>Bộ nhớ mỗi GPU (ước lượng)</small><b>${fB(tot)}</b></div>`;
+    const max = Math.max(Math.min(tot, LIM * 3), LIM * 1.1), w = x => Math.min(100, x / max * 100).toFixed(2) + '%';
+    $('pBar').innerHTML = `<div class="l08-memrow${tot > LIM ? ' bad' : ''}"><span>Stage 0</span><div class="l08-track"><i class="p" style="width:${w(pg)}"></i><i class="o" style="width:${w(opt)}"></i><i class="a" style="width:${w(act)}"></i><span class="lim" style="left:${w(LIM)}"></span></div><b>${fB(tot)}</b></div>`;
+    msgs.push(`Mỗi GPU giữ ${nf(Pg / 1e9, 2)} tỉ tham số (1/${t * p} mô hình): tham số + gradient ${fB(pg)}, trạng thái optimizer ${fB(opt)}${zero ? ` (đã chia cho ${dp} nhóm DP)` : ''}, activation ${fB(act)} (${inflight} micro-batch đang dở × ${lps} layer).`);
+    if (m < 1) msgs.push(`Batch tổng (${B}) nhỏ hơn số nhóm data parallel (${dp}): có nhóm không có dữ liệu. Giảm DP (tăng TP/PP) hoặc tăng batch.`);
+    if (t > 8) msgs.push(`TP = ${t} vượt quá 8 GPU của một node: tensor parallel phải đi qua Infiniband và sẽ rất chậm (slide 42, 61).`);
+    else if (t > 1) msgs.push(`TP = ${t} nằm gọn trong một node (NVLink).`);
+    if (p > L) msgs.push(`PP = ${p} lớn hơn số layer (${L}): có stage không có layer nào.`);
+    else if (L % p) msgs.push(`${L} layer không chia hết cho ${p} stage: stage nặng nhất có ${lps} layer, các stage khác phải chờ nó.`);
+    if (p > 1 && m >= 1 && bubble > 0.2) msgs.push(`Bong bóng lớn: chỉ có ${nf(m, 1)} micro-batch cho ${p} stage. Tăng batch, giảm PP, hoặc dùng lịch interleaved.`);
+    if (tot > LIM) msgs.push(`<b>Không vừa 80 GB.</b> ${act > pg + opt ? 'Activation chiếm phần lớn: thử bật tính lại, hoặc tăng TP.' : (zero ? 'Trạng thái mô hình chiếm phần lớn: tăng TP hoặc PP.' : 'Trạng thái mô hình chiếm phần lớn: tăng TP/PP, hoặc bật ZeRO-1.')}`);
+    else if (dp > 1 && tot < LIM / 3 && (t > 1 || p > 1)) msgs.push('Còn dư nhiều bộ nhớ theo ước lượng này. Theo hướng dẫn 1 của Megatron, có thể thử giảm TP hoặc PP để tăng data parallel và đỡ tốn giao tiếp. (Bài báo năm 2021 chưa có ZeRO-1 và sequence parallel, nên cấu hình gốc của họ cần nhiều bộ nhớ hơn con số ở đây.)');
+    $('pMsg').innerHTML = msgs.map(x => `<li>${x}</li>`).join('');
+  }
+  box.querySelectorAll('select').forEach(el => el.addEventListener('change', el.id === 'pMod' ? preset : upd));
+  $('pZ').addEventListener('change', upd);
+  $('pPreset').addEventListener('click', preset);
+  $('pMod').value = 4; preset();
+})();
+</script>
+<p>Thử vài thí nghiệm: nạp mô hình 145,6B rồi đặt TP = 1, PP = 1 (data parallel thuần): mỗi GPU cần hàng trăm GB, và hơn 2 TB nếu tắt ZeRO-1. Hoặc nạp 1008B rồi chọn "Chỉ TP, lưu hết": activation tràn bộ nhớ. Bài báo năm 2021 chưa có sequence parallel, nên đã phải tính lại toàn bộ.</p>
+<div class="note warn"><p>Công cụ này chỉ ước lượng. Nó dùng micro-batch 1, lịch 1F1B, và các công thức ở slide 17 và 49. Nó chưa tính lớp embedding nằm ở stage đầu, bộ đệm giao tiếp, bộ nhớ phân mảnh, và tốc độ thực tế. Ngoài đời, người ta dùng các công cụ ước lượng chi tiết hơn rồi chạy thử. Llama 3 có hẳn một "memory consumption estimator" riêng (slide 66).</p></div>
+
+<h2 id="l08-real" data-short="Các mô hình thật làm gì"><span>Các mô hình gần đây làm gì</span><span class="slide-range">slide 63–72</span></h2>
+<div class="slides" data-s="63,64,65"></div>
+<p><b>Slide 63 — OLMo</b> (slide ghi "Dolma", nhưng Dolma là bộ dữ liệu, đoạn trích là từ bài báo mô hình OLMo của AI2). Dùng ZeRO qua FSDP của PyTorch. Mô hình 7B nhỏ nên FSDP là đủ, có lẽ vừa trong một node. Batch khoảng 4 triệu token. Một chi tiết: trọng số và trạng thái optimizer lưu ở FP32, chỉ chuyển sang BF16 khi gom về để tính, và gradient được cộng ở FP32.</p>
+<p><b>Slide 64 — DeepSeek.</b> Bài báo đầu tiên (DeepSeek LLM) dùng ZeRO-1 kèm tensor, sequence và pipeline parallel (lịch 1F1B), theo đúng kiểu Megatron. Họ cũng chồng giao tiếp lên tính toán ở nhiều chỗ. <b>DeepSeek-V3</b> (MoE) đổi hẳn: pipeline 16 stage, expert parallel 64 chiều trải trên 8 node, ZeRO-1, <b>không dùng tensor parallel</b>. Giao tiếp all-to-all của EP được chồng lên tính toán bằng lịch "1F1B A2A overlap".</p>
+<p><b>Slide 65 — Yi.</b> ZeRO-1, cộng tensor và pipeline parallel <i>trong</i> mỗi node để tránh nghẽn giữa các node. Họ cũng xếp chỗ chạy theo cấu trúc mạng (topology-aware): đặt các phần giao tiếp nhiều lên các GPU gần nhau, để ít phải đi qua nhiều tầng switch của mạng fat-tree. Bản Yi-Lightning (2025) là MoE nên thay tensor parallel bằng expert parallel.</p>
+
+<div class="slides" data-s="66,67"></div>
+<p><b>Slide 66 — Llama 3 405B.</b></p>
+<div class="tbl"><table>
+  <tr><th>Giai đoạn</th><th>GPU</th><th>TP</th><th>CP</th><th>PP</th><th>DP</th><th>Độ dài chuỗi</th><th>TFLOP/s mỗi GPU</th><th>MFU</th></tr>
+  <tr><td>1. Đầu huấn luyện (batch nhỏ)</td><td>8 192</td><td>8</td><td>1</td><td>16</td><td>64</td><td>8 192</td><td>430</td><td>43%</td></tr>
+  <tr><td>2. Huấn luyện chính</td><td>16 384</td><td>8</td><td>1</td><td>16</td><td>128</td><td>8 192</td><td>400</td><td>41%</td></tr>
+  <tr><td>3. Mở rộng ngữ cảnh</td><td>16 384</td><td>8</td><td>16</td><td>16</td><td>8</td><td>131 072</td><td>380</td><td>38%</td></tr>
+</table></div>
+<p>Đoạn trích giải thích <b>thứ tự</b> các chiều song song: [TP, CP, PP, DP] từ trong ra ngoài. Chiều trong cùng (TP) cần băng thông cao nhất và độ trễ thấp nhất, nên nằm trong một máy. Chiều ngoài cùng (DP, thực chất là FSDP) chịu được độ trễ cao vì có thể gom trước tham số và cộng gradient không đồng bộ, nên trải qua nhiều tầng mạng. Ở giai đoạn 3, chuỗi dài gấp 16 lần, nên CP = 16 và DP giảm từ 128 xuống 8: tổng số GPU không đổi.</p>
+<p><b>Slide 67 — ở quy mô này, GPU hỏng liên tục.</b> Trong 54 ngày huấn luyện có 419 lần bị gián đoạn ngoài kế hoạch, trung bình khoảng 3 giờ một lần. Khoảng 78% là do phần cứng: GPU lỗi (30,1%), bộ nhớ HBM3 (17,2%), switch hoặc cáp mạng (8,4%)… Có cả 6 lần "silent data corruption": phần cứng tính sai mà không báo lỗi. Hệ thống huấn luyện lớn phải lưu checkpoint thường xuyên và khởi động lại thật nhanh.</p>
+
+<div class="slides" data-s="68,69"></div>
+<p><b>Slide 68 — Gemma 2</b> (trên TPU): ZeRO-3 (chia trạng thái optimizer theo kiểu tương tự), model parallel (TP + SP), và data parallel.</p>
+<div class="tbl"><table>
+  <tr><th>Mô hình</th><th>Chip</th><th>Cấu hình</th><th>Data</th><th>Model</th></tr>
+  <tr><td>2B</td><td>512 TPUv5e</td><td>2×16×16</td><td>512</td><td>1</td></tr>
+  <tr><td>9B</td><td>4 096 TPUv4</td><td>8×16×32</td><td>1 024</td><td>4</td></tr>
+  <tr><td>27B</td><td>6 144 TPUv5p</td><td>8×24×32</td><td>768</td><td>8</td></tr>
+</table></div>
+<p>Trên TPU, người ta chỉ khai báo cách chia (sharding), còn trình biên dịch (GSPMD, XLA) tự sinh code giao tiếp, như thầy đã nhắc ở cuối <a href="#l07-compare">Lecture 7</a>.</p>
+<p><b>Slide 69 — Mixtral</b> (theo tài liệu Megatron): 8x7B dùng 64 GPU với TP 1, PP 4, EP 8. 8x22B dùng 256 GPU với TP 4, PP 4, CP 1, EP 8. DeepSeek-V3 671B dùng 1024 GPU với TP 2, PP 16, EP 64.</p>
+<div class="note warn"><p>Slide đoán "DP chắc là 2" cho 8x22B, vì \(4 \times 4 \times 1 \times 8 \times 2 = 256\). Nhưng theo slide 52–53, EP <b>dùng chung GPU với DP</b> chứ không phải một chiều riêng. Trong Megatron, phần attention có DP = 256 ÷ (TP × PP × CP) = 16. Còn ở lớp MoE, 16 nhóm đó được chia lại thành EP 8 × EDP 2. Vậy "2" là expert-DP. Tương tự, DeepSeek-V3 ở đây có DP = 1024 ÷ (2 × 16) = 32 cho attention, và EP 64 vượt qua DP vì ở cấu hình này các lớp expert dùng ETP = 1 (64 = 2 × 32 GPU của một stage).</p></div>
+
+<div class="slides" data-s="70,71"></div>
+<p><b>Slide 70 — Nemotron 3 Super 120B-A12B</b>, ở giai đoạn mở rộng ngữ cảnh lên 1 triệu token: context parallel 64, tensor parallel 2, expert parallel 64, trên GPU GB200, batch tổng chỉ 16 chuỗi. Chuỗi càng dài thì CP càng lớn.</p>
+<p><b>Slide 71 — Qwen 3</b> (slide ghi "225B", đúng ra là 235B-A22B như trong bảng). Bản 30B-A3B: chỉ dùng EP 8 trên 8 GPU (một node). Bản 235B-A22B: TP 2, PP 8, EP 32 trên 512 GPU (64 node). Bảng bên phải là các cấu hình tham khảo trên các đời GPU: hầu hết dùng TP 1–2, EP 8–64, PP 1–16.</p>
+
+<div class="slides" data-s="72"></div>
+<p><b>Slide 72 — bảng tổng kết.</b> Số 0 trong bảng nghĩa là "không dùng", tức chia 1 phần. "??" là không công bố.</p>
+<div class="tbl"><table>
+  <tr><th>Mô hình</th><th>DP</th><th>TP/SP</th><th>EP</th><th>PP</th><th>CP</th></tr>
+  <tr><td>DeepSeek (V2)</td><td>?? (ZeRO-1)</td><td>1</td><td>8</td><td>16</td><td>??</td></tr>
+  <tr><td>DeepSeek-V3</td><td>?? (ZeRO-1)</td><td>1</td><td>64</td><td>16</td><td>??</td></tr>
+  <tr><td>Yi</td><td>?? (ZeRO-1)</td><td>có</td><td>—</td><td>có</td><td>??</td></tr>
+  <tr><td>Llama 3 405B</td><td>128</td><td>8</td><td>—</td><td>16</td><td>1 (16 khi ngữ cảnh dài)</td></tr>
+  <tr><td>Gemma 2</td><td>768</td><td>8</td><td>—</td><td>—</td><td>—</td></tr>
+  <tr><td>Mixtral 8x22B</td><td>2 (expert-DP)</td><td>4</td><td>8</td><td>4</td><td>1</td></tr>
+  <tr><td>Nemotron 3 120B (ngữ cảnh dài)</td><td>??</td><td>2</td><td>64</td><td>??</td><td>64</td></tr>
+  <tr><td>Qwen 3 235B</td><td>??</td><td>2</td><td>32</td><td>8</td><td>1</td></tr>
+</table></div>
+<div class="note warn"><p>Dòng "Deepseek" trong slide ghi TP 1, EP 8, PP 16. Cấu hình này khớp với <b>DeepSeek-V2</b> (pipeline zero bubble 16 stage, EP 8, ZeRO-1), không khớp với đoạn trích ở slide 64 (DeepSeek LLM bản đầu, là mô hình dense có dùng tensor parallel). Mình đã ghi rõ "(V2)" trong bảng.</p></div>
+<p>Các quy luật thầy rút ra:</p>
+<ul>
+  <li><b>TP thường không quá 8</b>, và với MoE thường chỉ 1–2.</li>
+  <li><b>EP có thể rất lớn</b> (32–64), nhưng khó làm tốt.</li>
+  <li><b>Giai đoạn ngữ cảnh dài dùng CP lớn</b> (16–64).</li>
+</ul>
+
+<h2 id="l08-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 73</span></h2>
+<div class="slides" data-s="73"></div>
+<div class="note key">
+  <ul>
+    <li><b>Vượt qua một mức nhất định thì phải dùng nhiều GPU, nhiều node.</b> Đường nối trong node (NVLink, khoảng 900 GB/s mỗi chiều) nhanh hơn giữa các node (khoảng 50 GB/s mỗi GPU) cả chục lần.</li>
+    <li><b>All-reduce = reduce-scatter + all-gather</b>, và tách ra không tốn thêm băng thông. ZeRO và sequence parallel dựa trên điều này.</li>
+    <li><b>Data parallel</b> chia batch, tốn 2 × số tham số giao tiếp mỗi bước, không chia bộ nhớ. Mỗi tham số cần 16 byte (Adam, mixed precision).</li>
+    <li><b>ZeRO-1/2</b> chia trạng thái optimizer và gradient gần như miễn phí. <b>ZeRO-3/FSDP</b> chia cả tham số, tốn 3 × số tham số, và cần đủ token trên mỗi GPU để giấu giao tiếp.</li>
+    <li><b>Pipeline</b> chia layer, gửi activation điểm–điểm, hợp với đường chậm, nhưng có bong bóng \(\frac{p-1}{m}\) nên cần batch lớn.</li>
+    <li><b>Tensor parallel</b> chia ma trận (cột rồi hàng), không có bong bóng nhưng tốn \(8bsh\frac{t-1}{t}\) mỗi layer, nên chỉ dùng trong node.</li>
+    <li><b>Activation</b> có thể lớn hơn cả tham số. Sequence parallel và tính lại chọn lọc đưa nó về \(sbh \cdot 34/t\).</li>
+    <li><b>Expert parallel</b> (all-to-all) cho MoE, <b>context parallel</b> (ring attention) cho chuỗi dài.</li>
+    <li><b>Không có lời giải duy nhất.</b> Công thức chung: TP/EP trong node, PP (hoặc FSDP) giữa các node cho tới khi vừa bộ nhớ, rồi DP cho số GPU còn lại.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao ZeRO stage 1 không tốn thêm giao tiếp so với data parallel thường?</summary>
+    <div><p>Data parallel thường dùng một all-reduce gradient, tốn khoảng 2 × số tham số. ZeRO-1 dùng reduce-scatter gradient (1 × số tham số), cập nhật phần của mình, rồi all-gather tham số (1 × số tham số), tổng vẫn 2 × số tham số. Đó chính là đẳng thức all-reduce = reduce-scatter + all-gather, chỉ là chen bước cập nhật vào giữa.</p></div></details>
+  <details><summary>2. Mô hình 13 tỉ tham số, Adam với mixed precision (16 byte/tham số), 8 GPU 80 GB. Với ZeRO stage 1, 2, 3, mỗi GPU cần bao nhiêu (chưa tính activation)?</summary>
+    <div><p>Stage 1: \(13 \times (2 + 2 + 12/8) = 71{,}5\) GB, vừa sát nút. Stage 2: \(13 \times (2 + 14/8) = 48{,}75\) GB. Stage 3: \(13 \times 16/8 = 26\) GB. Data parallel thường cần 208 GB, không vừa.</p></div></details>
+  <details><summary>3. FSDP gom tham số hai lần (forward và backward). Vì sao không giữ lại tham số đã gom từ lượt forward để dùng cho backward?</summary>
+    <div><p>Vì như vậy cuối lượt forward, mỗi GPU sẽ giữ tham số đầy đủ của <i>mọi</i> layer, và mất hết lợi ích chia tham số của stage 3. Gom lại lần nữa tốn thêm 1 × số tham số giao tiếp (tổng 3 thay vì 2), nhưng bộ nhớ lúc nào cũng chỉ chứa một hai unit đầy đủ.</p></div></details>
+  <details><summary>4. Với FSDP, tốc độ tính 400 TFLOP/s và băng thông 50 GB/s mỗi GPU, mỗi GPU cần ít nhất bao nhiêu token mỗi bước để giấu được giao tiếp? Nếu batch tổng là 4 triệu token thì dùng được tối đa bao nhiêu GPU?</summary>
+    <div><p>Ngưỡng \(F/W = 400 \times 10^{12} / 50 \times 10^{9} = 8000\) token mỗi GPU. Với 4 triệu token: tối đa khoảng \(4\,000\,000 / 8000 = 500\) GPU. Nhiều GPU hơn thì giao tiếp lộ ra, trừ khi ghép thêm tensor/pipeline parallel để giảm số nhóm FSDP.</p></div></details>
+  <details><summary>5. Pipeline 8 stage. Cần bao nhiêu micro-batch để bong bóng chiếm dưới 10% tổng thời gian?</summary>
+    <div><p>\(\frac{7}{m + 7} < 0{,}1 \Rightarrow m > 63\). Cần ít nhất 64 micro-batch. Đó là lý do pipeline cần batch lớn.</p></div></details>
+  <details><summary>6. Trong MLP kiểu Megatron, vì sao cắt ma trận thứ nhất theo cột và ma trận thứ hai theo hàng, chứ không ngược lại?</summary>
+    <div><p>Cắt cột ở ma trận thứ nhất cho mỗi GPU các cột <i>hoàn chỉnh</i> của \(XA\), nên áp GeLU riêng từng phần được ngay. Mỗi GPU lại có đúng phần \(Y_i\) cần cho lát hàng \(B_i\) của ma trận thứ hai. Cả MLP chỉ cần một all-reduce ở cuối. Nếu cắt hàng trước, kết quả chỉ là tổng con, phải all-reduce trước GeLU (vì GeLU(a) + GeLU(b) ≠ GeLU(a + b)), tốn thêm giao tiếp.</p></div></details>
+  <details><summary>7. Tensor parallel tốn \(8bsh\frac{t-1}{t}\) mỗi layer. Số 8 đến từ đâu?</summary>
+    <div><p>Mỗi layer có 4 all-reduce: 2 ở forward (sau attention và sau MLP) và 2 ở backward (ở khối \(f\) của mỗi phần). Mỗi all-reduce một tensor \(bsh\) bằng ring tốn \(2\frac{t-1}{t}bsh\). Tổng \(4 \times 2 = 8\).</p></div></details>
+  <details><summary>8. Sequence parallel giảm bộ nhớ activation mà không tăng giao tiếp. Vì sao?</summary>
+    <div><p>Ở tensor parallel thường, ranh giới cuối mỗi khối là một all-reduce. Sequence parallel thay nó bằng reduce-scatter (ra khỏi vùng TP, mỗi GPU giữ phần token của mình) và all-gather (vào vùng TP tiếp theo). Hai phép này cộng lại đúng bằng một all-reduce. Ở giữa, layer norm và dropout chỉ chạy trên \(s/t\) token.</p></div></details>
+  <details><summary>9. GPT-3 175B, \(s = 2048\), \(b = 1\), \(t = 8\), dùng TP + SP + tính lại chọn lọc. Activation mỗi layer là bao nhiêu? Vì sao tăng số stage pipeline không làm giảm tổng activation trên GPU stage đầu?</summary>
+    <div><p>\(sbh \cdot 34/t = 2048 \times 12288 \times 34 / 8 \approx 107\) MB mỗi layer. Với lịch 1F1B, stage đầu giữ activation của \(p\) micro-batch đang dở, mỗi cái \(L/p\) layer, tổng \(p \times L/p = L\) layer, tức khoảng 10 GB cho 96 layer, bất kể \(p\).</p></div></details>
+  <details><summary>10. Vì sao các lớp expert của MoE thường dùng expert parallel thay vì tensor parallel?</summary>
+    <div><p>EP giữ nguyên ma trận của mỗi expert, nên phép nhân to hơn và GPU chạy hiệu quả hơn. EP cũng tốn ít giao tiếp hơn TP ở lớp MoE, đồ thị đơn giản hơn nên dễ chồng giao tiếp lên tính toán. TP phải cắt nhỏ từng expert vốn đã nhỏ.</p></div></details>
+  <details><summary>11. Llama 3 xếp các chiều theo thứ tự [TP, CP, PP, DP] từ trong ra ngoài. Vì sao DP nằm ngoài cùng?</summary>
+    <div><p>Chiều trong cùng nằm trên đường nhanh nhất (cùng máy), nên phải là chiều giao tiếp nhiều nhất và nhạy độ trễ nhất: TP chặn tính toán ở mỗi layer. DP (FSDP) giao tiếp ít hơn tính theo mỗi token, và có thể gom tham số trước, cộng gradient chồng lên backward, nên chịu được độ trễ cao của nhiều tầng mạng.</p></div></details>
+  <details><summary>12. Bạn có 256 GPU (32 node × 8) để huấn luyện một mô hình dense 70 tỉ tham số, mỗi GPU 80 GB. Đề xuất một cấu hình hợp lý.</summary>
+    <div><p>Một cách: TP 8 trong mỗi node. Mỗi GPU giữ \(70/8 \approx 8{,}75\) tỉ tham số, với 16 byte/tham số là 140 GB, vẫn chưa vừa. Thêm PP 4 giữa các node: còn \(70/32 \approx 2{,}2\) tỉ, khoảng 35 GB, cộng activation (có SP + tính lại) vẫn vừa. DP = 256 / 32 = 8, bật ZeRO-1 để giảm thêm phần trạng thái optimizer. Một lựa chọn khác là bỏ PP và dùng FSDP qua 32 nhóm, nếu batch đủ lớn (theo câu 4).</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Scale-up / Scale-out</td><td>Nối nhanh trong một miền (NVLink trong node hoặc rack) / nối chậm hơn ra ngoài (Infiniband, Ethernet)</td></tr>
+  <tr><td>Bisection bandwidth</td><td>Cắt hệ thống làm đôi, băng thông tối đa giữa hai nửa</td></tr>
+  <tr><td>Torus / Mesh</td><td>Lưới chip, mỗi chip chỉ nối với hàng xóm (kiểu TPU)</td></tr>
+  <tr><td>Fat-tree</td><td>Mạng switch nhiều tầng (leaf, spine), kiểu thường dùng cho cụm GPU</td></tr>
+  <tr><td>Data parallel (DDP)</td><td>Mỗi GPU cả mô hình, một phần batch, all-reduce gradient</td></tr>
+  <tr><td>Optimizer state</td><td>Master weights FP32 và hai moment của Adam, 12 trên 16 byte mỗi tham số</td></tr>
+  <tr><td>Master weights</td><td>Bản FP32 của tham số để cộng dồn các bước cập nhật nhỏ</td></tr>
+  <tr><td>Kahan summation</td><td>Mẹo cộng giữ lại phần bị làm tròn, giúp huấn luyện thuần BF16</td></tr>
+  <tr><td>ZeRO stage 1 / 2 / 3</td><td>Chia trạng thái optimizer / thêm gradient / thêm tham số ra các GPU data parallel</td></tr>
+  <tr><td>FSDP</td><td>Fully Sharded Data Parallel, cài đặt ZeRO-3 của PyTorch</td></tr>
+  <tr><td>FSDP unit</td><td>Nhóm layer được gom tham số và giải phóng cùng lúc</td></tr>
+  <tr><td>Critical batch size</td><td>Mức batch mà vượt qua thì tăng batch gần như không giảm số bước nữa</td></tr>
+  <tr><td>Model parallel</td><td>Chia tham số và gửi activation: pipeline, tensor, expert</td></tr>
+  <tr><td>Pipeline parallel / stage</td><td>Chia layer theo chiều sâu / một nhóm layer trên một GPU</td></tr>
+  <tr><td>Micro-batch / Bubble</td><td>Phần nhỏ của batch chạy qua pipeline / thời gian GPU ngồi không</td></tr>
+  <tr><td>GPipe / 1F1B / Interleaved</td><td>Hết forward rồi mới backward / xen kẽ một forward một backward / mỗi GPU giữ nhiều nhóm layer không liền nhau</td></tr>
+  <tr><td>Zero bubble</td><td>Tách backward thành B (gradient theo activation) và W (gradient theo trọng số), nhét W vào chỗ trống</td></tr>
+  <tr><td>Tensor parallel</td><td>Chia ma trận của mỗi layer theo chiều rộng, all-reduce ở mỗi khối</td></tr>
+  <tr><td>Column-parallel / Row-parallel</td><td>Cắt ma trận theo cột (ra các cột hoàn chỉnh) / theo hàng (ra tổng con, cần cộng)</td></tr>
+  <tr><td>Sequence parallel</td><td>Chia layer norm, dropout theo chiều chuỗi, đi kèm tensor parallel</td></tr>
+  <tr><td>Selective recomputation</td><td>Chỉ tính lại phần ma trận attention ở lượt backward</td></tr>
+  <tr><td>Expert parallel (EP)</td><td>Đặt các expert MoE lên các GPU khác nhau, chuyển token bằng all-to-all</td></tr>
+  <tr><td>MoE Parallel Folding</td><td>Megatron cho attention và lớp MoE dùng hai cách nhóm GPU khác nhau</td></tr>
+  <tr><td>Context parallel / Ring attention</td><td>Chia một chuỗi dài cho nhiều GPU, chuyền các khối K, V vòng quanh</td></tr>
+  <tr><td>3D / 4D parallelism</td><td>Ghép data + pipeline + tensor (+ expert hoặc context) parallel</td></tr>
+  <tr><td>Gradient accumulation</td><td>Cộng dồn gradient qua vài micro-batch rồi mới đồng bộ một lần</td></tr>
+  <tr><td>MFU</td><td>Model FLOPs Utilization: tốc độ tính thực tế chia tốc độ đỉnh của phần cứng</td></tr>
+  <tr><td>Silent data corruption</td><td>Phần cứng tính sai mà không báo lỗi</td></tr>
+</table></div>
