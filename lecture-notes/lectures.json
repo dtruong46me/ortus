@@ -1,6 +1,15 @@
 {
   "lectures": [
     {
+      "id": "l03",
+      "num": 3,
+      "title": "Architectures & Hyperparameters",
+      "titleVi": "Kiến trúc & siêu tham số của LM",
+      "slides": 67,
+      "file": "lectures/l03.html",
+      "imgDir": "img/l03"
+    },
+    {
       "id": "l04",
       "num": 4,
       "title": "Attention Alternatives and Mixtures of Experts",

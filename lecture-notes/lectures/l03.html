@@ -1,0 +1,739 @@
+<style>
+  .l03-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l03-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l03-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l03-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l03-stats div.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .l03-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l03-stats small { color: var(--muted); font-size: 12.5px; }
+  .l03-svg { width: 100%; max-width: 560px; display: block; margin: 8px 0; }
+  .l03-svg.sq { max-width: 300px; }
+  .l03-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 14px; margin: 14px 0 6px; }
+  .l03-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .l03-form input, .l03-form select { font: 600 15px var(--f-mono); padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box; min-width: 0; }
+  .l03-flags { margin: 10px 0 0; font-size: 14px; line-height: 1.55; }
+  .l03-flags span { display: block; }
+  .l03-grid, .l03-strip { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; max-width: 300px; margin: 6px 0 12px; }
+  .l03-grid i, .l03-strip i { aspect-ratio: 1; border-radius: 3px; background: var(--code-bg); display: block; }
+  .l03-grid i.fut { opacity: .25; }
+  .l03-grid i.on { background: var(--accent); }
+  .l03-grid i.last { box-shadow: inset 0 0 0 2px var(--warn); }
+  .l03-strip i.on { background: var(--life); }
+  .l03-strip i.me { background: var(--warn); }
+  .l03-cap { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+</style>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 3 · 67 slide</span>
+  <h1>Kiến trúc & siêu tham số: các mô hình lớn giống nhau ở đâu?</h1>
+  <p class="sub">Everything you didn't want to know about LM architecture and hyperparameters: pre-norm, RMSNorm, SwiGLU, RoPE, các con số "ai cũng chọn", mẹo giữ cho việc huấn luyện ổn định, và GQA / sliding window để suy luận rẻ hơn.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Đã hiểu 0 phần</span></div>
+</header>
+
+<details class="mtoc"><summary>Mục lục lecture</summary><ol></ol></details>
+
+<h2 id="l03-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">slide 1–2, 8</span></h2>
+<div class="slides" data-s="2,8"></div>
+<p>Ở bài tập 1 bạn đã tự viết một transformer. Có rất nhiều lựa chọn nhỏ trong đó: chuẩn hoá đặt ở đâu, dùng hàm kích hoạt nào, mã hoá vị trí ra sao, \(d_{ff}\) bao nhiêu… Lecture này trả lời câu hỏi: <mark>vì sao lại chọn như vậy, và khi tự thiết kế thì nên chọn gì?</mark></p>
+<p>Câu chủ đề của thầy: <i>cách học tốt nhất là tự làm, cách tốt thứ hai là học từ kinh nghiệm của người khác.</i> Không ai có đủ tiền để tự thử mọi lựa chọn trên mô hình hàng chục tỷ tham số. Nhưng đã có hàng chục đội làm việc đó và viết báo cáo. Lecture này đọc các báo cáo ấy và rút ra: chỗ nào mọi người đều đồng ý, chỗ nào mỗi người một kiểu.</p>
+
+<div class="note life">
+  <p>Hãy tưởng tượng bạn muốn nấu phở và đọc công thức của 50 quán nổi tiếng.</p>
+  <ul>
+    <li>Nếu <b>cả 50 quán</b> đều nướng hành gừng trước khi cho vào nồi, gần như chắc chắn việc đó có lý do. Cứ làm theo.</li>
+    <li>Nếu mỗi quán cho một lượng quế khác nhau mà quán nào cũng đông khách, có lẽ lượng quế không quan trọng lắm.</li>
+  </ul>
+  <p>Các mô hình ngôn ngữ lớn cũng vậy. "Công thức" lõi gần như giống hệt nhau (kiểu LLaMA), chỉ khác vài "gia vị".</p>
+</div>
+
+<p>Lecture đi qua ba phần (slide 8):</p>
+<ol>
+  <li><b>Phần 1 — Kiến trúc</b> (slide 9–35): chuẩn hoá, hàm kích hoạt và FFN, lớp nối tiếp hay song song, mã hoá vị trí (RoPE).</li>
+  <li><b>Phần 2 — Siêu tham số</b> (slide 36–51): \(d_{ff}\) so với \(d_{model}\), số head, mô hình nên sâu hay rộng, cỡ từ vựng, dropout và weight decay.</li>
+  <li><b>Phần 3 — Ổn định và các biến thể attention</b> (slide 52–67): z-loss, QK-norm, soft-capping, rồi GQA/MQA và sliding window để suy luận rẻ hơn.</li>
+</ol>
+<p>Lecture 3 là nền cho hai lecture sau. <a href="#l04">Lecture 4</a> đi tiếp từ chỗ "các biến thể attention" ở cuối bài này (attention tuyến tính, MoE). <a href="#l05">Lecture 5</a> giải thích tầng phần cứng, giúp hiểu vì sao "ít FLOP chưa chắc đã nhanh" như bạn sẽ gặp ở mục RMSNorm.</p>
+
+<h2 id="l03-recap" data-short="Từ transformer gốc đến bản hiện đại"><span>Điểm xuất phát: transformer gốc và bản "hiện đại" bạn đã viết</span><span class="slide-range">slide 3–4</span></h2>
+<div class="slides" data-s="3,4"></div>
+<p>Slide 3 là transformer gốc năm 2017 ("Attention is all you need"). Slide 4 là phiên bản bạn viết trong bài tập 1. Bốn điểm khác nhau:</p>
+<div class="tbl"><table>
+  <tr><th>Lựa chọn</th><th>Transformer gốc (2017)</th><th>Bản hiện đại (bài tập 1, LLaMA…)</th></tr>
+  <tr><td>Vị trí của LayerNorm</td><td>Sau mỗi khối (<b>post-norm</b>)</td><td>Trước mỗi khối (<b>pre-norm</b>)</td></tr>
+  <tr><td>Loại chuẩn hoá</td><td>LayerNorm</td><td>RMSNorm</td></tr>
+  <tr><td>Mã hoá vị trí</td><td>Cộng sóng sin/cos vào embedding</td><td><b>RoPE</b>: xoay query và key</td></tr>
+  <tr><td>FFN</td><td>ReLU</td><td><b>SwiGLU</b></td></tr>
+  <tr><td>Hệ số tự do (bias)</td><td>Có</td><td>Không có</td></tr>
+</table></div>
+<p>Trước khi đi tiếp, cần nắm một khái niệm dùng suốt bài: <dfn>dòng residual</dfn> (<span class="en">residual stream</span>). Nhìn hình bên phải slide 4: có một mũi tên chạy thẳng từ dưới lên trên, đi qua hai ô "Add". Mỗi khối con (attention, FFN) <i>rẽ ra</i> từ mũi tên đó, tính toán, rồi <i>cộng</i> kết quả trở lại.</p>
+<div class="note life"><p>Hãy coi dòng residual là một <b>đường cao tốc</b> chạy xuyên qua cả mô hình. Mỗi khối attention hay FFN là một <b>trạm dừng bên đường</b>: xe rẽ vào, được "chế biến" thêm, rồi nhập lại vào cao tốc. Câu hỏi lớn đầu tiên của lecture là: nên đặt "trạm kiểm soát" LayerNorm ở đâu, trên cao tốc hay trong đường rẽ?</p></div>
+
+<h2 id="l03-data" data-short="Học từ dữ liệu của các mô hình"><span>Học từ dữ liệu: hàng chục mô hình, một bảng tổng hợp</span><span class="slide-range">slide 5–7, 9</span></h2>
+<div class="slides" data-s="5,6"></div>
+<p>Riêng năm 2024 đã có hơn 19 mô hình <i>dày</i> (dense, tức không phải MoE) được công bố: LLaMA 3, Qwen 2, Gemma, Nemotron-4, Phi-3, InternLM2… Năm 2025 còn nhiều hơn: gpt-oss, DeepSeek V3.2, Kimi K2, GLM-4.7, MiniMax M2… Phần lớn chỉ khác nhau vài chi tiết nhỏ về kiến trúc.</p>
+<div class="slides" data-s="7,9"></div>
+<p>Thầy gom các lựa chọn của từng mô hình vào một bảng lớn. Mỗi hàng là một mô hình (năm ra đời, cỡ từ vựng, loại norm, lớp song song hay nối tiếp, pre-norm hay không, mã hoá vị trí, hàm kích hoạt, mẹo khác, hệ số MLP, số lớp, \(d_{model}\)…). Nhìn từ xa, hai điều nổi lên:</p>
+<ul>
+  <li><b>Kiến trúc "kiểu LLaMA" thống trị</b>: RMSNorm + pre-norm + RoPE + SwiGLU. Từ khoảng năm 2023, các cột này gần như cùng một màu.</li>
+  <li><b>Có vài xu hướng mới</b> ở các hàng cuối (2024–2025): <i>QK-norm</i> và <i>attention lai</i> (hybrid: trộn attention toàn phần với cửa sổ trượt hoặc attention tuyến tính). Cả hai sẽ được nói ở Phần 3.</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="part" id="l03-part1" data-short="Phần 1 · Kiến trúc">Phần 1 · Kiến trúc<small>Chuẩn hoá, hàm kích hoạt, lớp song song, mã hoá vị trí.</small></div>
+
+<h2 id="l03-prenorm" data-short="Pre-norm hay post-norm"><span>Pre-norm hay post-norm: điều duy nhất mọi người đều đồng ý</span><span class="slide-range">slide 10–12</span></h2>
+<div class="slides" data-s="10"></div>
+<p>Hai cách đặt LayerNorm (gọi tắt LN). Gọi \(F\) là khối con (attention hoặc FFN), \(x_l\) là đầu vào của lớp thứ \(l\):</p>
+<div class="mathbox">\[ \text{Post-norm:}\quad x_{l+1} = \mathrm{LN}\big(x_l + F(x_l)\big) \qquad\qquad \text{Pre-norm:}\quad x_{l+1} = x_l + F\big(\mathrm{LN}(x_l)\big) \]</div>
+<p>Nhìn hình bên trái slide 10: ở post-norm, các ô LayerNorm xanh lá nằm <i>ngay trên</i> cột xám (đường cao tốc). Ở pre-norm, LayerNorm chuyển vào nhánh rẽ, ngay trước attention và FFN. Đường cao tốc trở nên "sạch": không có gì chặn trên đó, chỉ có các phép cộng.</p>
+<p>Với pre-norm, nếu "trải" công thức qua mọi lớp thì:</p>
+<div class="mathbox">\[ x_L = x_0 + F_0(\cdot) + F_1(\cdot) + \dots + F_{L-1}(\cdot) \]</div>
+<p>Tín hiệu từ đầu vào \(x_0\) đi thẳng tới đầu ra, và gradient cũng đi ngược thẳng từ đầu ra về \(x_0\) mà không bị LayerNorm nào bóp méo. Còn ở post-norm, tín hiệu phải đi qua \(L\) lần LayerNorm liên tiếp.</p>
+<div class="note life"><p>Post-norm giống đặt trạm kiểm soát ngay trên làn chính của cao tốc: xe nào cũng phải dừng, và có 100 trạm thì kẹt xe 100 lần. Pre-norm dời trạm kiểm soát vào đường nhánh: chỉ xe rẽ vào trạm mới bị kiểm tra, còn làn chính thông suốt.</p></div>
+<p>Thêm một chi tiết: pre-norm cần một <b>LayerNorm cuối cùng</b> trước lớp đầu ra (dòng "Final LayerNorm" trong bảng của slide), vì đường cao tốc chưa từng được chuẩn hoá. Đó là ô "Norm" ngay dưới "Linear" trong hình slide 4.</p>
+<p>Gần như mọi LM hiện đại dùng pre-norm. BERT (2018) vẫn là post-norm. Ngoại lệ "buồn cười" mà thầy nêu là OPT-350M, không ai rõ vì sao nó dùng post-norm.</p>
+
+<div class="slides" data-s="11,12"></div>
+<p><b>Bằng chứng (slide 11).</b> Biểu đồ trái của Salazar &amp; Nguyen (2019) đo BLEU dịch Anh–Việt. Đường tím chấm (PostNorm) thấp hơn và lên chậm hơn mọi biến thể PreNorm. Bên phải, Xiong và cộng sự (2020) thấy Pre-LN (đỏ, cam) có validation loss giảm nhanh hơn Post-LN, kể cả khi bỏ warmup. Trên BERT cũng vậy.</p>
+<p><b>Giải thích (slide 12).</b> Có hai cách nhìn:</p>
+<ul>
+  <li><b>Gradient không đều giữa các lớp</b> (Xiong 2020, hình trái). Cột cam là độ lớn gradient của Post-LN lúc mới khởi tạo: lớp 1 rất nhỏ (≈ 0,06), lớp 6 rất lớn (≈ 1,25). Các lớp gần đầu ra nhận gradient khổng lồ, nên nếu learning rate lớn ngay từ đầu, chúng dễ "nổ". Vì thế Post-LN <i>bắt buộc</i> phải có warmup (tăng learning rate từ từ). Cột xanh của Pre-LN thì đều nhau ở mọi lớp (≈ 0,2).</li>
+  <li><b>Gai gradient</b> (Salazar &amp; Nguyen, hình phải). Chuẩn của gradient theo thời gian: PostNorm (tím chấm) có rất nhiều gai cao vọt lên, các biến thể PreNorm êm hơn hẳn.</li>
+</ul>
+<div class="note key"><p>Ngày trước, lợi ích được nhắc tới là "bỏ được warmup". Ngày nay lợi ích chính là <b>ổn định</b>: mô hình lớn huấn luyện được với learning rate cao hơn mà không bị nổ.</p></div>
+
+<h2 id="l03-doublenorm" data-short="Norm kép, norm ngoài dòng"><span>Mới gần đây: norm "kép" và post-norm nằm ngoài dòng residual</span><span class="slide-range">slide 13</span></h2>
+<div class="slides" data-s="13"></div>
+<p>Nếu cái dở của post-norm là đặt LayerNorm <i>trên</i> đường cao tốc, sao không đặt post-norm <i>trong nhánh rẽ</i>, ngay trước khi nhập lại? Đó là hình bên phải slide 13: mỗi khối con có LayerNorm cả trước lẫn sau, nhưng cả hai đều nằm ngoài cột xám.</p>
+<div class="mathbox">\[ \text{Norm kép:}\quad x_{l+1} = x_l + \mathrm{LN}\Big(F\big(\mathrm{LN}(x_l)\big)\Big) \qquad\qquad \text{Chỉ post-norm ngoài dòng (OLMo 2):}\quad x_{l+1} = x_l + \mathrm{LN}\big(F(x_l)\big) \]</div>
+<p>Grok và Gemma 2 dùng norm kép. OLMo 2 <i>chỉ</i> dùng norm sau, nhưng vẫn nằm ngoài dòng residual. LayerNorm sau khối con giúp kìm độ lớn của phần "cộng thêm" vào cao tốc.</p>
+<div class="note key"><p>Quy tắc thật sự không phải là "LN phải đứng trước". Quy tắc là <mark>đừng đặt LayerNorm trên dòng residual</mark>. Đặt trong nhánh, trước hay sau hay cả hai, đều được.</p></div>
+
+<h2 id="l03-rmsnorm" data-short="LayerNorm hay RMSNorm"><span>LayerNorm hay RMSNorm? Và bài học "FLOP không phải thời gian chạy"</span><span class="slide-range">slide 14–17</span></h2>
+<div class="slides" data-s="14"></div>
+<p><b>LayerNorm</b> (transformer gốc, GPT-1/2/3, OPT, BLOOM) đưa vector \(x\) (dài \(d_{model}\)) về trung bình 0, phương sai 1, rồi co giãn và dịch:</p>
+<div class="mathbox">\[ y = \frac{x - \mathrm{E}[x]}{\sqrt{\mathrm{Var}[x] + \epsilon}} \cdot \gamma + \beta \]</div>
+<p><b>RMSNorm</b> (họ LLaMA, PaLM, Chinchilla, T5) bỏ bước trừ trung bình và bỏ \(\beta\). Nó chỉ chia cho "độ lớn trung bình" của vector:</p>
+<div class="mathbox">\[ y = \frac{x}{\sqrt{\tfrac{1}{d}\sum_{i=1}^{d} x_i^2 + \epsilon}} \cdot \gamma \]</div>
+<div class="note warn"><p>Công thức trên slide viết mẫu là \(\sqrt{\lVert x\rVert_2^2 + \varepsilon}\), thiếu phép chia cho \(d\). Bản đúng (trong bài báo RMSNorm và trong code LLaMA) lấy <i>trung bình</i> bình phương, tức \(\lVert x\rVert_2^2 / d\). Nếu không chia cho \(d\), đầu ra sẽ nhỏ đi \(\sqrt{d}\) lần.</p></div>
+<div class="note num">
+  <p>Lấy \(x = (1, 2, 3, 6)\), bỏ qua \(\gamma, \beta, \epsilon\).</p>
+  <ul>
+    <li><b>LayerNorm:</b> trung bình là 3, phương sai \(= (4+1+0+9)/4 = 3{,}5\), độ lệch chuẩn ≈ 1,87. Kết quả ≈ \((-1{,}07;\ -0{,}53;\ 0;\ 1{,}60)\).</li>
+    <li><b>RMSNorm:</b> trung bình bình phương \(= (1+4+9+36)/4 = 12{,}5\), căn bậc hai ≈ 3,54. Kết quả ≈ \((0{,}28;\ 0{,}57;\ 0{,}85;\ 1{,}70)\).</li>
+  </ul>
+  <p>Cả hai đều đưa vector về "cỡ chuẩn". Khác biệt là RMSNorm không kéo trung bình về 0, và thực tế điều đó hầu như không ảnh hưởng chất lượng.</p>
+</div>
+
+<div class="slides" data-s="15,16"></div>
+<p><b>Vì sao dùng RMSNorm?</b> Lời giải thích thường gặp: nhanh hơn mà vẫn tốt như nhau, vì ít phép tính hơn (không tính trung bình) và ít tham số hơn (không có \(\beta\)).</p>
+<p>Nhưng khoan. Bảng ở slide 15 (Ivanov 2023) cho thấy trong transformer, <b>99,8% số FLOP</b> là phép nhân tensor (nhân ma trận). Chuẩn hoá chỉ chiếm <b>0,17%</b>. Tiết kiệm một phần nhỏ của 0,17% thì có đáng gì?</p>
+<p>Slide 16 thêm một cột nữa, và câu chuyện đổi hẳn:</p>
+<div class="tbl"><table>
+  <tr><th>Loại phép toán</th><th>% FLOP</th><th>% thời gian chạy</th></tr>
+  <tr><td>Nhân tensor (nhân ma trận)</td><td>99,80</td><td>61,0</td></tr>
+  <tr><td>Chuẩn hoá thống kê (LayerNorm…)</td><td>0,17</td><td><b>25,5</b></td></tr>
+  <tr><td>Phép từng phần tử (dropout, cộng…)</td><td>0,03</td><td>13,5</td></tr>
+</table></div>
+<p>Chuẩn hoá chỉ tốn 0,17% số phép tính nhưng chiếm tới <b>một phần tư thời gian</b>! Lý do: nó gần như không tính gì mà chủ yếu đọc và ghi dữ liệu. Hình bên phải ghi rõ: khối MHA có tỉ lệ FLOP/bộ nhớ là 153, còn LayerNorm chỉ 3,5, dropout và phép cộng chỉ 1/3. Đây chính là <a href="#l05-roofline">mô hình roofline ở Lecture 5</a>: phép tính có cường độ thấp thì bị bộ nhớ kìm chân, nên thời gian phụ thuộc vào số byte phải chở chứ không phải số FLOP.</p>
+<div class="note key"><p><b>FLOP không phải là thời gian chạy.</b> RMSNorm vẫn đáng giá vì nó bớt dữ liệu phải chở (không có \(\beta\), ít số liệu thống kê hơn), dù số FLOP tiết kiệm được gần như bằng 0.</p></div>
+
+<div class="slides" data-s="17"></div>
+<p><b>Kiểm chứng (Narang 2020).</b> Cùng 223 triệu tham số, cùng số phép tính: RMSNorm chạy 3,68 bước/giây so với 3,50 của bản gốc (nhanh hơn khoảng 5%). Bất ngờ là loss cuối cũng thấp hơn (1,821 so với 1,838), và điểm trên các tác vụ downstream (SGLUE, XSum, WebQ, WMT) đều cao hơn.</p>
+
+<h2 id="l03-bias" data-short="Bỏ hệ số bias"><span>Rộng hơn nữa: bỏ luôn các hệ số bias</span><span class="slide-range">slide 18–19</span></h2>
+<div class="slides" data-s="18"></div>
+<p>Transformer gốc có bias \(b_1, b_2\) trong FFN. Hầu hết mô hình hiện đại bỏ chúng:</p>
+<div class="mathbox">\[ \text{Gốc: } \mathrm{FFN}(x) = \max(0, xW_1 + b_1)W_2 + b_2 \qquad\longrightarrow\qquad \text{Hiện đại: } \mathrm{FFN}(x) = \sigma(xW_1)W_2 \]</div>
+<p>Ở đây \(\sigma\) là một hàm kích hoạt bất kỳ. Hai lý do: <b>bộ nhớ</b> (giống RMSNorm: bias rất ít tham số nhưng vẫn phải đọc/ghi, và cả gradient lẫn trạng thái optimizer của chúng nữa) và <b>tối ưu ổn định hơn</b> (kinh nghiệm thực tế cho thấy vậy).</p>
+<div class="slides" data-s="19"></div>
+<div class="note key">
+  <p><b>Tóm tắt phần chuẩn hoá (slide 19):</b></p>
+  <ul>
+    <li>Gần như ai cũng đặt norm <i>ngoài</i> dòng residual, thường là pre-norm. Trực giác: giữ đường cao tốc sạch. Thực tế: gradient lan truyền đều hơn, ít gai hơn. Một số mô hình thêm norm thứ hai sau khối con.</li>
+    <li>Đa số dùng RMSNorm: tốt ngang LayerNorm, ít dữ liệu phải chở hơn nên chạy nhanh hơn.</li>
+    <li>Bias cũng bị bỏ vì đổi lấy quá ít lợi ích so với chi phí.</li>
+  </ul>
+</div>
+
+<h2 id="l03-act" data-short="Hàm kích hoạt: ReLU, GELU"><span>Hàm kích hoạt: một "vườn thú" đủ loại</span><span class="slide-range">slide 20–21</span></h2>
+<div class="slides" data-s="20,21"></div>
+<p>ReLU, GeLU, Swish, ELU, GLU, GeGLU, ReGLU, SeLU, SwiGLU, LiGLU… Nghe thì rối, nhưng thực ra chỉ có hai nhóm: các hàm "một nhánh" (ReLU, GELU, Swish…) và họ "có cổng" (*GLU, mục sau).</p>
+<ul>
+  <li><b>ReLU</b>: \(\max(0, x)\). Số âm thành 0, số dương giữ nguyên. Dùng trong transformer gốc, T5, Gopher, Chinchilla, OPT.</li>
+  <li><b>GELU</b>: \(x\,\Phi(x)\), với \(\Phi\) là hàm phân phối tích luỹ của phân phối chuẩn. Có thể hiểu nó như một ReLU "mềm": thay vì cắt cái rụp tại 0, nó nhân \(x\) với một hệ số tăng dần từ 0 lên 1. Dùng trong GPT-1/2/3, GPT-J, GPT-NeoX, BLOOM.</li>
+  <li><b>Swish</b> (còn gọi là SiLU): \(x \cdot \mathrm{sigmoid}(x)\). Rất giống GELU.</li>
+</ul>
+
+<div class="widget" id="actW">
+  <h4>Thử nghiệm: so sánh các hàm kích hoạt</h4>
+  <div class="row" role="group" aria-label="Chọn hàm kích hoạt">
+    <button class="l03-btn" data-f="relu">ReLU</button>
+    <button class="l03-btn" data-f="gelu">GELU</button>
+    <button class="l03-btn" data-f="swish">Swish (SiLU)</button>
+    <button class="l03-btn" data-f="relu2">ReLU²</button>
+  </div>
+  <p style="margin:14px 0 4px"><label for="actX">Đầu vào x = <span class="chip" id="actXv"></span></label></p>
+  <input type="range" id="actX" min="-4" max="3" step="0.05" value="-0.8">
+  <svg class="l03-svg" id="actSvg" viewBox="0 0 360 210" role="img" aria-label="Đồ thị các hàm kích hoạt"></svg>
+  <div class="l03-stats" id="actStats"></div>
+  <p class="l03-cap" id="actNote"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('actW'); if (!box) return;
+  const sig = x => 1 / (1 + Math.exp(-x));
+  const F = {
+    relu:  { n: 'ReLU',  f: x => Math.max(0, x), d: 'ReLU cắt hẳn phần âm về 0 và có một góc gãy tại 0. Với x âm, gradient bằng 0, nên nơ-ron đó "tắt" hẳn.' },
+    gelu:  { n: 'GELU',  f: x => 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * x ** 3))), d: 'GELU là ReLU "mềm": cong trơn quanh 0 và hơi trũng xuống dưới 0 (thấp nhất ≈ −0,17 tại x ≈ −0,75). Số hơi âm không bị xoá hẳn.' },
+    swish: { n: 'Swish', f: x => x * sig(x), d: 'Swish = x · sigmoid(x). Gần như trùng GELU, trũng sâu hơn chút (≈ −0,28 tại x ≈ −1,28). Đây là nửa "Swi" trong SwiGLU.' },
+    relu2: { n: 'ReLU²', f: x => Math.max(0, x) ** 2, d: 'ReLU bình phương: phần âm vẫn là 0, phần dương tăng theo x². Nemotron-4 340B dùng hàm này, một trong số ít ngoại lệ không dùng *GLU.' }
+  };
+  let cur = 'gelu';
+  const W = 360, H = 210, L = 30, R = 10, T = 10, B = 24, X0 = -4, X1 = 3, Y0 = -0.6, Y1 = 3;
+  const px = x => L + (x - X0) / (X1 - X0) * (W - L - R);
+  const py = y => T + (Y1 - y) / (Y1 - Y0) * (H - T - B);
+  const svg = box.querySelector('#actSvg'), slider = box.querySelector('#actX');
+  const fmt = v => v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function draw() {
+    const xv = parseFloat(slider.value);
+    let s = `<defs><clipPath id="actClip"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/></clipPath></defs>`;
+    for (let x = X0; x <= X1; x++) s += `<line x1="${px(x)}" x2="${px(x)}" y1="${T}" y2="${H - B}" style="stroke:var(--line)"/><text x="${px(x)}" y="${H - B + 14}" text-anchor="middle" style="fill:var(--muted);font:10px var(--f-mono)">${x}</text>`;
+    for (let y = 0; y <= 3; y++) s += `<line x1="${L}" x2="${W - R}" y1="${py(y)}" y2="${py(y)}" style="stroke:var(--line)"/><text x="${L - 5}" y="${py(y) + 3}" text-anchor="end" style="fill:var(--muted);font:10px var(--f-mono)">${y}</text>`;
+    s += `<line x1="${px(0)}" x2="${px(0)}" y1="${T}" y2="${H - B}" style="stroke:var(--muted)"/><line x1="${L}" x2="${W - R}" y1="${py(0)}" y2="${py(0)}" style="stroke:var(--muted)"/>`;
+    const order = Object.keys(F).filter(k => k !== cur).concat(cur);
+    for (const k of order) {
+      const pts = []; for (let x = X0; x <= X1 + 1e-9; x += 0.025) pts.push(`${px(x).toFixed(1)},${py(F[k].f(x)).toFixed(1)}`);
+      const on = k === cur;
+      s += `<polyline clip-path="url(#actClip)" points="${pts.join(' ')}" style="fill:none;stroke:${on ? 'var(--accent)' : 'var(--muted)'};stroke-width:${on ? 3 : 1.4};opacity:${on ? 1 : .5}"/>`;
+    }
+    s += `<line x1="${px(xv)}" x2="${px(xv)}" y1="${T}" y2="${H - B}" style="stroke:var(--warn);stroke-dasharray:3 3"/>`;
+    const yv = F[cur].f(xv);
+    if (yv <= Y1) s += `<circle cx="${px(xv)}" cy="${py(yv)}" r="5" style="fill:var(--accent)"/>`;
+    svg.innerHTML = s;
+    box.querySelector('#actXv').textContent = fmt(xv);
+    box.querySelector('#actStats').innerHTML = Object.keys(F).map(k => `<div class="${k === cur ? 'sel' : ''}"><small>${F[k].n}(x)</small><b>${fmt(F[k].f(xv))}</b></div>`).join('');
+    box.querySelector('#actNote').textContent = F[cur].d;
+    box.querySelectorAll('[data-f]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === cur)));
+  }
+  box.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { cur = b.dataset.f; draw(); }));
+  slider.addEventListener('input', draw); draw();
+})();
+</script>
+<p>Kéo x về khoảng −1 sẽ thấy khác biệt rõ nhất: ReLU trả về đúng 0, còn GELU và Swish trả về một số hơi âm. Với x dương lớn, cả ba gần như trùng nhau.</p>
+
+<h2 id="l03-glu" data-short="Hàm có cổng: *GLU"><span>Hàm kích hoạt có cổng (*GLU) và vì sao \(d_{ff}\) nhỏ đi 2/3</span><span class="slide-range">slide 22–26</span></h2>
+<div class="slides" data-s="22"></div>
+<p>Ý tưởng của GLU (gated linear unit): giữ nguyên phần "tuyến tính rồi kích hoạt", nhưng <b>nhân từng phần tử</b> với một nhánh tuyến tính thứ hai \(xV\):</p>
+<div class="mathbox">\[ \max(0, xW_1) \quad\longrightarrow\quad \max(0, xW_1) \otimes (xV) \]</div>
+<p>Ký hiệu \(\otimes\) nghĩa là nhân từng cặp phần tử ở cùng vị trí. Ghép vào FFN ta được ReGLU:</p>
+<div class="mathbox">\[ \mathrm{FF}_{\text{ReGLU}}(x) = \big(\max(0, xW_1) \otimes xV\big)\, W_2 \]</div>
+<div class="note life"><p>Hãy nghĩ tới một vòi nước. Nhánh \(xV\) là <b>nước</b>, tức thông tin cần chuyển đi. Nhánh \(\max(0, xW_1)\) là <b>cái van</b>: nó quyết định mỗi chiều được mở bao nhiêu. Vì cả hai đều phụ thuộc vào đầu vào \(x\), mô hình tự học được "với đầu vào này thì cho chiều nào chảy qua, chiều nào chặn lại". FFN thường chỉ có van mà không có nước riêng.</p></div>
+
+<div class="slides" data-s="23"></div>
+<p>Thay ReLU trong "van" bằng hàm khác, ta được các biến thể:</p>
+<div class="mathbox">\[ \mathrm{FFN}_{\text{GeGLU}} = \big(\mathrm{GELU}(xW) \otimes xV\big)W_2 \qquad\qquad \mathrm{FFN}_{\text{SwiGLU}} = \big(\mathrm{Swish}(xW) \otimes xV\big)W_2 \]</div>
+<ul>
+  <li><b>GeGLU</b>: T5 v1.1, mT5, LaMDA, Phi-3, Gemma 2, 3, 4.</li>
+  <li><b>SwiGLU</b>: LLaMA 1/2/3, PaLM, Mistral, OLMo, và <i>hầu hết mô hình sau 2023</i>.</li>
+</ul>
+<p><b>Vì sao \(d_{ff}\) nhỏ đi 2/3?</b> FFN thường có 2 ma trận (\(W_1, W_2\)), còn GLU có tới 3 (\(W, V, W_2\)). Muốn so sánh công bằng thì phải giữ tổng số tham số bằng nhau:</p>
+<div class="mathbox">\[ \underbrace{2 \cdot d_{model} \cdot 4d_{model}}_{\text{FFN thường, } d_{ff}=4d_{model}} = \underbrace{3 \cdot d_{model} \cdot d_{ff}'}_{\text{GLU}} \quad\Longrightarrow\quad d_{ff}' = \tfrac{2}{3}\cdot 4 d_{model} = \tfrac{8}{3} d_{model} \approx 2{,}67\, d_{model} \]</div>
+<div class="note num"><p>LLaMA 7B có \(d_{model} = 4096\). FFN thường sẽ dùng \(d_{ff} = 16384\), tức \(2 \times 4096 \times 16384 \approx 134\) triệu tham số mỗi lớp. Với SwiGLU, \(\tfrac{8}{3}\times 4096 \approx 10923\), làm tròn lên bội số của 256 thành <b>11008</b>. Khi đó \(3 \times 4096 \times 11008 \approx 135\) triệu tham số, gần như bằng nhau.</p></div>
+
+<div class="slides" data-s="24,25"></div>
+<p><b>GLU có thật sự tốt hơn không?</b> Có, khá ổn định.</p>
+<ul>
+  <li><b>Shazeer 2020</b> (slide 24): các biến thể có cổng (GLU, GEGLU, SwiGLU, ReGLU) đạt điểm trung bình 84,1–84,7, cao hơn nhóm không cổng (83,6–83,9). Độ lệch chuẩn giữa các lần chạy chỉ 0,235, nên khoảng cách này lớn hơn mức nhiễu.</li>
+  <li><b>Narang 2020</b> (slide 25): SwiGLU và GeGLU có loss cuối thấp nhất (1,789 và 1,792, so với 1,838 của bản gốc). Số tham số và số phép tính được giữ bằng nhau ở mọi dòng.</li>
+</ul>
+<div class="slides" data-s="26"></div>
+<div class="note key"><p>*GLU <i>không bắt buộc</i>: GPT-3 dùng GELU thường vẫn rất tốt, còn Nemotron-4 340B dùng ReLU bình phương. Nhưng bằng chứng cho thấy Swi/GeGLU mang lại lợi ích nhỏ mà khá đều, nên ngày nay rất hiếm thấy mô hình không dùng chúng.</p></div>
+
+<h2 id="l03-parallel" data-short="Lớp nối tiếp hay song song"><span>Lớp nối tiếp hay song song?</span><span class="slide-range">slide 27–29</span></h2>
+<div class="slides" data-s="27,28"></div>
+<p>Khối transformer bình thường là <b>nối tiếp</b> (serial): tính attention xong, cộng vào, rồi mới tính MLP trên kết quả đó. Một số mô hình (GPT-J, PaLM, GPT-NeoX) chạy hai khối <b>song song</b> trên cùng một đầu vào:</p>
+<div class="mathbox">\[ \text{Nối tiếp:}\ y = x + \mathrm{MLP}\Big(\mathrm{LN}\big(x + \mathrm{Attn}(\mathrm{LN}(x))\big)\Big) \qquad \text{Song song:}\ y = x + \mathrm{MLP}\big(\mathrm{LN}(x)\big) + \mathrm{Attn}\big(\mathrm{LN}(x)\big) \]</div>
+<p>Lợi ích: chỉ cần tính LayerNorm một lần, và các ma trận đầu vào của attention (\(W_Q, W_K, W_V\)) cùng ma trận đầu vào của MLP có thể <b>gộp thành một phép nhân lớn</b>. Nhân một ma trận lớn tận dụng GPU tốt hơn nhân nhiều ma trận nhỏ. PaLM báo cáo nhanh hơn khoảng 15% khi huấn luyện ở quy mô lớn. Cái giá: chất lượng giảm nhẹ ở 8B, nhưng ở 62B thì không thấy giảm nữa.</p>
+<p>Mô hình gần đây dùng lớp song song: Cohere Command A, Command R+, Falcon 2 11B. Còn lại đa số vẫn dùng nối tiếp.</p>
+<div class="slides" data-s="29"></div>
+<div class="note key">
+  <p><b>Tóm tắt kiến trúc (slide 29):</b></p>
+  <ul>
+    <li><b>Pre/post norm:</b> ai cũng đặt norm ngoài dòng residual (trừ OPT-350M), nhiều khả năng là có lý do chính đáng.</li>
+    <li><b>LayerNorm/RMSNorm:</b> RMSNorm thắng rõ về tốc độ, đôi khi cả về chất lượng.</li>
+    <li><b>Cổng:</b> *GLU giờ là lựa chọn chung.</li>
+    <li><b>Nối tiếp/song song:</b> đa số dùng nối tiếp.</li>
+  </ul>
+</div>
+
+<h2 id="l03-pos" data-short="Các kiểu mã hoá vị trí"><span>Mã hoá vị trí: bốn cách khác nhau</span><span class="slide-range">slide 30</span></h2>
+<div class="slides" data-s="30"></div>
+<p>Attention tự nó không biết thứ tự: đảo các từ trong câu thì kết quả attention cũng chỉ bị đảo theo. Muốn mô hình phân biệt "chó cắn người" với "người cắn chó", ta phải đưa thông tin vị trí vào. Có bốn cách:</p>
+<div class="tbl"><table>
+  <tr><th>Cách</th><th>Làm gì</th><th>Ai dùng</th></tr>
+  <tr><td><b>Sin/cos</b></td><td>Cộng vào embedding một vector sóng sin, cos cố định: \(v_x + PE_{pos}\)</td><td>Transformer gốc</td></tr>
+  <tr><td><b>Tuyệt đối (học được)</b></td><td>Cộng vào embedding một vector \(u_i\) học được cho từng vị trí: \(v_x + u_i\)</td><td>GPT-1/2/3, OPT</td></tr>
+  <tr><td><b>Tương đối</b></td><td>Không cộng vào embedding, mà thêm một vector theo khoảng cách \(a_{ij}\) vào bên trong phép tính attention</td><td>T5, Gopher, Chinchilla</td></tr>
+  <tr><td><b>RoPE</b></td><td>Xoay query và key một góc tỉ lệ với vị trí</td><td>GPT-J, PaLM, LLaMA, <i>hầu hết mô hình 2024+</i></td></tr>
+</table></div>
+
+<h2 id="l03-rope" data-short="RoPE: xoay theo vị trí"><span>RoPE: mã hoá vị trí bằng phép xoay</span><span class="slide-range">slide 31–33</span></h2>
+<div class="slides" data-s="31"></div>
+<p><b>Mục tiêu.</b> Ta muốn điểm attention giữa hai từ chỉ phụ thuộc vào <i>nội dung</i> của hai từ và <i>khoảng cách</i> giữa chúng, không phụ thuộc vào việc chúng đứng ở vị trí tuyệt đối nào. Viết bằng toán: tìm hàm \(f(x, i)\) (gắn vị trí \(i\) vào vector \(x\)) sao cho</p>
+<div class="mathbox">\[ \big\langle f(x, i),\ f(y, j) \big\rangle = g(x, y, i - j) \]</div>
+<p>Ví dụ: quan hệ giữa "con" và "mèo" trong "con mèo" phải như nhau dù cụm từ đứng đầu câu hay ở từ thứ 500.</p>
+<p><b>Các cách cũ không đạt được điều này:</b></p>
+<ul>
+  <li><b>Sin/cos:</b> khai triển tích vô hướng ra:
+    <div class="mathbox">\[ \langle v_x + PE_i,\ v_y + PE_j \rangle = \langle v_x, v_y\rangle + \langle v_x, PE_j\rangle + \langle PE_i, v_y\rangle + \langle PE_i, PE_j\rangle \]</div>
+    Hai số hạng ở giữa trộn nội dung với vị trí <i>tuyệt đối</i> \(i\) hoặc \(j\). (Slide viết \(\mathrm{Embed}(y, i)\), đúng ra phải là \(\mathrm{Embed}(y, j)\).)</li>
+  <li><b>Tuyệt đối:</b> hiển nhiên là không, vì \(u_i\) gắn với vị trí tuyệt đối.</li>
+  <li><b>Tương đối:</b> có phụ thuộc vào \(i - j\), nhưng \(a_{ij}\) chen vào giữa nên điểm số không còn là tích vô hướng của hai vector \(f(x,i)\) và \(f(y,j)\). Phải sửa lại phép tính attention chuẩn mới dùng được.</li>
+</ul>
+
+<div class="slides" data-s="32"></div>
+<p><b>Ý tưởng then chốt.</b> Tích vô hướng của hai vector chỉ phụ thuộc vào độ dài của chúng và <i>góc giữa chúng</i>. Nếu xoay cả hai vector cùng một góc, góc giữa chúng không đổi nên tích vô hướng cũng không đổi.</p>
+<p>Vậy: <mark>xoay vector của mỗi từ một góc tỉ lệ với vị trí của nó</mark>. Trong slide 32:</p>
+<ul>
+  <li>"<b>we</b> know that": "we" ở vị trí 0 nên xoay 0 bước, "know" ở vị trí 1 nên xoay 1 bước.</li>
+  <li>"of course <b>we</b> know": "we" ở vị trí 2 nên xoay 2 bước, "know" ở vị trí 3 nên xoay 3 bước.</li>
+</ul>
+<p>Cả hai vector đều quay thêm 2 bước, nên góc giữa "we" và "know" giữ nguyên, và điểm attention giữa chúng cũng vậy. Thứ duy nhất quyết định góc là <b>khoảng cách</b> (ở đây là 1).</p>
+
+<div class="widget" id="ropeW">
+  <h4>Thử nghiệm: xoay vector theo vị trí</h4>
+  <p style="margin:0 0 4px"><label for="ropeM">Vị trí của "we": m = <span class="chip" id="ropeMv"></span></label></p>
+  <input type="range" id="ropeM" min="0" max="6" step="1" value="0">
+  <p style="margin:10px 0 4px"><label for="ropeN">Vị trí của "know": n = <span class="chip" id="ropeNv"></span></label></p>
+  <input type="range" id="ropeN" min="0" max="6" step="1" value="1">
+  <p style="margin:10px 0 4px"><label for="ropeS">Thêm s từ vào đầu câu (dịch cả hai từ): s = <span class="chip" id="ropeSv"></span></label></p>
+  <input type="range" id="ropeS" min="0" max="8" step="1" value="0">
+  <svg class="l03-svg sq" id="ropeSvg" viewBox="-150 -150 300 300" role="img" aria-label="Hai vector query và key sau khi xoay"></svg>
+  <div class="l03-stats" id="ropeStats"></div>
+  <svg class="l03-svg" id="ropeBars" viewBox="0 0 360 96" role="img" aria-label="Điểm attention theo s cho RoPE và cho cách cộng vị trí"></svg>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('ropeW'); if (!box) return;
+  const TH = 25 * Math.PI / 180, SC = 115;
+  const q0 = [Math.cos(100 * Math.PI / 180), Math.sin(100 * Math.PI / 180)];
+  const k0 = [0.85 * Math.cos(35 * Math.PI / 180), 0.85 * Math.sin(35 * Math.PI / 180)];
+  const rot = (v, a) => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
+  const pe = p => [0.55 * Math.cos(p * TH), 0.55 * Math.sin(p * TH)];
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+  const ropeScore = (m, n) => dot(rot(q0, m * TH), rot(k0, n * TH));
+  const addScore = (m, n) => dot(add(q0, pe(m)), add(k0, pe(n)));
+  const sl = id => box.querySelector(id);
+  const fmt = v => v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function arrow(v, col, w, dash, lab) {
+    const x = v[0] * SC, y = -v[1] * SC, a = Math.atan2(y, x), h = 9;
+    const p1 = [x - h * Math.cos(a - 0.4), y - h * Math.sin(a - 0.4)], p2 = [x - h * Math.cos(a + 0.4), y - h * Math.sin(a + 0.4)];
+    let s = `<line x1="0" y1="0" x2="${x}" y2="${y}" style="stroke:${col};stroke-width:${w}${dash ? ';stroke-dasharray:4 4' : ''}"/>`;
+    if (!dash) s += `<polygon points="${x},${y} ${p1} ${p2}" style="fill:${col}"/>`;
+    if (lab) s += `<text x="${x * 1.17}" y="${y * 1.17 + 4}" text-anchor="middle" style="fill:${col};font:700 13px var(--f-display)">${lab}</text>`;
+    return s;
+  }
+  function draw() {
+    const m = +sl('#ropeM').value, n = +sl('#ropeN').value, s = +sl('#ropeS').value, M = m + s, N = n + s;
+    let g = `<circle r="${SC}" style="fill:none;stroke:var(--line)"/><line x1="-140" x2="140" style="stroke:var(--line)"/><line y1="-140" y2="140" style="stroke:var(--line)"/>`;
+    g += arrow(q0, 'var(--muted)', 1.2, true) + arrow(k0, 'var(--muted)', 1.2, true);
+    g += arrow(rot(q0, M * TH), 'var(--accent)', 3, false, 'we') + arrow(rot(k0, N * TH), 'var(--warn)', 3, false, 'know');
+    sl('#ropeSvg').innerHTML = g;
+    sl('#ropeMv').textContent = m; sl('#ropeNv').textContent = n; sl('#ropeSv').textContent = s;
+    const ang = ((((N - M) * 25 - 65) % 360) + 540) % 360 - 180;
+    sl('#ropeStats').innerHTML =
+      `<div><small>Vị trí thật trong câu</small><b>we: ${M} · know: ${N}</b></div>` +
+      `<div><small>Khoảng cách n − m</small><b>${n - m}</b></div>` +
+      `<div><small>Góc giữa hai vector</small><b>${Math.abs(ang)}°</b></div>` +
+      `<div class="sel"><small>Điểm attention với RoPE</small><b>${fmt(ropeScore(M, N))}</b></div>` +
+      `<div><small>Nếu cộng vector vị trí (kiểu sin)</small><b>${fmt(addScore(M, N))}</b></div>`;
+    const W = 360, BL = 92, bw = 24, gap = (W - BL - 9 * bw) / 8;
+    const rows = [['RoPE', s2 => ropeScore(m + s2, n + s2), 'var(--accent)', 30], ['Cộng vị trí', s2 => addScore(m + s2, n + s2), 'var(--muted)', 76]];
+    let b = `<text x="${BL}" y="9" style="fill:var(--muted);font:10.5px var(--f-display)">Điểm attention khi s = 0 → 8 (viền cam: s đang chọn)</text>`;
+    for (const [lab, f, col, base] of rows) {
+      b += `<text x="0" y="${base - 4}" style="fill:var(--ink);font:600 12px var(--f-display)">${lab}</text><line x1="${BL}" x2="${W}" y1="${base}" y2="${base}" style="stroke:var(--line)"/>`;
+      for (let i = 0; i <= 8; i++) {
+        const v = f(i), h = Math.min(20, Math.abs(v) * 13), x = BL + i * (bw + gap);
+        b += `<rect x="${x}" y="${v >= 0 ? base - h : base}" width="${bw}" height="${Math.max(h, 1)}" rx="2" style="fill:${col};${i === s ? 'stroke:var(--warn);stroke-width:2' : ''}"/>`;
+      }
+    }
+    sl('#ropeBars').innerHTML = b;
+  }
+  ['#ropeM', '#ropeN', '#ropeS'].forEach(id => sl(id).addEventListener('input', draw)); draw();
+})();
+</script>
+<p>Cố định m và n rồi kéo s: hai mũi tên cùng quay, góc giữa chúng không đổi, và điểm RoPE giữ nguyên (hàng cột xanh cao bằng nhau). Ngược lại, nếu <i>cộng</i> vector vị trí như transformer gốc thì điểm attention thay đổi theo vị trí tuyệt đối (hàng cột xám lên xuống). Đổi m hoặc n, tức là đổi khoảng cách, thì điểm RoPE mới thay đổi.</p>
+
+<div class="slides" data-s="33"></div>
+<p><b>Lên nhiều chiều.</b> Vector query/key có \(d\) chiều chứ không phải 2. RoPE chỉ đơn giản <b>ghép các tọa độ thành từng cặp</b> \((x_1, x_2), (x_3, x_4), \dots\) và xoay mỗi cặp trong mặt phẳng 2D của riêng nó. Cặp thứ \(i\) quay với "tốc độ" riêng \(\theta_i\), nên ở vị trí \(m\) nó quay góc \(m\theta_i\). Thông thường \(\theta_i = 10000^{-2(i-1)/d}\).</p>
+<div class="note life"><p>Giống một chiếc đồng hồ có rất nhiều kim. Các cặp đầu quay nhanh như <b>kim giây</b>: chỉ cần lệch vài vị trí là góc đã khác hẳn, nên chúng giúp phân biệt các từ <i>gần nhau</i>. Các cặp cuối quay chậm như <b>kim giờ</b>: phải cách hàng nghìn vị trí mới quay đáng kể, nên chúng mang thông tin về khoảng cách <i>xa</i>. Nhìn đủ các kim là biết chính xác khoảng cách.</p></div>
+<p>Hình nhỏ góc phải slide 33 là một biến thể (Gemma 4 dùng): chỉ xoay <i>một phần</i> các cặp, phần còn lại để nguyên. Phần được xoay mang thông tin vị trí, phần không xoay chỉ mang ý nghĩa thuần tuý.</p>
+
+<h2 id="l03-rope-math" data-short="Toán & code của RoPE"><span>Toán và code của RoPE</span><span class="slide-range">slide 34–35</span></h2>
+<div class="slides" data-s="34"></div>
+<p>Viết gọn: query/key ở vị trí \(m\) là \(f(x_m, m) = R^d_{\Theta, m}\, W x_m\). Ma trận \(R^d_{\Theta,m}\) chỉ gồm các khối xoay \(2\times2\) nằm dọc đường chéo, khối thứ \(i\) xoay góc \(m\theta_i\). Vì sao điều này cho ra đúng tính chất "chỉ phụ thuộc khoảng cách"? Vì xoay một góc rồi xoay ngược một góc khác thì bằng xoay hiệu của hai góc:</p>
+<div class="mathbox">\[ \big(R_m q\big)^\top \big(R_n k\big) = q^\top R_m^\top R_n\, k = q^\top R_{n-m}\, k \]</div>
+<p>Kết quả chỉ chứa \(n - m\). Khác với sin/cos: RoPE <b>nhân</b> chứ không <b>cộng</b>, nên không sinh ra các số hạng chéo trộn nội dung với vị trí tuyệt đối.</p>
+<div class="slides" data-s="35"></div>
+<p><b>Trong code</b> (slide 35), RoPE chỉ thêm hai dòng vào attention thường:</p>
+<ol>
+  <li>Tính \(q, k, v\) và chia thành các head như bình thường.</li>
+  <li><code>cos, sin = self.rotary_emb(value_states, position_ids)</code>: lấy bảng cos/sin cho từng vị trí.</li>
+  <li><code>apply_rotary_pos_emb(query_states, key_states, cos, sin)</code>: xoay <b>query và key</b>. Value không bị xoay.</li>
+</ol>
+<div class="note key"><p>RoPE được áp ở <b>mọi lớp attention</b>, ngay trước khi tính \(qk^\top\), chứ không cộng một lần vào embedding ở đầu vào như sin/cos hay vị trí tuyệt đối. Nhờ vậy tính chất "chỉ phụ thuộc khoảng cách" được giữ ở mọi lớp.</p></div>
+
+<!-- ============================================================ -->
+<div class="part" id="l03-part2" data-short="Phần 2 · Siêu tham số">Phần 2 · Siêu tham số<small>Những con số mà gần như ai cũng chọn giống nhau.</small></div>
+
+<h2 id="l03-dff" data-short="d_ff = 4 × d_model"><span>Siêu tham số đồng thuận 1: \(d_{ff} = 4\, d_{model}\)</span><span class="slide-range">slide 36–41</span></h2>
+<div class="slides" data-s="36,37"></div>
+<p>Slide 36 liệt kê các câu hỏi quen thuộc: FFN nên to gấp mấy lần chiều ẩn? Bao nhiêu head? Từ vựng bao nhiêu? Có cần regularization không? Mô hình nên sâu hay rộng? Câu trả lời bất ngờ là phần lớn các mô hình chọn <i>rất giống nhau</i>.</p>
+<p>Câu đầu tiên: FFN có hai chiều quan trọng là chiều mô hình \(d_{model}\) (độ rộng đường cao tốc) và chiều ẩn của FFN \(d_{ff}\) (FFN "phình ra" bao nhiêu ở giữa). Gần như luôn luôn:</p>
+<div class="mathbox">\[ d_{ff} = 4\, d_{model} \]</div>
+<div class="slides" data-s="38,39"></div>
+<p><b>Ngoại lệ 1: các biến thể GLU.</b> Như đã tính ở <a href="#l03-glu">mục *GLU</a>, nhân thêm 2/3 thì được \(d_{ff} = \tfrac{8}{3}d_{model} \approx 2{,}67\,d_{model}\). Bảng slide 38: LLaMA 70B 2,68, Qwen 14B 2,67, DeepSeek 67B 2,68, Yi 34B 2,85, T5 v1.1 2,5. PaLM (4), Mistral 7B và LLaMA-2 70B (3,5) to hơn một chút.</p>
+<p><b>Ngoại lệ 2: T5 11B</b> (slide 39) chọn một con số rất táo bạo: \(d_{ff} = 65536\) trong khi \(d_{model} = 1024\), tức <b>gấp 64 lần</b>. Lý do họ nêu: TPU chạy hiệu quả nhất với các phép nhân ma trận dày thật lớn, mà FFN chính là chỗ có phép nhân như vậy. Các ngoại lệ gần đây: Gemma 2 (8 lần), SmolLM, Gemma 3 và Gemma 4 (4 lần dù dùng GLU).</p>
+<div class="slides" data-s="40,41"></div>
+<p><b>Vì sao lại là khoảng này?</b> Biểu đồ của Kaplan 2020 (slide 40) đo loss tăng thêm bao nhiêu khi thay đổi tỉ lệ \(d_{ff}/d_{model}\) (mô hình 50 triệu tham số). Từ khoảng 1 đến 4, đường gần như nằm sát 0%. Qua 10 thì loss bắt đầu tăng rõ. Nghĩa là có một "lòng chảo" khá rộng, và 4 nằm gọn trong đó.</p>
+<div class="note key"><p><b>Bài học (slide 41):</b> mặc định \(d_{ff} = 4d_{model}\) (hoặc ≈ 2,67 với GLU) hoạt động tốt cho hầu hết LLM hiện đại. T5 cho thấy kể cả 64 lần vẫn chạy được, nên con số này không phải bất di bất dịch. Nhưng bản kế nhiệm T5 v1.1 "cải tiến" lại quay về 2,5 với GeGLU, gợi ý rằng 64 lần có lẽ không tối ưu.</p></div>
+
+<h2 id="l03-heads" data-short="Số head × head dim = d_model"><span>Siêu tham số đồng thuận 2: số head × chiều mỗi head = \(d_{model}\)</span><span class="slide-range">slide 42–43</span></h2>
+<div class="slides" data-s="42"></div>
+<p>Nhắc lại từ CS224n: multi-head attention <i>không</i> tốn hơn single-head. Ta tính \(XQ \in \mathbb{R}^{n\times d}\) như bình thường, rồi cắt chiều \(d\) thành \(h\) mảnh, mỗi mảnh dài \(d/h\), được \(\mathbb{R}^{n\times h\times d/h}\). Đổi trục thành \(\mathbb{R}^{h\times n\times d/h}\) thì trục head đóng vai trò như trục batch. Các ma trận có cùng kích thước, chỉ là được "chia lát" khác đi.</p>
+<p>Cách làm này ngầm chọn chiều mỗi head \(= d_{model}/h\), tức \(h \times \text{head dim} = d_{model}\). Điều đó không bắt buộc, vì head dim có thể lớn hơn. Nhưng đa số mô hình làm theo.</p>
+<div class="slides" data-s="43"></div>
+<p>Cột "Ratio" là \(\dfrac{h \times \text{head dim}}{d_{model}}\). Ví dụ GPT-3: \(96 \times 128 = 12288 = d_{model}\), nên tỉ lệ là 1. T5 lại là ngoại lệ lớn: \(128 \times 128 = 16384\), gấp 16 lần \(d_{model} = 1024\). Đa số mô hình có tỉ lệ quanh 1, ngoại lệ chủ yếu là các mô hình của Google.</p>
+<div class="note warn"><p>Hàng PaLM trong bảng có lẽ bị nhầm. Head dim ghi 258, gần như chắc là lỗi đánh máy của 256. Tỉ lệ 1,48 thì đang được tính <i>ngược</i> (\(18432 / (48\times258)\)). Tính cùng công thức với các hàng khác thì \(48\times256/18432 \approx 0{,}67\), tức PaLM dùng tổng chiều các head <i>nhỏ hơn</i> \(d_{model}\). Dù đúng hay sai, kết luận vẫn vậy: tỉ lệ không cần đúng bằng 1, nhưng thường nằm gần 1.</p></div>
+
+<h2 id="l03-aspect" data-short="Sâu hay rộng"><span>Tỉ lệ khung: mô hình nên sâu hay rộng?</span><span class="slide-range">slide 44–46</span></h2>
+<div class="slides" data-s="44"></div>
+<p>Với cùng số tham số, có thể xây mô hình nhiều lớp mà hẹp, hoặc ít lớp mà rộng. Đại lượng đo điều này là <dfn>tỉ lệ khung</dfn> (<span class="en">aspect ratio</span>) \(d_{model}/n_{layer}\). Các mô hình lại thống nhất bất ngờ: GPT-3, OPT, Mistral, Qwen, OLMo 3 đều có tỉ lệ 128 (ví dụ GPT-3: \(12288/96 = 128\)). LLaMA/LLaMA 2 là 102, PaLM 156, BLOOM 205. Thầy gọi vùng khoảng 100–200 là "điểm ngọt". Ngoại lệ là T5 11B (33) và gần đây Gemma 4 (61).</p>
+<div class="slides" data-s="45"></div>
+<p><b>Lý do hệ thống.</b> Mô hình quá sâu khó song song hoá và có độ trễ cao. Lớp sau phải chờ lớp trước tính xong, nên nếu chia các lớp cho nhiều GPU (hình slide 45: lớp 0 ở GPU 0, lớp 1 ở GPU 1…) thì các GPU phải chờ nhau thành một hàng dài. Ngược lại, chiều rộng có thể chia ra hàng nghìn thiết bị cùng tính một lúc. Chuyện này sẽ học kỹ ở lecture về song song hoá.</p>
+<div class="slides" data-s="46"></div>
+<p><b>Bằng chứng.</b> Biểu đồ của Kaplan (trái) cho thấy với 50M, 274M hay 1,5B tham số, một dải rộng tỉ lệ khung (khoảng 10 đến vài trăm) cho loss gần như nhau. Tay và cộng sự (phải) so việc tăng số lớp (các điểm NL) với tăng chiều rộng (các điểm DM) theo cùng lượng FLOPs. Perplexity khá giống nhau, nhưng điểm trên tác vụ downstream (SuperGLUE) có thể khác, nên chọn hình dạng mô hình không chỉ là chuyện loss.</p>
+<div class="note key"><p>Trong một dải rộng, chất lượng gần như không phụ thuộc vào hình dạng. Vì vậy <b>lý do hệ thống</b> (song song hoá thế nào, độ trễ ra sao) mới là thứ quyết định con số cụ thể.</p></div>
+
+<div class="widget" id="shapeW">
+  <h4>Thử nghiệm: tự "thiết kế" một mô hình</h4>
+  <div class="row" role="group" aria-label="Chọn mô hình mẫu">
+    <span>Mẫu:</span>
+    <button class="l03-btn" data-p="gpt3">GPT-3 175B</button>
+    <button class="l03-btn" data-p="llama1">LLaMA 7B</button>
+    <button class="l03-btn" data-p="mistral">Mistral 7B</button>
+    <button class="l03-btn" data-p="llama2">LLaMA 2 70B</button>
+  </div>
+  <div class="l03-form">
+    <label>d_model<input type="number" data-k="d" min="64" step="64"></label>
+    <label>Số lớp n_layer<input type="number" data-k="L" min="1"></label>
+    <label>Số head (query)<input type="number" data-k="h" min="1"></label>
+    <label>Số head K/V<input type="number" data-k="kv" min="1"></label>
+    <label>Kiểu FFN<select data-k="glu"><option value="0">ReLU/GELU (2 ma trận)</option><option value="1">SwiGLU/GeGLU (3 ma trận)</option></select></label>
+    <label>d_ff<input type="number" data-k="ff" min="1"></label>
+    <label>Cỡ từ vựng<input type="number" data-k="V" min="1"></label>
+    <label>Độ dài ngữ cảnh<input type="number" data-k="ctx" min="1"></label>
+  </div>
+  <div class="l03-stats" id="shapeStats"></div>
+  <p class="l03-flags" id="shapeFlags"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('shapeW'); if (!box) return;
+  const P = {
+    gpt3:    { d: 12288, L: 96, h: 96, kv: 96, glu: 0, ff: 49152, V: 50257, ctx: 2048 },
+    llama1:  { d: 4096,  L: 32, h: 32, kv: 32, glu: 1, ff: 11008, V: 32000, ctx: 2048 },
+    mistral: { d: 4096,  L: 32, h: 32, kv: 8,  glu: 1, ff: 14336, V: 32000, ctx: 8192 },
+    llama2:  { d: 8192,  L: 80, h: 64, kv: 8,  glu: 1, ff: 28672, V: 32000, ctx: 4096 }
+  };
+  let preset = 'llama2';
+  const inp = k => box.querySelector(`[data-k="${k}"]`);
+  const keys = ['d', 'L', 'h', 'kv', 'glu', 'ff', 'V', 'ctx'];
+  const f1 = (x, d = 1) => x.toLocaleString('vi-VN', { maximumFractionDigits: d });
+  const params = x => x >= 1e9 ? f1(x / 1e9, 2) + ' tỷ' : f1(x / 1e6, 1) + ' triệu';
+  const bytes = x => x >= 2 ** 30 ? f1(x / 2 ** 30, 2) + ' GB' : x >= 2 ** 20 ? f1(x / 2 ** 20, 1) + ' MB' : f1(x / 2 ** 10, 0) + ' KB';
+  function load(p) { preset = p; keys.forEach(k => { inp(k).value = P[p][k]; }); calc(); }
+  function calc() {
+    const v = {}; keys.forEach(k => { v[k] = Math.max(+inp(k).value || 0, k === 'glu' ? 0 : 1); });
+    const hd = v.d / v.h, qdim = v.h * hd, kvdim = v.kv * hd;
+    const attn = v.d * qdim + 2 * v.d * kvdim + qdim * v.d;
+    const ffn = (v.glu ? 3 : 2) * v.d * v.ff;
+    const emb = 2 * v.V * v.d;
+    const total = v.L * (attn + ffn) + emb;
+    const kvTok = 2 * v.L * kvdim * 2, kvMha = 2 * v.L * qdim * 2;
+    const ratio = v.ff / v.d, asp = v.d / v.L;
+    box.querySelector('#shapeStats').innerHTML =
+      `<div><small>Chiều mỗi head = d_model / số head</small><b>${f1(hd)}</b></div>` +
+      `<div><small>d_ff / d_model</small><b>${f1(ratio, 2)}</b></div>` +
+      `<div><small>Tỉ lệ khung d_model / n_layer</small><b>${f1(asp)}</b></div>` +
+      `<div class="sel"><small>Tổng số tham số</small><b>${params(total)}</b></div>` +
+      `<div><small>Chia ra: attention · FFN · embedding</small><b>${f1(v.L * attn / total * 100, 0)}% · ${f1(v.L * ffn / total * 100, 0)}% · ${f1(emb / total * 100, 0)}%</b></div>` +
+      `<div><small>KV cache mỗi token (BF16)</small><b>${bytes(kvTok)}</b></div>` +
+      `<div><small>KV cache cho 1 chuỗi ${f1(v.ctx, 0)} token</small><b>${bytes(kvTok * v.ctx)}</b></div>` +
+      `<div><small>Nếu dùng MHA (số head K/V = số head)</small><b>${bytes(kvMha * v.ctx)}</b></div>`;
+    const fl = [];
+    if (!Number.isInteger(hd)) fl.push(['warn', 'd_model không chia hết cho số head nên chiều mỗi head bị lẻ.']);
+    if (v.h % v.kv) fl.push(['warn', 'Số head query phải chia hết cho số head K/V (mỗi nhóm GQA có cùng số query).']);
+    if (v.kv > v.h) fl.push(['warn', 'Số head K/V không thể nhiều hơn số head query.']);
+    const lo = v.glu ? 2.3 : 3.5, hi = v.glu ? 3.6 : 4.5;
+    fl.push(ratio >= lo && ratio <= hi ? ['life', `✓ d_ff/d_model = ${f1(ratio, 2)}: nằm trong vùng quen thuộc (≈ ${v.glu ? '2,67 với GLU' : '4 với FFN thường'}).`] : ['warn', `d_ff/d_model = ${f1(ratio, 2)}: khác thông lệ (≈ ${v.glu ? '2,67 với GLU' : '4 với FFN thường'}). Không sai, nhưng hiếm (T5 11B dùng 64).`]);
+    fl.push(asp >= 80 && asp <= 220 ? ['life', `✓ Tỉ lệ khung ${f1(asp)}: nằm trong vùng phổ biến khoảng 100–200.`] : ['warn', `Tỉ lệ khung ${f1(asp)}: ${asp < 80 ? 'mô hình khá sâu và hẹp, khó song song hoá hơn' : 'mô hình rất nông và rộng'}.`]);
+    if (v.kv < v.h) fl.push(['life', `✓ GQA: ${f1(v.h / v.kv, 0)} head query dùng chung 1 cặp K/V, KV cache nhỏ hơn MHA ${f1(v.h / v.kv, 0)} lần.`]);
+    box.querySelector('#shapeFlags').innerHTML = fl.map(([c, t]) => `<span style="color:var(--${c})">${t}</span>`).join('');
+    box.querySelectorAll('[data-p]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === preset)));
+  }
+  box.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => load(b.dataset.p)));
+  keys.forEach(k => inp(k).addEventListener('input', () => { preset = ''; calc(); }));
+  load(preset);
+})();
+</script>
+<p>Bấm thử các mẫu: số tham số tính ra khớp với tên mô hình (GPT-3 ≈ 175 tỷ, LLaMA 2 ≈ 69 tỷ). Mỗi lớp có khoảng \(12\,d_{model}^2\) tham số: attention \(4d^2\), FFN \(8d^2\) (dù là \(2\times 4d^2\) hay \(3\times\tfrac{8}{3}d^2\)). Ô KV cache sẽ được giải thích ở <a href="#l03-kvcache">Phần 3</a>. Bạn cũng có thể tự sửa các con số để xem mô hình của mình có "giống người ta" không.</p>
+<div class="note warn"><p>Cách đếm này bỏ qua tham số của norm (rất ít) và coi embedding đầu vào với ma trận đầu ra là hai ma trận riêng. Một số mô hình (như GPT-2) dùng chung một ma trận cho cả hai (<i>weight tying</i>), nên con số thật có thể nhỏ hơn một chút.</p></div>
+
+<h2 id="l03-vocab" data-short="Cỡ từ vựng"><span>Từ vựng nên lớn cỡ nào?</span><span class="slide-range">slide 47</span></h2>
+<div class="slides" data-s="47"></div>
+<ul>
+  <li><b>Mô hình một ngôn ngữ</b> (chủ yếu tiếng Anh): 30–50 nghìn token. Transformer gốc 37000, GPT 40257, GPT-2/3 50257, T5 32128, LLaMA 32000.</li>
+  <li><b>Mô hình đa ngôn ngữ / sản phẩm thực tế</b>: 100–250 nghìn. GPT-4 100276, DeepSeek 100000, Qwen 152064, PaLM 256000, mT5 250000, Gemma 4 262144.</li>
+</ul>
+<p>Lý do: mỗi ngôn ngữ cần token riêng. Nếu từ vựng nhỏ và chủ yếu là tiếng Anh, một câu tiếng Việt sẽ bị cắt thành rất nhiều mảnh nhỏ. Chuỗi dài hơn thì tốn tính toán hơn, và mô hình cũng học kém hơn. Từ vựng một ngôn ngữ không cần quá lớn, còn đa ngôn ngữ thì cần.</p>
+<p>Còn một chuyện nhỏ về hệ thống: nên làm tròn cỡ từ vựng lên bội số của 64 hoặc 128 để nhân ma trận nhanh hơn. Đó là ví dụ Karpathy đổi 50257 thành 50304 ở <a href="#l05-mystery">Lecture 5</a>.</p>
+
+<h2 id="l03-reg" data-short="Dropout & weight decay"><span>Dropout và weight decay: có còn cần regularization không?</span><span class="slide-range">slide 48–51</span></h2>
+<div class="slides" data-s="48"></div>
+<p>Regularization sinh ra để chống <dfn>overfitting</dfn>: mô hình học thuộc lòng dữ liệu huấn luyện thay vì học quy luật. Nhưng khi tiền huấn luyện LLM:</p>
+<ul>
+  <li>Dữ liệu cực nhiều (hàng nghìn tỷ token), nhiều hơn số tham số rất nhiều.</li>
+  <li>Thường chỉ chạy qua dữ liệu đúng <b>một lần</b>. Mỗi câu chỉ được thấy một lần thì rất khó học thuộc.</li>
+</ul>
+<p>Nghe thì có vẻ không cần regularization nữa. Thực tế người ta làm gì?</p>
+<div class="slides" data-s="49"></div>
+<p>Các mô hình cũ (transformer gốc, GPT-2, T5, GPT-3, OPT) dùng dropout 0,1 khi tiền huấn luyện. Các mô hình mới (T5 v1.1, PaLM, LLaMA) bỏ dropout nhưng <b>vẫn giữ weight decay</b>, thường là 0,1. Qwen là ngoại lệ, vẫn giữ cả hai. Lưu ý dấu sao trên slide: nhiều bài báo không nhắc tới dropout. Với các mô hình mở, điều đó thường có nghĩa là không dùng, nhưng với mô hình đóng thì không chắc.</p>
+<div class="slides" data-s="50"></div>
+<p><b>Vậy weight decay để làm gì?</b> Andriushchenko và cộng sự (2023) có hai quan sát thú vị:</p>
+<ul>
+  <li><b>Không phải để chống overfitting</b> (hình trái). Train loss và validation loss nằm trên cùng một đường thẳng, dù weight decay là 0, 0,1 hay 0,3. Không có khoảng cách nào giữa hai loss để mà thu hẹp.</li>
+  <li><b>Nó tương tác với lịch learning rate</b> (hai hình phải). Với lịch cosine (learning rate giảm dần về gần 0), mô hình weight decay 0,3 (xanh dương) có train loss <i>cao hơn</i> ở giữa quá trình, nhưng đến cuối, khi learning rate nhỏ lại, nó vượt lên và đạt loss thấp nhất. Với learning rate không đổi, các đường nét đứt (chuyển sang learning rate rất nhỏ ở giữa chừng) cho thấy cùng hiện tượng: weight decay lớn "để dành" lợi ích, và lợi ích chỉ hiện ra khi learning rate giảm.</li>
+</ul>
+<div class="note key"><p>Ta vẫn "regularize" LLM, nhưng tác dụng thật nằm ở <b>động lực tối ưu</b> (giúp đạt train loss thấp hơn ở cuối quá trình), chứ không phải chống overfitting theo nghĩa cổ điển.</p></div>
+<div class="slides" data-s="51"></div>
+<div class="note key">
+  <p><b>Tóm tắt siêu tham số (slide 51):</b></p>
+  <ul>
+    <li><b>FFN:</b> quy tắc gấp 4 (8/3 với GLU) là chuẩn, có bằng chứng ủng hộ.</li>
+    <li><b>Head dim:</b> head dim × số head = \(d_{model}\) là chuẩn, nhưng gần như chưa ai kiểm chứng kỹ.</li>
+    <li><b>Tỉ lệ khung:</b> dải giá trị tốt rất rộng (100–200). Lý do hệ thống quyết định con số cụ thể.</li>
+    <li><b>Regularization:</b> vẫn dùng (weight decay), nhưng tác dụng chủ yếu lên quá trình tối ưu.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<div class="part" id="l03-part3" data-short="Phần 3 · Ổn định & attention">Phần 3 · Ổn định và các biến thể attention<small>Giữ softmax không "nổ", và làm cho suy luận rẻ hơn.</small></div>
+
+<h2 id="l03-stability" data-short="Huấn luyện ổn định"><span>Mẹo ổn định: đừng huấn luyện ra đường màu xanh</span><span class="slide-range">slide 52–53</span></h2>
+<div class="slides" data-s="52"></div>
+<p>Slide 52 so hai lần huấn luyện mô hình 7B của AI2. OLMo 0424 (xanh) có loss bị <b>gai</b> (đột ngột vọt lên) liên tục, và chuẩn gradient (hình dưới) nhảy loạn xạ. OLMo 2 (cam) thì êm ru. Mức loss của hai đường khác nhau vì dữ liệu khác nhau, nên đừng so độ cao. Điều cần nhìn là các gai. Mỗi gai có thể làm hỏng quá trình huấn luyện tốn hàng triệu đô. Thông điệp: <i>đừng huấn luyện mô hình trông như đường màu xanh!</i></p>
+<div class="slides" data-s="53"></div>
+<p><b>Rắc rối thường xuất phát từ đâu?</b> Từ <b>softmax</b>. Softmax có hàm mũ \(e^{z}\): chỉ cần \(z\) lớn một chút là giá trị vọt lên khổng lồ (tràn số, nhất là với BF16), và mẫu số có thể gần 0. Transformer có hai chỗ dùng softmax:</p>
+<ol>
+  <li><b>Softmax đầu ra</b> trên toàn bộ từ vựng, ở trên cùng mô hình.</li>
+  <li><b>Softmax trong attention</b>, ở mọi lớp.</li>
+</ol>
+<p>Hai mục tiếp theo là mẹo cho từng chỗ.</p>
+
+<h2 id="l03-zloss" data-short="z-loss"><span>Softmax đầu ra: z-loss</span><span class="slide-range">slide 54</span></h2>
+<div class="slides" data-s="54"></div>
+<p>Gọi \(U_r(x)\) là logit (điểm thô) của từ \(r\). Xác suất là:</p>
+<div class="mathbox">\[ \log P(x) = U_r(x) - \log Z(x), \qquad Z(x) = \sum_{r'=1}^{|V|} e^{U_{r'}(x)} \]</div>
+<p>\(Z\) là tổng ở mẫu số của softmax. Có một điều tinh tế: softmax <b>không thay đổi</b> khi cộng cùng một hằng số vào mọi logit. Logit \((2, 1, 0)\) và \((102, 101, 100)\) cho ra cùng một phân phối. Vì thế không có gì ngăn logit trôi dần lên những giá trị rất lớn, và khi đó \(\log Z\) lớn, hàm mũ dễ tràn số.</p>
+<p><b>z-loss</b> thêm một hình phạt nhỏ để kéo \(\log Z\) về gần 0:</p>
+<div class="mathbox">\[ \text{loss} = -\log P(x) + \alpha \cdot \log^2 Z(x), \qquad \alpha = 10^{-4}\ \text{(PaLM)} \]</div>
+<p>Khi \(\log Z \approx 0\) thì \(Z \approx 1\), nên logit chính là log-xác suất: \(\log P \approx U_r\). Logit được giữ trong một khoảng hợp lý.</p>
+<div class="note warn"><p>Slide viết \(L = \sum_i \big[\log P(x_i) - \alpha \log^2 Z(x_i)\big]\). Đó là đại lượng cần <i>cực đại hoá</i> (log-likelihood). Nếu viết thành loss để <i>cực tiểu hoá</i> như trong code thì đổi dấu: \(-\log P + \alpha\log^2 Z\). Hai cách viết là một.</p></div>
+<div class="note num"><p>Nếu logit trôi lên quanh 50 thì \(\log Z \approx 50\), hình phạt \(= 10^{-4}\times 50^2 = 0{,}25\). Con số này đủ đáng kể so với loss (cỡ 2–3) để mô hình kéo logit về. Còn khi \(\log Z \approx 1\), hình phạt chỉ \(0{,}0001\), gần như không ảnh hưởng gì.</p></div>
+<p>Các mô hình dùng z-loss: PaLM, Baichuan 2 (2023), DCLM (2024), OLMo 2 và OLMo 3 (2025).</p>
+
+<h2 id="l03-qknorm" data-short="QK-norm"><span>Softmax trong attention: QK-norm</span><span class="slide-range">slide 55</span></h2>
+<div class="slides" data-s="55"></div>
+<p>Điểm attention là tích vô hướng \(q \cdot k\). Nếu \(q\) và \(k\) dài ra trong quá trình huấn luyện, điểm số sẽ rất lớn, và softmax trở nên cực "nhọn" (gần như dồn hết vào một token), gradient trở nên bất thường. <b>QK-norm</b>: cho query và key đi qua một lớp chuẩn hoá (LayerNorm/RMSNorm) <i>trước</i> khi nhân với nhau. Độ dài của chúng bị khống chế, nên điểm attention không thể phình vô hạn.</p>
+<p>Mẹo này bắt nguồn từ các mô hình thị giác và đa phương thức (Dehghani 2023, Idefics, Chameleon), giờ có mặt trong DCLM, OLMo 2, Gemma 2, Qwen3, OLMo 3, Gemma 4. Đây là xu hướng "QK-norm" bạn thấy ở các hàng cuối bảng tổng hợp.</p>
+<p>Hình biếm hoạ "STACK MORE LAYER Norms" là một câu đùa: lời giải cho mọi vấn đề ổn định dường như là… thêm LayerNorm. Nhìn lại cả lecture cũng thấy vậy: pre-norm, norm kép, QK-norm.</p>
+
+<h2 id="l03-softcap" data-short="Logit soft-capping"><span>Logit soft-capping</span><span class="slide-range">slide 56</span></h2>
+<div class="slides" data-s="56"></div>
+<p>Một cách khác để chặn logit: cho chúng đi qua hàm tanh có "trần" (Gemma 2):</p>
+<div class="mathbox">\[ \text{logits} \leftarrow \text{cap} \cdot \tanh\!\left(\frac{\text{logits}}{\text{cap}}\right) \]</div>
+<p>Logit nhỏ gần như giữ nguyên, logit lớn bị ép mềm về sát \(\pm\text{cap}\). Gemma 2 đặt cap = 50 cho attention và 30 cho lớp cuối.</p>
+<div class="note num"><p>Với cap = 30: logit 5 → \(30\tanh(1/6) \approx 4{,}95\) (gần như không đổi). Logit 30 → \(30\tanh(1) \approx 22{,}8\). Logit 100 → \(30\tanh(3{,}33) \approx 29{,}9\). Logit lớn cỡ nào cũng không vượt qua 30.</p></div>
+<p>Nhưng có cái giá. Bảng dưới slide đo perplexity (càng thấp càng tốt): baseline BF16 là 11,19, soft-cap là 11,24 (tệ hơn chút), còn QK-norm là 10,84 (tốt hơn). Soft-capping ổn định được, nhưng có thể làm giảm chất lượng.</p>
+
+<h2 id="l03-heads-var" data-short="Biến thể attention head"><span>Các biến thể attention head</span><span class="slide-range">slide 57</span></h2>
+<div class="slides" data-s="57"></div>
+<p>Đa số mô hình hầu như không đụng tới attention head, trừ vài ngoại lệ:</p>
+<ul>
+  <li><b>GQA / MQA</b>: giảm số head K/V để suy luận rẻ hơn.</li>
+  <li><b>Attention thưa / cửa sổ trượt</b> (GPT-4, Mistral): giới hạn mỗi token chỉ nhìn một phần ngữ cảnh để giảm tính toán.</li>
+  <li><b>Các kiến trúc kiểu SSM</b> (Jamba, Falcon 3, Qwen 3.5…): để <a href="#l04">Lecture 4</a>.</li>
+</ul>
+
+<h2 id="l03-kvcache" data-short="Huấn luyện vs sinh văn bản"><span>Vì sao sinh văn bản tốn kém: KV cache và cường độ tính toán</span><span class="slide-range">slide 58–60</span></h2>
+<div class="slides" data-s="58"></div>
+<p>Ký hiệu: \(b\) = batch, \(n\) = độ dài chuỗi, \(d\) = chiều ẩn, \(h\) = số head, \(k = d/h\) = chiều mỗi head.</p>
+<p><b>Khi huấn luyện</b>, cả chuỗi được xử lý cùng lúc. Số phép tính cỡ \(bnd^2\), số lần truy cập bộ nhớ cỡ \(bnd + bhn^2 + d^2\) (đọc \(X\), ma trận điểm softmax, và các ma trận chiếu). Chia cho nhau thì <dfn>cường độ tính toán</dfn> (số phép tính trên mỗi lần truy cập bộ nhớ) là \(O\big((\tfrac{1}{k} + \tfrac{1}{bn})^{-1}\big)\): cao. GPU luôn có việc để làm, không phải ngồi chờ dữ liệu (xem lại <a href="#l05-roofline">roofline ở Lecture 5</a>).</p>
+<div class="slides" data-s="59"></div>
+<p><b>Khi sinh văn bản</b> thì khác hẳn: phải sinh <i>từng token một</i>, vì token sau phụ thuộc token trước. Để không tính lại K, V của các token cũ ở mỗi bước, ta lưu chúng lại trong <dfn>KV cache</dfn>. Mỗi bước chỉ tính \(q, k, v\) cho token mới, nối \(k, v\) vào cache, rồi cho \(q\) mới attention với toàn bộ cache.</p>
+<div class="slides" data-s="60"></div>
+<p>Vấn đề: mỗi bước chỉ có <i>một</i> query mới nhưng phải đọc <i>toàn bộ</i> KV cache (\(n\) token × \(d\) chiều) từ bộ nhớ. Cộng qua cả chuỗi, truy cập bộ nhớ là \(bn^2d + nd^2\), còn số phép tính vẫn là \(bnd^2\). Cường độ chỉ còn:</p>
+<div class="mathbox">\[ O\!\left(\Big(\frac{n}{d} + \frac{1}{b}\Big)^{-1}\right) \]</div>
+<p>Muốn cường độ cao thì cần batch lớn (\(b\) lớn), chuỗi ngắn (\(n\) nhỏ), hoặc mô hình rộng (\(d\) lớn). Số hạng \(1/b\) có thể giảm bằng cách gom nhiều người dùng vào một batch, vì họ dùng chung trọng số mô hình. Nhưng <b>số hạng \(n/d\) thì không</b>: mỗi chuỗi có KV cache riêng, gom batch không giúp gì.</p>
+<div class="note life"><p>Quay lại nhà máy ở Lecture 5: mỗi bước sinh một token, công nhân phải cho xe chở <i>cả kho hồ sơ</i> (KV cache) từ nhà kho xa về, chỉ để xử lý một token rồi lại chở tiếp ở bước sau. Thời gian gần như toàn là chờ xe, không phải tính toán. Muốn nhanh hơn thì phải làm <b>kho hồ sơ nhỏ lại</b>, và đó là việc của MQA/GQA.</p></div>
+
+<h2 id="l03-mqa" data-short="MQA & GQA"><span>MQA và GQA: dùng chung K, V giữa các head</span><span class="slide-range">slide 61–63</span></h2>
+<div class="slides" data-s="61"></div>
+<p><b>MQA</b> (multi-query attention): vẫn giữ nhiều head cho <b>query</b>, nhưng tất cả các head dùng chung <b>một</b> bộ key và value. KV cache nhỏ đi \(h\) lần. Truy cập bộ nhớ còn \(bnd + bn^2k + nd^2\), và cường độ thành:</p>
+<div class="mathbox">\[ O\!\left(\Big(\frac{1}{d} + \frac{n}{d\,h} + \frac{1}{b}\Big)^{-1}\right) \]</div>
+<p>Số hạng khó chịu \(n/d\) giờ bị chia cho \(h\).</p>
+<div class="slides" data-s="62"></div>
+<p><b>GQA</b> (grouped-query attention) là điểm ở giữa: chia các head query thành nhóm, mỗi nhóm dùng chung một cặp K/V. Ở hình slide 62, 8 head query chia 4 nhóm nên có 4 cặp K/V. MHA (mỗi head một cặp) và MQA (cả 8 head một cặp) là hai trường hợp đầu mút. Số nhóm là một <b>núm vặn</b>: nhiều nhóm thì diễn đạt tốt hơn, ít nhóm thì suy luận rẻ hơn. Gần đây DeepSeek V2 còn đưa ra <b>MLA</b> (multi-head latent attention): nén K, V thành một vector "ẩn" nhỏ để cache gọn hơn nữa.</p>
+<div class="note num"><p>LLaMA 2 70B có 80 lớp, 64 head query, head dim 128, nhưng chỉ 8 head K/V. KV cache mỗi token (BF16) \(= 2\,(K,V) \times 80 \times 8 \times 128 \times 2\text{ byte} = 320\) KB. Nếu là MHA với 64 head K/V thì gấp 8 lần, khoảng 2,5 MB mỗi token. Với ngữ cảnh 4096 token: 1,25 GB so với 10 GB <i>cho mỗi chuỗi</i>. Bấm "LLaMA 2 70B" ở <a href="#l03-aspect">ô thử nghiệm phía trên</a> để xem lại.</p></div>
+<div class="slides" data-s="63"></div>
+<p><b>MQA có làm mô hình tệ đi không? Đôi khi.</b></p>
+<ul>
+  <li>Shazeer 2019 (trái): MQA có perplexity 30,2 so với 29,9 của MHA, giảm nhẹ. Nhưng vẫn tốt hơn việc cắt bớt số head hay chiều của MHA cho bằng chi phí (30,9–31,2).</li>
+  <li>Ainslie 2023 (phải): GQA-XXL đạt chất lượng gần như MHA-XXL (≈ 47,1 so với 47,2), trong khi thời gian mỗi mẫu gần bằng MQA (≈ 0,3 ms so với 1,5 ms của MHA). Biểu đồ dưới: từ 1 đến khoảng 8 nhóm, thời gian gần như không đổi. Đến 64 nhóm (tức MHA) thì thời gian mới vọt lên.</li>
+</ul>
+<div class="note key"><p>GQA cho chất lượng gần MHA với tốc độ gần MQA. Vì thế hầu hết mô hình hiện nay dùng GQA.</p></div>
+
+<h2 id="l03-swa" data-short="Attention cửa sổ trượt"><span>Attention thưa và cửa sổ trượt</span><span class="slide-range">slide 64</span></h2>
+<div class="slides" data-s="64"></div>
+<p>Attention đầy đủ để mỗi token nhìn mọi token trước nó, nên chi phí tăng theo \(n^2\). Child và cộng sự (2019) đưa ra các kiểu attention <b>thưa</b>: mỗi token chỉ nhìn một số vị trí theo mẫu cố định. Hình (b) "strided": nhìn vài token gần nhất cộng mỗi token thứ \(k\) về trước. Hình (c) "fixed": nhìn trong khối của mình cộng vài "cột tóm tắt". Kiểu phổ biến nhất ngày nay là <dfn>sliding window attention</dfn> (SWA, attention cửa sổ trượt): mỗi token chỉ nhìn \(w\) token gần nhất. Dùng trong GPT-3 (xen kẽ lớp dày và lớp thưa), GPT-OSS, Gemma 4.</p>
+
+<div class="widget" id="swaW">
+  <h4>Thử nghiệm: attention đầy đủ và cửa sổ trượt</h4>
+  <div class="row" role="group" aria-label="Chọn kiểu attention">
+    <button class="l03-btn" data-m="full">Đầy đủ (causal)</button>
+    <button class="l03-btn" data-m="swa">Cửa sổ trượt</button>
+  </div>
+  <p style="margin:14px 0 4px"><label for="swaWin">Cỡ cửa sổ w = <span class="chip" id="swaWinv"></span> token</label></p>
+  <input type="range" id="swaWin" min="2" max="8" step="1" value="3">
+  <p style="margin:10px 0 4px"><label for="swaLay">Số lớp xếp chồng = <span class="chip" id="swaLayv"></span></label></p>
+  <input type="range" id="swaLay" min="1" max="6" step="1" value="1">
+  <p class="l03-cap">Mỗi hàng là một token đang hỏi (query), mỗi cột là một token được nhìn (key). Ô xanh = có tính điểm attention. Hàng viền cam là token cuối cùng (token 12).</p>
+  <div class="l03-grid" id="swaGrid" role="img" aria-label="Mặt nạ attention 12 token"></div>
+  <p class="l03-cap">Thông tin từ những token nào đến được token 12 (trực tiếp hoặc gián tiếp qua các lớp):</p>
+  <div class="l03-strip" id="swaReach" role="img" aria-label="Các token có thông tin đến được token cuối"></div>
+  <div class="l03-stats" id="swaStats"></div>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('swaW'); if (!box) return;
+  const N = 12; let mode = 'swa';
+  const win = box.querySelector('#swaWin'), lay = box.querySelector('#swaLay');
+  function draw() {
+    const w = +win.value, Lr = +lay.value, swa = mode === 'swa';
+    const sees = (i, j) => j <= i && (!swa || i - j < w);
+    let g = '', cnt = 0;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const on = sees(i, j); cnt += on;
+      g += `<i class="${j > i ? 'fut' : ''}${on ? ' on' : ''}${i === N - 1 ? ' last' : ''}"></i>`;
+    }
+    box.querySelector('#swaGrid').innerHTML = g;
+    const reach = swa ? Lr * (w - 1) : N;
+    let r = '';
+    for (let j = 0; j < N; j++) r += `<i class="${j === N - 1 ? 'me' : (N - 1 - j <= reach ? 'on' : '')}"></i>`;
+    box.querySelector('#swaReach').innerHTML = r;
+    const full = N * (N + 1) / 2, nReach = Math.min(N - 1, reach);
+    box.querySelector('#swaStats').innerHTML =
+      `<div><small>Số ô phải tính</small><b>${cnt} / ${full} (${Math.round(cnt / full * 100)}%)</b></div>` +
+      `<div><small>KV cache mỗi lớp phải giữ</small><b>${swa ? Math.min(w, N) + ' token gần nhất' : 'toàn bộ ' + N + ' token'}</b></div>` +
+      `<div><small>Token 12 nhận được thông tin từ</small><b>${nReach} token trước nó${swa && reach < N - 1 ? '' : ' (tất cả)'}</b></div>`;
+    box.querySelector('#swaWinv').textContent = w; box.querySelector('#swaLayv').textContent = Lr;
+    win.disabled = !swa; lay.disabled = !swa;
+    box.querySelectorAll('[data-m]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
+  }
+  box.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { mode = b.dataset.m; draw(); }));
+  win.addEventListener('input', draw); lay.addEventListener('input', draw); draw();
+})();
+</script>
+<p>Với cửa sổ trượt, số ô phải tính và KV cache đều nhỏ hơn nhiều. Nhưng khi chỉ có 1 lớp, token 12 hoàn toàn "mù" với các token xa. Kéo số lớp lên sẽ thấy vùng xanh lá ở dải dưới lan dần sang trái: lớp 1 gom thông tin từ \(w\) token, lớp 2 gom tiếp từ những token đã gom… Sau \(L\) lớp, thông tin có thể đi xa tối đa \(L(w-1)\) vị trí. Tuy vậy, thông tin truyền gián tiếp qua nhiều bước sẽ bị "pha loãng", không rõ bằng nhìn trực tiếp.</p>
+
+<h2 id="l03-interleave" data-short="Xen kẽ full & SWA"><span>Mẹo chuẩn hiện nay: xen kẽ attention đầy đủ và cửa sổ trượt</span><span class="slide-range">slide 65–66</span></h2>
+<div class="slides" data-s="65"></div>
+<p>Cách giải quyết nhược điểm trên: không dùng toàn SWA, mà <b>cứ vài lớp lại chèn một lớp attention đầy đủ</b>. Cohere Command A: cứ lớp thứ 4 là attention đầy đủ, 3 lớp còn lại là SWA. Chi tiết hay:</p>
+<ul>
+  <li>Các lớp SWA dùng <b>RoPE</b>: chúng lo thông tin <i>gần</i>, cần biết rõ vị trí tương đối.</li>
+  <li>Các lớp đầy đủ <b>không dùng mã hoá vị trí nào</b> (NoPE, "no position embedding"): chúng lo thông tin <i>xa</i>, chủ yếu cần tìm đúng nội dung, ở đâu cũng được.</li>
+</ul>
+<p>LLaMA 4, Gemma 3, Gemma 4, OLMo 3 cũng xen kẽ SWA với lớp đầy đủ, nhưng giữ RoPE ở cả hai loại.</p>
+<div class="slides" data-s="66"></div>
+<ul>
+  <li><b>Gemma 4</b>: 4 lớp attention cục bộ (cửa sổ trượt) rồi 1 lớp toàn cục. Lớp cuối cùng luôn là toàn cục.</li>
+  <li><b>OLMo 3</b>: 3/4 số lớp là SWA với cửa sổ 4096 token. Các lớp đầy đủ dùng RoPE (\(\theta = 5\cdot 10^5\)) và kỹ thuật YaRN để mở rộng ngữ cảnh. Bảng cũng cho thấy OLMo 3 dùng z-loss (\(10^{-5}\)) và đặt norm ở đầu ra khối con, đúng những mẹo vừa học.</li>
+  <li><b>Qwen 3.5 / Qwen3-Next</b>: còn đi xa hơn. Cứ 3 lớp <i>Gated DeltaNet</i> (một dạng attention tuyến tính) lại có 1 lớp attention đầy đủ (có cổng), cộng thêm MoE. Cả attention tuyến tính lẫn MoE đều là chủ đề của <a href="#l04">Lecture 4</a>.</li>
+</ul>
+<div class="note num"><p>OLMo 3 với ngữ cảnh 32768 token: lớp đầy đủ giữ KV cho cả 32768 token, lớp SWA chỉ giữ 4096 (bằng 1/8). Tổng KV cache so với toàn bộ là lớp đầy đủ: \(\tfrac14 \times 1 + \tfrac34 \times \tfrac18 \approx 0{,}34\), tức nhỏ đi khoảng 3 lần, mà mỗi token vẫn "nhìn" được toàn bộ ngữ cảnh qua các lớp đầy đủ.</p></div>
+
+<h2 id="l03-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 67</span></h2>
+<div class="slides" data-s="67"></div>
+<p>Nhiều khía cạnh của transformer (kiến trúc, siêu tham số) là chung cho mọi LM lớn. Khác biệt lớn nằm ở: mã hoá vị trí, hàm kích hoạt, tokenizer.</p>
+<div class="note key">
+  <ul>
+    <li><b>"Công thức" chung:</b> pre-norm (norm ngoài dòng residual) + RMSNorm + không bias + SwiGLU + RoPE + lớp nối tiếp.</li>
+    <li><b>Con số chung:</b> \(d_{ff} \approx 4d_{model}\) (≈ 2,67 với GLU), head dim × số head ≈ \(d_{model}\), \(d_{model}/n_{layer}\) khoảng 100–200, từ vựng 30–50k (một ngôn ngữ) hoặc 100–250k (đa ngôn ngữ), weight decay 0,1, không dropout.</li>
+    <li><b>Ổn định:</b> để mắt tới softmax. Dùng z-loss cho đầu ra, QK-norm cho attention, soft-capping nếu cần.</li>
+    <li><b>Suy luận rẻ:</b> GQA thu nhỏ KV cache. Xen kẽ SWA với attention đầy đủ để ngữ cảnh dài mà không tốn quá nhiều.</li>
+    <li><b>Bài học xuyên suốt:</b> FLOP không phải thời gian chạy. Phần lớn lựa chọn "hiện đại" đều nhằm bớt chở dữ liệu hoặc giữ cho huấn luyện ổn định.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Viết công thức pre-norm và post-norm. Vì sao pre-norm ổn định hơn?</summary>
+    <div><p>Post-norm: \(x_{l+1} = \mathrm{LN}(x_l + F(x_l))\). Pre-norm: \(x_{l+1} = x_l + F(\mathrm{LN}(x_l))\). Ở pre-norm, dòng residual không bị LayerNorm chặn, nên tín hiệu và gradient đi thẳng từ đầu ra về đầu vào. Gradient đều nhau giữa các lớp, ít gai, chịu được learning rate lớn hơn. Post-norm cho gradient rất lớn ở các lớp gần đầu ra lúc khởi tạo, nên phải có warmup.</p></div></details>
+  <details><summary>2. Chuẩn hoá chỉ chiếm 0,17% FLOP. Vì sao đổi sang RMSNorm vẫn làm mô hình chạy nhanh hơn rõ rệt?</summary>
+    <div><p>Vì chuẩn hoá chiếm tới khoảng 25% <i>thời gian chạy</i>. Nó có cường độ tính toán rất thấp (FLOP/byte ≈ 3,5), nên bị giới hạn bởi bộ nhớ: thời gian phụ thuộc vào lượng dữ liệu phải chở. RMSNorm bớt được tham số \(\beta\) và phép tính trung bình nên chở ít hơn. Bài học: FLOP không phải thời gian chạy.</p></div></details>
+  <details><summary>3. LLaMA 7B có \(d_{model} = 4096\) và dùng SwiGLU. Vì sao \(d_{ff} = 11008\) chứ không phải 16384?</summary>
+    <div><p>SwiGLU có 3 ma trận thay vì 2. Muốn giữ số tham số bằng FFN thường với \(d_{ff} = 4d\), phải có \(3 \cdot d \cdot d_{ff}' = 2 \cdot d \cdot 4d\), suy ra \(d_{ff}' = \tfrac{8}{3}d \approx 10923\). Làm tròn lên bội số của 256 được 11008.</p></div></details>
+  <details><summary>4. Dùng RoPE: điểm attention giữa query ở vị trí 5 và key ở vị trí 2, so với query ở 105 và key ở 102 (cùng nội dung), khác nhau thế nào?</summary>
+    <div><p>Bằng nhau. \((R_m q)^\top(R_n k) = q^\top R_{n-m} k\) chỉ phụ thuộc \(n - m = -3\) trong cả hai trường hợp. Xoay cả hai vector thêm 100 bước không làm đổi góc giữa chúng.</p></div></details>
+  <details><summary>5. Vì sao cộng vector sin/cos vào embedding không cho ra attention "thuần tương đối"?</summary>
+    <div><p>Khai triển \(\langle v_x + PE_i, v_y + PE_j\rangle\) ra 4 số hạng, trong đó \(\langle v_x, PE_j\rangle\) và \(\langle PE_i, v_y\rangle\) trộn nội dung với vị trí tuyệt đối. RoPE dùng phép nhân (xoay) nên không sinh ra các số hạng chéo đó.</p></div></details>
+  <details><summary>6. Mô hình có \(d_{model} = 8192\), 64 head, 80 lớp. Head dim và tỉ lệ khung là bao nhiêu? Có "giống người ta" không?</summary>
+    <div><p>Head dim \(= 8192/64 = 128\). Tỉ lệ khung \(= 8192/80 = 102{,}4\). Cả hai đều rất chuẩn: đây chính là LLaMA 2 70B.</p></div></details>
+  <details><summary>7. LLM chỉ chạy qua dữ liệu một lần và gần như không overfit. Vậy sao vẫn dùng weight decay?</summary>
+    <div><p>Vì weight decay tác động lên động lực tối ưu chứ không phải overfitting. Andriushchenko 2023 thấy weight decay tương tác với lịch learning rate: ở giữa quá trình loss có thể cao hơn, nhưng khi learning rate giảm về cuối, mô hình có weight decay đạt train loss (và do đó validation loss) thấp hơn.</p></div></details>
+  <details><summary>8. z-loss phạt cái gì, và vì sao logit có thể "trôi" nếu không có nó?</summary>
+    <div><p>Nó phạt \(\alpha \log^2 Z\), kéo \(\log Z\) (log của mẫu số softmax) về gần 0. Softmax không đổi khi cộng cùng một hằng số vào mọi logit, nên loss thường không ngăn logit trôi lên rất lớn. Logit lớn dễ làm hàm mũ tràn số, nhất là ở độ chính xác thấp như BF16.</p></div></details>
+  <details><summary>9. Vì sao khi sinh văn bản, gom thêm người dùng vào batch không giải quyết được nút thắt của KV cache? GQA giúp gì?</summary>
+    <div><p>Cường độ khi sinh là \(O((n/d + 1/b)^{-1})\). Tăng \(b\) chỉ giảm số hạng \(1/b\) (trọng số dùng chung). Mỗi chuỗi có KV cache riêng, và mỗi bước phải đọc lại toàn bộ cache, nên số hạng \(n/d\) không đổi. GQA cho nhiều head query dùng chung một cặp K/V, làm KV cache nhỏ đi \(h/\text{số head K/V}\) lần (ví dụ 8 lần ở LLaMA 2 70B).</p></div></details>
+  <details><summary>10. OLMo 3 dùng SWA với cửa sổ 4096 cho 3/4 số lớp. Làm sao một token vẫn dùng được thông tin cách nó 20000 token?</summary>
+    <div><p>Nhờ 1/4 số lớp còn lại là attention đầy đủ: ở các lớp đó, mỗi token nhìn được toàn bộ ngữ cảnh. Các lớp SWA lo thông tin gần, rẻ hơn nhiều (KV cache chỉ 4096 token), còn các lớp đầy đủ lo thông tin xa.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Residual stream (dòng residual)</td><td>"Đường cao tốc" chạy xuyên mô hình. Mỗi khối con đọc từ đó và cộng kết quả trở lại</td></tr>
+  <tr><td>Pre-norm / Post-norm</td><td>Đặt LayerNorm trong nhánh, trước khối con / đặt trên dòng residual, sau phép cộng</td></tr>
+  <tr><td>LayerNorm / RMSNorm</td><td>Chuẩn hoá về trung bình 0, phương sai 1 (có \(\beta\)) / chỉ chia cho căn trung bình bình phương (không trừ trung bình, không \(\beta\))</td></tr>
+  <tr><td>ReLU / GELU / Swish (SiLU)</td><td>\(\max(0,x)\) / \(x\Phi(x)\) / \(x\cdot\mathrm{sigmoid}(x)\)</td></tr>
+  <tr><td>GLU, SwiGLU, GeGLU</td><td>FFN có cổng: kích hoạt(\(xW\)) nhân từng phần tử với \(xV\). Có 3 ma trận nên \(d_{ff}\) thường bằng \(\tfrac{8}{3}d_{model}\)</td></tr>
+  <tr><td>Lớp song song (parallel layers)</td><td>Attention và MLP cùng đọc một đầu vào rồi cộng, thay vì chạy nối tiếp</td></tr>
+  <tr><td>RoPE</td><td>Mã hoá vị trí bằng cách xoay từng cặp tọa độ của q, k một góc \(m\theta_i\). Điểm attention chỉ phụ thuộc khoảng cách</td></tr>
+  <tr><td>NoPE</td><td>Không dùng mã hoá vị trí nào (dùng trong các lớp attention đầy đủ của Command A)</td></tr>
+  <tr><td>\(d_{model}\), \(d_{ff}\)</td><td>Chiều của dòng residual / chiều ẩn bên trong FFN</td></tr>
+  <tr><td>Head dim</td><td>Chiều của mỗi head attention, thường bằng \(d_{model}/h\)</td></tr>
+  <tr><td>Aspect ratio (tỉ lệ khung)</td><td>\(d_{model}/n_{layer}\): mô hình rộng hay sâu. Phổ biến khoảng 100–200</td></tr>
+  <tr><td>Dropout / Weight decay</td><td>Tắt ngẫu nhiên nơ-ron khi huấn luyện / kéo trọng số về 0 một chút mỗi bước</td></tr>
+  <tr><td>Loss spike (gai loss)</td><td>Loss đột ngột vọt lên trong khi huấn luyện, dấu hiệu bất ổn</td></tr>
+  <tr><td>z-loss</td><td>Hình phạt \(\alpha\log^2 Z\) giữ mẫu số softmax đầu ra gần 1</td></tr>
+  <tr><td>QK-norm</td><td>Chuẩn hoá query và key trước khi tính điểm attention</td></tr>
+  <tr><td>Logit soft-capping</td><td>\(\text{cap}\cdot\tanh(\text{logits}/\text{cap})\): ép mềm logit về khoảng \(\pm\text{cap}\)</td></tr>
+  <tr><td>KV cache</td><td>Lưu key, value của các token đã sinh để không phải tính lại ở mỗi bước</td></tr>
+  <tr><td>MHA / MQA / GQA</td><td>Mỗi head một cặp K/V / mọi head dùng chung một cặp / mỗi nhóm head dùng chung một cặp</td></tr>
+  <tr><td>MLA</td><td>Multi-head latent attention (DeepSeek V2): nén K, V thành vector ẩn nhỏ để cache gọn hơn</td></tr>
+  <tr><td>Sliding window attention (SWA)</td><td>Mỗi token chỉ nhìn \(w\) token gần nhất</td></tr>
+  <tr><td>Interleaved / hybrid attention</td><td>Xen kẽ lớp SWA (hoặc attention tuyến tính) với lớp attention đầy đủ</td></tr>
+</table></div>
