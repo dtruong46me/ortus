@@ -1,0 +1,979 @@
+<style>
+  .l06-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l06-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l06-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l06-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l06-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l06-stats small { color: var(--muted); font-size: 12.5px; }
+  .l06-stats .bad b { color: var(--warn); }
+  .l06-stats .good b { color: var(--life); }
+  .l06-fig { margin: 18px 0 22px; }
+  .l06-fig img { display: block; width: 100%; height: auto; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; box-sizing: border-box; }
+  .l06-fig.sm img { max-width: 440px; }
+  .l06-fig.md img { max-width: 620px; }
+  .l06-fig figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  pre.l06-py { line-height: 1.5; }
+  pre.l06-py code { font-size: 13.5px; line-height: inherit; }
+  pre.l06-py .k { color: var(--accent); font-weight: 600; }
+  pre.l06-py .c { color: var(--muted); font-style: italic; }
+  pre.l06-py .n { color: var(--num); }
+  pre.l06-py .s { color: var(--life); }
+  pre.l06-py .d { color: var(--warn); }
+  .l06-slots { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin: 14px 0 4px; max-width: 560px; }
+  .l06-slots i { aspect-ratio: 1; border-radius: 3px; background: var(--code-bg); border: 1px solid var(--line); }
+  .l06-slots i.b0 { background: var(--accent); border-color: var(--accent); }
+  .l06-slots i.b1 { background: color-mix(in srgb, var(--accent) 55%, var(--surface)); border-color: var(--accent); }
+  .l06-banks { display: grid; grid-template-columns: repeat(32, 1fr); gap: 2px; align-items: end; height: 92px; margin: 16px 0 2px; }
+  .l06-banks i { display: block; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 3px; }
+  .l06-banks i.x { background: var(--warn); }
+  .l06-banks i.z { background: var(--code-bg); }
+  .l06-bankax { display: flex; justify-content: space-between; font: 11px var(--f-mono); color: var(--muted); }
+  .l06-segs { display: flex; flex-wrap: wrap; gap: 3px; margin: 8px 0; }
+  .l06-segs i { width: 18px; height: 12px; border-radius: 3px; background: var(--num); opacity: .85; }
+  .l06-tile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; font-size: 13px; }
+  .l06-tile .lab { width: 92px; color: var(--muted); font-size: 12.5px; }
+  .l06-cell { min-width: 52px; padding: 5px 6px; border-radius: 7px; text-align: center; font: 600 12.5px var(--f-mono); background: var(--accent-soft); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+  .l06-cell.m { background: var(--code-bg); color: var(--muted); border-color: var(--line); }
+  .l06-cell.acc { background: var(--life-bg); color: var(--life); border-color: color-mix(in srgb, var(--life) 30%, transparent); }
+  .l06-cell.out { background: var(--life); color: var(--surface); font-size: 14px; padding: 6px 12px; }
+  .l06-bars { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
+  .l06-bar { display: grid; grid-template-columns: 118px 1fr 92px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l06-bar .track { height: 14px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l06-bar .fill { height: 100%; background: var(--accent); }
+  .l06-bar b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) { .l06-bar { grid-template-columns: 84px 1fr 74px; font-size: 12px; } .l06-tile .lab { width: 100%; } }
+</style>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 6 · 16 trace pages</span>
+  <h1>Đo, soi, rồi tự viết kernel: benchmark, profiling và Triton</h1>
+  <p class="sub">Lecture 5 giải thích GPU chạy thế nào. Lecture này thực hành: đo xem code chạy mất bao lâu, xem thời gian bị tiêu vào đâu, rồi tự viết kernel GPU bằng Triton cho GeLU, softmax, tính tổng theo hàng và nhân ma trận.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l06-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">trang 1</span></h2>
+<div class="slides" data-s="1"></div>
+<p>Lecture này không có slide. Thầy giảng thẳng trên một file Python, <code>lecture_06.py</code>, vừa chạy code vừa giải thích. Bản PDF bạn gửi là bản in của file đó (gọi là "trace"): chữ thường là lời giảng, chữ đơn cách là code. Ảnh nhỏ ở đầu mỗi mục là trang gốc tương ứng, bấm vào để xem cả trang. Tài liệu này chép lại những đoạn code quan trọng và giải thích từng dòng.</p>
+<p>Hàm <code>main()</code> cho thấy lộ trình của bài:</p>
+<ol>
+  <li><b>Ôn lại GPU</b> (trang 1–4): phần cứng, mô hình lập trình, và bốn chi tiết phần cứng quyết định tốc độ: warp, occupancy, bank conflict, memory coalescing.</li>
+  <li><b>Benchmark và profiling</b> (trang 4–8): đo tổng thời gian và xem thời gian đi đâu, rồi áp dụng vào ví dụ GeLU.</li>
+  <li><b>Viết kernel bằng Triton</b> (trang 8–15): bốn ví dụ khó dần. GeLU (từng phần tử), softmax (gộp trên một hàng vừa một block), tổng theo hàng (hàng dài hơn một block) và nhân ma trận (tiling).</li>
+</ol>
+
+<div class="note life">
+  <p>Tài liệu tiếp tục dùng hình ảnh <b>nhà máy</b> của Lecture 5:</p>
+  <ul>
+    <li><b>SM</b> = phân xưởng. <b>Thread</b> = công nhân. <b>Warp</b> = tổ 32 công nhân luôn làm cùng một động tác.</li>
+    <li><b>Thread block</b> = một nhóm công nhân được giao cùng một phân xưởng, dùng chung một cái bàn.</li>
+    <li><b>Shared memory</b> = cái bàn cạnh phân xưởng (nhanh, nhỏ). <b>Register</b> = túi áo của từng công nhân (nhanh nhất, nhỏ nhất). <b>HBM</b> = nhà kho xa (to, chậm).</li>
+    <li><b>Kernel</b> = một lệnh sản xuất gửi xuống nhà máy. Mỗi lệnh thường phải lấy nguyên liệu từ kho và cất thành phẩm về kho.</li>
+  </ul>
+</div>
+
+<p>Thầy tóm tắt cả bài ở cuối <code>main()</code>. Đọc trước để biết mình đang đi đâu:</p>
+<div class="note key">
+  <ul>
+    <li><b>Mô hình lập trình</b> (PyTorch, Triton, PTX) giúp code <i>đúng</i>.</li>
+    <li><b>Hiểu phần cứng</b> (SM, warp, occupancy, bank conflict…) giúp code <i>nhanh</i>.</li>
+    <li><b>Benchmark</b> để biết code chạy bao lâu và thời gian tăng thế nào khi đổi kích thước.</li>
+    <li><b>Profile</b> để biết thứ gì đang chạy và mỗi thứ mất bao lâu.</li>
+    <li><b>Triton</b>: suy nghĩ theo thread block. Đọc dữ liệu lên shared memory, làm hết các việc trên đó (fusion), rồi ghi về HBM một lần.</li>
+  </ul>
+</div>
+<p>Lecture sau sẽ nói về việc dùng <b>nhiều GPU</b> cùng lúc.</p>
+
+<!-- ============================================================ -->
+<div class="part" id="l06-part1" data-short="Phần 1 · Ôn GPU">Phần 1 · Ôn lại GPU, lần này chi tiết hơn<small>Phần cứng, mô hình lập trình, và bốn chi tiết làm code nhanh hay chậm.</small></div>
+
+<h2 id="l06-hw" data-short="Phần cứng & các con số"><span>Phần cứng: bộ nhớ càng gần thì càng nhanh và càng nhỏ</span><span class="slide-range">trang 1–2</span></h2>
+<div class="slides" data-s="2"></div>
+<figure class="l06-fig md"><img src="img/l06/f-gpu.png" width="1189" height="933" alt="Sơ đồ GPU: nhiều SM, mỗi SM có register và L1/shared memory; bên dưới là L2; bên ngoài là HBM" loading="lazy"><figcaption>Mỗi SM có register và L1/shared memory riêng. Các SM dùng chung L2. HBM nằm ngoài chip.</figcaption></figure>
+<p>Hình trên là sơ đồ GPU rút gọn. Hãy đi từ trong ra ngoài:</p>
+<ul>
+  <li><b>Register</b> nằm trong từng SM, dành riêng cho từng thread.</li>
+  <li><b>L1 cache + shared memory</b> cũng nằm trong từng SM. Các thread trong cùng một block dùng chung phần shared memory.</li>
+  <li><b>L2 cache</b> nằm trên chip, mọi SM dùng chung.</li>
+  <li><b>HBM</b> (high bandwidth memory) nằm ngoài chip, nối với GPU qua đường màu xanh. Đây là "bộ nhớ GPU" 80 GB mà ta hay nói.</li>
+</ul>
+<p>Thầy đưa ra bảng số liệu cho ba thế hệ GPU:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>A100</th><th>H100</th><th>B200</th></tr>
+  <tr><td>Số SM</td><td>108</td><td>132</td><td>148</td></tr>
+  <tr><td>Register (mỗi SM)</td><td>256 KB</td><td>256 KB</td><td>256 KB</td></tr>
+  <tr><td>L1 + shared memory (mỗi SM)</td><td>192 KB</td><td>256 KB</td><td>256 KB</td></tr>
+  <tr><td>L2 cache</td><td>40 MB</td><td>50 MB</td><td>96–126 MB</td></tr>
+  <tr><td>HBM</td><td>80 GB</td><td>80 GB</td><td>192 GB</td></tr>
+  <tr><td>Băng thông register</td><td>~116 TB/s</td><td>~401 TB/s</td><td>~447 TB/s</td></tr>
+  <tr><td>Băng thông L1 + shared memory</td><td>~19 TB/s</td><td>~33 TB/s</td><td>~40 TB/s</td></tr>
+  <tr><td>Băng thông L2</td><td>~5–8 TB/s</td><td>~12 TB/s</td><td>~17 TB/s</td></tr>
+  <tr><td>Băng thông HBM</td><td class="hi">2 TB/s</td><td class="hi">3,35 TB/s</td><td class="hi">8 TB/s</td></tr>
+</table></div>
+<p>Hai điều cần thấy trong bảng:</p>
+<ol>
+  <li><b>Càng gần SM thì càng nhanh nhưng càng nhỏ.</b> Trên H100, register nhanh hơn HBM khoảng 120 lần (401 so với 3,35 TB/s), nhưng mỗi SM chỉ có 256 KB register, còn HBM có 80 GB.</li>
+  <li><b>Register của mỗi SM là 256 KB, tức 65.536 register 4 byte.</b> Con số 65.536 sẽ xuất hiện lại ngay ở mục occupancy.</li>
+</ol>
+<p>Thầy lưu ý các con số băng thông L1/L2 chỉ là ước lượng vì mỗi nguồn nói một khác. B200 còn có thêm <b>tensor memory (TMEM)</b> dành cho tensor core, nằm giữa register và shared memory, nhưng lập trình viên không trực tiếp nhìn thấy nó.</p>
+
+<h2 id="l06-model" data-short="Grid, block, thread"><span>Mô hình lập trình: grid → thread block → thread</span><span class="slide-range">trang 2–3</span></h2>
+<figure class="l06-fig md"><img src="img/l06/f-grid.png" width="1048" height="583" alt="Một grid gồm 8 CTA, mỗi CTA chứa nhiều thread (mũi tên)" loading="lazy"><figcaption>Một grid gồm nhiều CTA (thread block). Mỗi mũi tên là một thread.</figcaption></figure>
+<ul>
+  <li><dfn>Thread</dfn>: chạy code trên một mẩu nhỏ của dữ liệu.</li>
+  <li><dfn>Thread block</dfn>, hay <dfn>CTA</dfn> (cooperative thread array): một nhóm thread.</li>
+  <li><dfn>Grid</dfn>: toàn bộ các thread block của một lần chạy kernel.</li>
+</ul>
+<p>H100 và B200 còn có thêm một tầng: <b>thread block cluster</b>. Đó là vài block chạy trên các SM gần nhau, đọc được shared memory của nhau ("distributed shared memory").</p>
+
+<p><b>Vì sao phải có tầng "thread block"?</b> Thầy giải thích theo ba bước:</p>
+<ol>
+  <li>Với phép tính <b>từng phần tử</b> như GeLU, chỉ cần thread là đủ: thread thứ \(i\) tính \(f(x_i)\), với \(i = 0, \dots, N-1\). Các thread không cần biết gì về nhau.</li>
+  <li>Với softmax hay nhân ma trận, các thread <b>cần trao đổi với nhau</b>. Softmax cần max và tổng của cả hàng. Nhân ma trận cần dùng lại cùng một dữ liệu nhiều lần. Trao đổi qua HBM thì quá chậm, nên phải trao đổi qua shared memory, vốn nằm trong một SM.</li>
+  <li>Vì vậy <mark>thread block = một nhóm thread dùng chung một vùng shared memory</mark>. Hệ quả: <b>cả block phải được xếp vào cùng một SM</b>.</li>
+</ol>
+<div class="note life"><p>Giống chia việc trong nhà máy. Việc "sơn từng cái ghế" thì mỗi công nhân tự làm phần mình. Việc "lắp một cái tủ" thì cả nhóm phải đứng quanh <b>cùng một cái bàn</b> để chuyền đồ cho nhau. Nhóm đó buộc phải ở cùng một phân xưởng.</p></div>
+<p>Phần 3 sẽ cho thấy Triton cho bạn <b>suy nghĩ trực tiếp theo thread block</b>, không phải theo từng thread.</p>
+
+<h2 id="l06-warps" data-short="Warp & rẽ nhánh"><span>Mô hình và phần cứng gặp nhau: warp và control divergence</span><span class="slide-range">trang 3</span></h2>
+<div class="slides" data-s="3"></div>
+<p>Mô hình lập trình là một lớp trừu tượng che phần cứng đi. Về nguyên tắc, để code <b>đúng</b> thì chỉ cần hiểu mô hình. Nhưng để code <b>nhanh</b> thì phải hiểu phần cứng bên dưới, vì tốc độ phụ thuộc rất nhiều vào nó. Thầy đi qua bốn chi tiết. Chi tiết đầu tiên là <dfn>warp</dfn>:</p>
+<ul>
+  <li>Trong một block, các thread được chia thành từng nhóm <b>32 thread</b> gọi là warp. Block 64 thread thì có 2 warp.</li>
+  <li>32 thread trong một warp <b>luôn chạy cùng một lệnh tại cùng một lúc</b> (lockstep).</li>
+  <li><b>Control divergence</b>: nếu trong một warp, một số thread cần chạy nhánh A và số còn lại chạy nhánh B, warp phải chạy A trước (nhóm B đứng chờ) rồi mới chạy B (nhóm A đứng chờ). Thời gian là A + B, không phải max(A, B).</li>
+</ul>
+<pre class="l06-py"><code>| AAAAAAAAA.......................  |   ← lượt 1: 9 thread chạy A, 23 thread chờ
+| .........BBBBBBBBBBBBBBBBBBBBBBB  |   ← lượt 2: 23 thread chạy B, 9 thread chờ</code></pre>
+<ul>
+  <li>Mỗi SM giữ <b>nhiều warp cùng lúc</b>. Khi một warp phải chờ dữ liệu từ HBM, SM chuyển sang chạy warp khác <b>mà không tốn chi phí</b>. Đây là cách GPU "giấu" độ trễ bộ nhớ.</li>
+</ul>
+<p>Lecture 5 đã có ví dụ chi tiết về divergence (<a href="#l05-divergence">xem lại</a>).</p>
+
+<h2 id="l06-occupancy" data-short="Occupancy & register"><span>Occupancy: register là thứ giới hạn số warp chạy cùng lúc</span><span class="slide-range">trang 3</span></h2>
+<p>Ý cuối của mục trước rất quan trọng: SM giấu độ trễ bằng cách có <b>nhiều warp để chuyển qua lại</b>. Nếu chỉ có vài warp, khi tất cả cùng chờ HBM thì SM ngồi không. <dfn>Occupancy</dfn> đo điều này: <mark>số warp đang ở trên SM chia cho số warp tối đa SM giữ được</mark>.</p>
+<p>Cái gì giới hạn số warp? Chủ yếu là <b>register</b>:</p>
+<ul>
+  <li>Mỗi thread dùng từ 0 đến 255 register. Trình biên dịch quyết định con số này tuỳ theo code của bạn.</li>
+  <li>SM có một kho register cố định (65.536 cái). Mỗi thread dùng càng nhiều register thì càng ít thread (ít warp) ngồi vừa trên SM, tức occupancy thấp.</li>
+  <li>Occupancy thấp <b>không phải lúc nào cũng xấu</b>, nếu mỗi thread làm nhiều việc hơn. Ví dụ <dfn>thread coarsening</dfn>: mỗi thread xử lý nhiều phần tử thay vì một.</li>
+</ul>
+<p>Thầy tính thử bằng code:</p>
+<pre class="l06-py"><code># Thứ ta muốn chạy
+num_threads_per_block = 128
+num_registers_per_thread = 160
+
+# Thứ phần cứng cho phép
+max_registers = 65536  # Số register của một SM
+max_warps = 64         # Số warp tối đa chạy đồng thời trên một SM
+
+# Chạy được bao nhiêu cùng lúc
+assert num_registers_per_thread &lt;= 255
+num_registers_per_block = num_threads_per_block * num_registers_per_thread  # 20480
+num_blocks = max_registers // num_registers_per_block   # 3  (bị register giới hạn)
+num_warps = num_blocks * num_threads_per_block / 32     # 12
+occupancy = num_warps / max_warps                       # 0.1875</code></pre>
+<p>Mỗi block cần \(128 \times 160 = 20.480\) register, nên SM chỉ chứa được \(\lfloor 65.536 / 20.480 \rfloor = 3\) block, tức 12 warp trên tối đa 64. <b>Occupancy chỉ 18,75%.</b></p>
+<div class="note warn"><p>Trong trace, dòng chữ phía trên ví dụ ghi "thread block has 64 threads", nhưng code lại dùng <code>num_threads_per_block = 128</code>. Kết quả 18,75% ở trên tính theo 128 thread như trong code. Nếu là 64 thread thì SM chứa được 6 block, ra đúng 12 warp và occupancy vẫn là 18,75%. Lý do: thứ giới hạn ở đây là tổng số register, không phải số block.</p></div>
+
+<div class="widget" id="occW">
+  <h4>Thử nghiệm: bao nhiêu warp ngồi vừa một SM?</h4>
+  <p style="margin:0 0 4px"><label for="occT">Số thread mỗi block: <span class="chip" id="occTv"></span></label></p>
+  <input type="range" id="occT" min="1" max="32" value="4">
+  <p style="margin:12px 0 4px"><label for="occR">Số register mỗi thread: <span class="chip" id="occRv"></span></label></p>
+  <input type="range" id="occR" min="16" max="255" value="160">
+  <p style="margin:14px 0 0;font-size:13px;color:var(--muted)">64 ô dưới đây là 64 chỗ cho warp trên một SM. Mỗi màu là một block.</p>
+  <div class="l06-slots" id="occSlots"></div>
+  <div class="l06-stats" id="occStats"></div>
+  <p id="occMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('occW'); if (!box) return;
+  const tS = box.querySelector('#occT'), rS = box.querySelector('#occR');
+  const fmt = x => x.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+  function upd() {
+    const T = parseInt(tS.value, 10) * 32, R = parseInt(rS.value, 10), wpb = T / 32;
+    const perBlock = T * R, byReg = Math.floor(65536 / perBlock), byWarp = Math.floor(64 / wpb);
+    const blocks = Math.min(byReg, byWarp), warps = blocks * wpb, occ = warps / 64;
+    box.querySelector('#occTv').textContent = `${T} (${wpb} warp)`;
+    box.querySelector('#occRv').textContent = R;
+    let h = '';
+    for (let i = 0; i < 64; i++) { const b = Math.floor(i / wpb); h += `<i class="${i < warps ? 'b' + (b % 2) : ''}"></i>`; }
+    box.querySelector('#occSlots').innerHTML = h;
+    box.querySelector('#occStats').innerHTML =
+      `<div><small>Register cho một block</small><b>${fmt(perBlock)}</b></div>` +
+      `<div><small>Số block vừa SM</small><b>${blocks}</b></div>` +
+      `<div><small>Số warp đang chạy</small><b>${warps} / 64</b></div>` +
+      `<div class="${occ >= 0.5 ? 'good' : occ < 0.25 ? 'bad' : ''}"><small>Occupancy</small><b>${fmt(occ * 100)}%</b></div>`;
+    let m;
+    if (blocks === 0) m = `Một block cần ${fmt(perBlock)} register, nhiều hơn cả SM (65.536). Kernel này <b>không chạy được</b>; CUDA báo lỗi "too many resources requested for launch".`;
+    else if (byReg < byWarp) m = `Bị <b>register</b> giới hạn: còn chỗ cho ${byWarp} block theo số warp, nhưng register chỉ đủ cho ${byReg}. Muốn đầy 64 warp thì mỗi thread chỉ được dùng tối đa 65.536 / 2.048 = <b>32 register</b>.`;
+    else m = `Bị <b>số warp tối đa</b> giới hạn (${byWarp} block × ${wpb} warp). Register vẫn còn dư.`;
+    box.querySelector('#occMsg').innerHTML = m;
+  }
+  tS.addEventListener('input', upd); rS.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<p>Đây là mô hình đã rút gọn. GPU thật còn vài giới hạn khác: số block tối đa trên mỗi SM (32 trên H100), lượng shared memory mỗi block xin, và việc register được cấp theo từng gói chứ không lẻ từng cái. Nhưng ý chính vẫn đúng: <mark>dùng nhiều register cho mỗi thread thì ít warp chạy cùng lúc hơn</mark>.</p>
+
+<h2 id="l06-banks" data-short="Bank conflict & coalescing"><span>Bank conflict (shared memory) và memory coalescing (HBM)</span><span class="slide-range">trang 3–4</span></h2>
+<div class="slides" data-s="3,4"></div>
+<p>Hai chi tiết tiếp theo đều xoay quanh câu hỏi: <b>32 thread trong một warp cùng đọc bộ nhớ một lúc thì chuyện gì xảy ra?</b> Câu trả lời khác nhau tuỳ đó là shared memory hay HBM.</p>
+
+<h3>Bank conflict: khi đọc shared memory</h3>
+<ul>
+  <li>Shared memory được chia thành <b>32 bank</b>, mỗi bank rộng 4 byte. Ô 4 byte thứ \(i\) nằm ở bank \(i \bmod 32\). Có thể hình dung shared memory là một bảng 32 cột, mỗi cột là một bank: ô 0 ở cột B00, ô 1 ở B01, …, ô 31 ở B31, ô 32 quay lại B00.</li>
+  <li>Trong mỗi chu kỳ, mỗi bank chỉ phục vụ được <b>một</b> thread. Ngoại lệ: nhiều thread đọc đúng cùng một ô thì được phát chung một lần (broadcast).</li>
+  <li>Nếu nhiều thread đọc <b>các ô khác nhau trong cùng một bank</b>, các lần đọc phải xếp hàng lần lượt. Đó là <dfn>bank conflict</dfn>.</li>
+  <li>Trường hợp tệ nhất: một ma trận mà mỗi hàng dài đúng 32 ô (trải hết 32 bank). 32 thread cùng đọc <b>cột đầu tiên</b> thì cả 32 ô đều nằm ở bank B00, tức <b>xung đột 32 chiều</b>: chậm đi 32 lần.</li>
+  <li>Điều này <b>không tránh được</b> trong nhân ma trận \(A @ B\): ta đọc theo hàng của \(A\) nhưng theo cột của \(B\).</li>
+  <li>Cách giải: <dfn>swizzling</dfn>, tức sắp xếp lại vị trí dữ liệu trong shared memory (ví dụ dùng hàng XOR cột) để các ô cùng cột rơi vào các bank khác nhau. Một cách đơn giản hơn là thêm một ô đệm vào mỗi hàng (hàng dài 33 thay vì 32).</li>
+</ul>
+
+<h3>Memory coalescing: khi đọc HBM</h3>
+<ul>
+  <li>Khi 32 thread trong một warp cùng đọc HBM, các lần đọc được <b>gộp lại thành các giao dịch 128 byte</b> (mỗi giao dịch là một cache line).</li>
+  <li>Tốt nhất: <b>gộp trọn vẹn</b>, cả 32 thread đọc trong cùng một cache line. \(32\) thread \(\times 4\) byte \(= 128\) byte, vừa đúng một giao dịch.</li>
+  <li>Tệ nhất: mỗi thread đọc một cache line khác nhau, tốn 32 giao dịch, mỗi giao dịch chở 128 byte nhưng chỉ dùng 4.</li>
+</ul>
+<p>Lecture 5 đã minh hoạ coalescing với 4 thread (<a href="#l05-coalesce">xem lại</a>). Thử nghiệm dưới đây dùng đủ 32 thread và cho thấy cả hai hiện tượng cùng lúc. Thread \(t\) đọc ô số \(t \times \text{bước nhảy}\) (mỗi ô là một số float 4 byte).</p>
+
+<div class="widget" id="accW">
+  <h4>Thử nghiệm: 32 thread cùng đọc, tốn bao nhiêu lượt?</h4>
+  <div class="row" role="group" aria-label="Kiểu truy cập">
+    <button class="l06-btn" data-s="0">Cùng một ô</button>
+    <button class="l06-btn" data-s="1">Liền nhau</button>
+    <button class="l06-btn" data-s="2">Cách 2 ô</button>
+    <button class="l06-btn" data-s="8">Cách 8 ô</button>
+    <button class="l06-btn" data-s="32">Một cột (hàng dài 32)</button>
+    <button class="l06-btn" data-s="33">Một cột (hàng dài 33)</button>
+  </div>
+  <p style="margin:12px 0 0"><label><input type="checkbox" id="accOff"> Lệch 1 ô (bắt đầu từ ô 1 thay vì ô 0)</label></p>
+  <p style="margin:14px 0 0;font-size:13px;color:var(--muted)"><b>Shared memory:</b> mỗi cột là một bank, chiều cao = số ô khác nhau phải đọc ở bank đó (cam = xung đột).</p>
+  <div class="l06-banks" id="accBanks"></div>
+  <div class="l06-bankax"><span>B00</span><span>B15</span><span>B31</span></div>
+  <p style="margin:14px 0 0;font-size:13px;color:var(--muted)"><b>HBM:</b> mỗi ô nhỏ là một giao dịch 128 byte.</p>
+  <div class="l06-segs" id="accSegs"></div>
+  <div class="l06-stats" id="accStats"></div>
+  <p id="accMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('accW'); if (!box) return;
+  const off = box.querySelector('#accOff');
+  let stride = 1;
+  const MSG = {
+    0: 'Cả warp đọc đúng một ô: shared memory phát chung một lần (broadcast), HBM chỉ cần một giao dịch.',
+    1: 'Trường hợp lý tưởng: mỗi thread một bank riêng, và cả warp gói gọn trong một cache line 128 byte.',
+    2: 'Cứ hai thread chung một bank (ví dụ ô 0 và ô 32 cùng ở B00), nên xung đột 2 chiều. HBM phải chở 256 byte mà chỉ dùng một nửa.',
+    8: 'Chỉ 4 bank được dùng, mỗi bank 8 ô, nên xung đột 8 chiều. HBM chở gấp 8 lần lượng cần dùng.',
+    32: 'Trường hợp tệ nhất của bài: đọc một cột của ma trận có hàng dài 32. Cả 32 ô đều nằm chung một bank, nên xung đột 32 chiều. HBM tốn 32 giao dịch.',
+    33: 'Thêm một ô đệm vào mỗi hàng: ô của thread t ở bank (33t mod 32) = t, nên hết xung đột. (Mẹo này chữa shared memory; với HBM, đọc theo cột vẫn tệ.)'
+  };
+  function upd() {
+    const o = off.checked ? 1 : 0, addr = [...Array(32)].map((_, t) => o + t * stride);
+    const banks = Array.from({ length: 32 }, () => new Set());
+    addr.forEach(a => banks[a % 32].add(a));
+    const deg = Math.max(...banks.map(s => s.size));
+    const segs = new Set(addr.map(a => Math.floor(a * 4 / 128))).size;
+    const used = new Set(addr).size * 4;
+    box.querySelector('#accBanks').innerHTML = banks.map(s => `<i class="${s.size === 0 ? 'z' : s.size > 1 ? 'x' : ''}" style="height:${s.size === 0 ? 3 : Math.max(8, s.size / 32 * 92)}px" title="${s.size} ô"></i>`).join('');
+    box.querySelector('#accSegs').innerHTML = '<i></i>'.repeat(segs);
+    box.querySelector('#accStats').innerHTML =
+      `<div class="${deg > 1 ? 'bad' : 'good'}"><small>Shared memory: số lượt đọc</small><b>${deg === 1 ? '1 (không xung đột)' : deg + ' (xung đột ' + deg + ' chiều)'}</b></div>` +
+      `<div class="${segs > 1 ? 'bad' : 'good'}"><small>HBM: số giao dịch 128 byte</small><b>${segs}</b></div>` +
+      `<div><small>HBM: byte dùng / byte chở</small><b>${Math.round(used / (segs * 128) * 100)}%</b></div>`;
+    let m = MSG[stride];
+    if (o && stride === 1) m = 'Vẫn liền nhau nên không xung đột bank, nhưng 32 ô vắt qua ranh giới hai cache line nên HBM tốn 2 giao dịch. Đây là lý do cần căn lề (alignment).';
+    box.querySelector('#accMsg').textContent = m;
+    box.querySelectorAll('[data-s]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.s === stride)));
+  }
+  box.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => { stride = +b.dataset.s; upd(); }));
+  off.addEventListener('change', upd);
+  upd();
+})();
+</script>
+<div class="note key"><p>Hai luật cần nhớ, cùng một tinh thần: <b>các thread cạnh nhau trong một warp nên đọc các ô cạnh nhau</b>.</p>
+<ul><li>Với HBM: để gộp được vào ít cache line nhất.</li><li>Với shared memory: để rải đều ra 32 bank. Khi buộc phải đọc theo cột, dùng swizzle hoặc ô đệm.</li></ul></div>
+
+<h2 id="l06-waves" data-short="Block occupancy & wave"><span>Block occupancy: chia block thành từng đợt (wave)</span><span class="slide-range">trang 4</span></h2>
+<figure class="l06-fig sm"><img src="img/l06/f-waves.png" width="305" height="158" alt="Trục thời gian: wave 0 dùng đầy các SM, wave 1 (tail) chỉ dùng một phần" loading="lazy"><figcaption>Wave 0 lấp đầy mọi SM. Wave 1 (phần đuôi) chỉ dùng vài SM.</figcaption></figure>
+<p>Chi tiết thứ tư ở tầng cả GPU:</p>
+<ul>
+  <li>Các thread block được xếp lên các SM theo từng <b>đợt</b> (wave).</li>
+  <li>B200 có 148 SM. Chạy 160 block thì đợt đầu có 148 block, đợt hai chỉ có 12 block.</li>
+  <li><dfn>Wave quantization</dfn>: đợt cuối có ít block, nhiều SM ngồi không. Ở ví dụ trên, đợt hai chỉ dùng 12/148 ≈ 8% số SM, mà vẫn tốn trọn thời gian của một đợt.</li>
+  <li>Cách giải: chọn số block <b>chia hết cho số SM</b> (hoặc lớn hơn nhiều, để phần đuôi không đáng kể).</li>
+</ul>
+<p>Lecture 5 có thử nghiệm tương tác cho hiện tượng này (<a href="#l05-tiling-cx">xem lại</a>).</p>
+<div class="note key">
+  <p>Thầy tóm tắt Phần 1:</p>
+  <ul>
+    <li><b>Mô hình lập trình</b> có ba tầng, khớp với ba tầng bộ nhớ: grid ↔ HBM, thread block ↔ shared memory, thread ↔ register.</li>
+    <li><b>Chi tiết phần cứng</b> (warp, bank conflict, memory coalescing, occupancy) quyết định tốc độ.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<div class="part" id="l06-part2" data-short="Phần 2 · Đo & soi">Phần 2 · Đo trước, sửa sau: benchmark và profiling<small>Đừng đoán chỗ chậm. Hãy đo.</small></div>
+
+<h2 id="l06-recipe" data-short="Công thức thành công"><span>Công thức: đo → sửa → đo lại</span><span class="slide-range">trang 4</span></h2>
+<p>Thầy đưa ra một "công thức thành công" rất ngắn:</p>
+<ol>
+  <li>Benchmark và profile code của bạn.</li>
+  <li>Sửa.</li>
+  <li>Benchmark và profile lại.</li>
+</ol>
+<p>Hai công cụ trả lời hai câu hỏi khác nhau:</p>
+<ul>
+  <li><dfn>Benchmark</dfn>: <b>mất bao lâu?</b> Đo tổng thời gian từ đầu đến cuối.</li>
+  <li><dfn>Profiling</dfn>: <b>thời gian bị tiêu vào đâu?</b> Liệt kê từng kernel đã chạy và mỗi kernel mất bao lâu.</li>
+</ul>
+<div class="note life"><p>Benchmark giống bấm đồng hồ xem bạn đi làm hết bao nhiêu phút. Profiling giống xem lại hành trình trên bản đồ: 5 phút đi bộ, 20 phút kẹt xe ở ngã tư, 3 phút chờ thang máy. Muốn đi nhanh hơn thì phải biết mình kẹt ở đâu.</p></div>
+
+<h2 id="l06-bench" data-short="Benchmark đúng cách"><span>Benchmark đúng cách trên GPU</span><span class="slide-range">trang 4–5</span></h2>
+<div class="slides" data-s="4,5"></div>
+<p>Benchmark chỉ cho tổng thời gian, không cho biết thời gian đi đâu. Nhưng nó vẫn hữu ích để <b>so sánh hai cách cài đặt</b> (cách nào nhanh hơn?) và để <b>xem thời gian tăng thế nào</b> khi kích thước thay đổi. PyTorch có sẵn <code>torch.utils.benchmark</code>, nhưng thầy tự viết một hàm để thấy rõ từng bước:</p>
+<pre class="l06-py"><code>def benchmark(run: Callable, num_warmups: int = 1, num_trials: int = 3) -> float:
+    # Warmup: những lần chạy đầu có thể chậm hơn (biên dịch, v.v.)
+    for _ in range(num_warmups):
+        run()
+    torch.cuda.synchronize()  # Chờ GPU chạy xong (quan trọng!)
+
+    times: list[float] = []
+    for trial in range(num_trials):  # Chạy nhiều lần để thấy độ dao động
+        # Dùng CUDA event để đo đúng thời gian trên GPU
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+
+        start_event.record()  # Bắt đầu bấm giờ
+        run()                 # Chạy thật
+        end_event.record()    # Dừng bấm giờ
+
+        torch.cuda.synchronize()  # Chờ GPU chạy xong
+        times.append(start_event.elapsed_time(end_event))
+
+    return mean(times)</code></pre>
+<p>Mỗi chi tiết trong hàm này đều có lý do:</p>
+<ul>
+  <li><b>Warmup.</b> Lần chạy đầu thường chậm hơn hẳn: Triton hay <code>torch.compile</code> phải biên dịch kernel, thư viện phải khởi tạo, bộ nhớ phải được cấp phát. Trong huấn luyện, kernel chạy hàng nghìn lần, nên thời gian cần đo là thời gian ở <b>trạng thái ổn định</b>, không phải lần đầu.</li>
+  <li><b><code>torch.cuda.synchronize()</code>.</b> CPU và GPU chạy <b>bất đồng bộ</b>. Khi Python gọi <code>a @ b</code>, CPU chỉ <i>xếp lệnh vào hàng đợi</i> của GPU rồi đi tiếp ngay, không chờ GPU tính xong. Nếu bấm giờ bằng <code>time.time()</code> mà không synchronize, bạn chỉ đo được thời gian <i>gửi lệnh</i>, thường chỉ vài micro giây, dù GPU còn đang tính.</li>
+  <li><b>CUDA event.</b> Event được ghi ngay trong hàng đợi của GPU, nên nó đo đúng khoảng thời gian GPU thực sự làm việc, không lẫn chi phí phía CPU.</li>
+  <li><b>Nhiều lần đo.</b> Thời gian mỗi lần dao động một chút, nên lấy trung bình.</li>
+</ul>
+<div class="note warn"><p>Lỗi benchmark phổ biến nhất: quên synchronize. Code trông "nhanh kinh khủng" nhưng thật ra bạn mới đo lúc CPU gửi lệnh đi. Nếu thấy một phép nhân ma trận lớn chỉ mất vài micro giây, hãy nghi ngờ trước.</p></div>
+<p>Thầy benchmark phép nhân ma trận <code>a @ b</code> với \(\text{dim} = 256, 512, \dots, 8192\) và nhận xét: <mark>khi ma trận nhỏ, thời gian gần như không đổi; khi ma trận lớn, thời gian tăng theo bậc ba</mark>.</p>
+<ul>
+  <li><b>Ma trận nhỏ:</b> GPU chưa có đủ việc để làm đầy các SM. Thời gian chủ yếu là chi phí cố định: gửi kernel, khởi động, đồng bộ. Mấy chi phí này không phụ thuộc kích thước.</li>
+  <li><b>Ma trận lớn:</b> GPU đã chạy hết công suất, nên thời gian tỉ lệ với số phép tính \(2N^3\). Tăng \(N\) gấp đôi thì thời gian tăng khoảng 8 lần.</li>
+</ul>
+
+<h2 id="l06-profile" data-short="Đọc bảng profiler"><span>Profiling: đọc bảng của PyTorch profiler</span><span class="slide-range">trang 5–7</span></h2>
+<div class="slides" data-s="5,6"></div>
+<p>Profiling cho biết thời gian bị tiêu vào đâu. Ngoài ra nó còn giúp bạn <b>thấy được bên dưới đang thực sự chạy gì</b>, kể cả khi không cần tối ưu. PyTorch có sẵn profiler. Trong bài tập, bạn sẽ dùng <b>NVIDIA Nsight</b> để xem chi tiết hơn. Hàm <code>profile</code> của thầy cũng warmup trước, rồi chạy code bên trong <code>torch.profiler.profile(activities=[ProfilerActivity.CUDA])</code> và in bảng sắp xếp theo tổng thời gian CUDA.</p>
+<p>Ba ví dụ thầy chạy trên B200:</p>
+<div class="tbl"><table>
+  <tr><th>Phép tính</th><th>Kernel GPU thực sự chạy</th><th>Self CUDA total</th></tr>
+  <tr><td><code>a + b</code>, dim 2048</td><td><code>vectorized_elementwise_kernel&lt;4, CUDAFunctor_add…&gt;</code></td><td>4,8 µs</td></tr>
+  <tr><td><code>a @ b</code>, dim 2048</td><td><code>cutlass3x_sm100_simt_sgemm_…_64x64x16_…</code></td><td>330,4 µs</td></tr>
+  <tr><td><code>a @ b</code>, dim 128</td><td><code>cutlass3x_sm100_simt_sgemm_…_32x32x16_…</code></td><td>4,5 µs</td></tr>
+</table></div>
+<p>Cách đọc bảng:</p>
+<ul>
+  <li><b>Dòng tên kernel</b> (dòng đầu, tên rất dài) là kernel chạy trên GPU. Cột <i>Self CUDA</i> của nó là thời gian GPU thực sự bỏ ra.</li>
+  <li><b><code>cudaLaunchKernel</code> / <code>cuLaunchKernelEx</code></b> là thời gian CPU bỏ ra để <i>gửi</i> kernel xuống GPU. Trong các bảng này, con số đó khoảng 25–45 µs mỗi lần, đã tính cả phần chậm đi do profiler.</li>
+  <li><b><code>cudaDeviceSynchronize</code></b> là thời gian CPU đứng chờ GPU chạy xong.</li>
+  <li><b><code>Activity Buffer Request</code></b> chiếm phần lớn "Self CPU". Đây là chi phí của chính profiler, có thể bỏ qua.</li>
+</ul>
+
+<p>Thầy rút ra hai nhận xét:</p>
+<ol>
+  <li>Profiler cho thấy <b>chính xác kernel CUDA nào được gọi</b> (những cái tên dài).</li>
+  <li><b>Cùng một phép <code>@</code> nhưng kích thước khác nhau thì gọi kernel khác nhau.</b> Với dim 2048, PyTorch chọn kernel tile 64×64×16. Với dim 128, nó chọn kernel tile 32×32×16. Ma trận nhỏ dùng tile nhỏ hơn để có đủ block chia cho các SM.</li>
+</ol>
+<p>Tên kernel cho biết khá nhiều về cách nó được cài đặt. Lấy ví dụ <code>cutlass3x_sm100_simt_sgemm_f32_f32_f32_f32_f32_64x64x16_…</code>:</p>
+<ul>
+  <li><b>cutlass</b>: thư viện đại số tuyến tính bằng CUDA của NVIDIA.</li>
+  <li><b>sm100</b>: viết cho kiến trúc Blackwell (B200).</li>
+  <li><b>f32</b>: tính bằng float32.</li>
+  <li><b>64x64x16</b>: kích thước tile, sẽ gặp lại ở phần nhân ma trận.</li>
+  <li>Thầy không giải thích hai chữ còn lại, nhưng chúng cũng có nghĩa. <b>sgemm</b> là "single-precision general matrix multiply", tức nhân ma trận float32. <b>simt</b> nghĩa là kernel chạy trên các CUDA core thường, <i>không</i> dùng tensor core. Lý do: mặc định PyTorch không cho phép phép nhân ma trận float32 dùng TF32 trên tensor core (<code>torch.backends.cuda.matmul.allow_tf32 = False</code>). Nếu gọi <code>torch.set_float32_matmul_precision("high")</code> thì PyTorch sẽ dùng tensor core và chạy nhanh hơn nhiều.</li>
+</ul>
+<div class="note num">
+  <p>Thử tính tốc độ từ bảng profiler:</p>
+  <ul>
+    <li><b>Nhân ma trận 2048:</b> \(2 \times 2048^3 \approx 17{,}2\) tỷ phép tính trong 330 µs, tức khoảng <b>52 TFLOP/s</b>. Con số này cùng cỡ với tốc độ float32 trên CUDA core thường, thấp hơn rất nhiều so với tensor core.</li>
+    <li><b>Nhân ma trận 128:</b> chỉ 4,2 triệu phép tính trong 4,5 µs, tức chưa tới 1 TFLOP/s. Ma trận quá nhỏ nên chi phí cố định chiếm gần hết, đúng như nhận xét "nhỏ thì gần như không đổi".</li>
+    <li><b>Cộng hai ma trận 2048:</b> đọc 2 ma trận và ghi 1 ma trận, mỗi ma trận \(2048^2 \times 4\) byte \(\approx 16{,}8\) MB, tổng khoảng 50 MB trong 4,8 µs, tức khoảng 10 TB/s. Con số này <i>cao hơn</i> băng thông HBM của B200 (8 TB/s). Mình đoán (trace không nói) là sau lần warmup, ba ma trận vẫn còn nằm trong L2 cache (B200 có tới ~126 MB), nên lần đo không phải đọc từ HBM. Đây là cái bẫy kinh điển khi benchmark các phép tính nhỏ.</li>
+  </ul>
+</div>
+
+<h2 id="l06-gelu-bench" data-short="GeLU: naive, builtin, compiled"><span>Áp dụng: ba cách tính GeLU, và vì sao một cách chậm gấp 10 lần</span><span class="slide-range">trang 7–8</span></h2>
+<div class="slides" data-s="7,8"></div>
+<p>GeLU là hàm kích hoạt hay dùng trong Transformer. Thầy dùng công thức xấp xỉ bằng \(\tanh\):</p>
+<p>\[ \text{GeLU}(x) \approx 0{,}5\, x \left(1 + \tanh\!\left(\sqrt{2/\pi}\,\big(x + 0{,}044715\, x^3\big)\right)\right), \qquad \sqrt{2/\pi} \approx 0{,}79788456 \]</p>
+<p>Ba cách cài đặt:</p>
+<pre class="l06-py"><code># 1. Tự viết bằng các phép toán PyTorch (không gộp)
+def naive_gelu(x):
+    return 0.5 * x * (1 + torch.tanh(0.79788456 * (x + 0.044715 * x * x * x)))
+
+# 2. Hàm có sẵn của PyTorch (đã gộp)
+def builtin_gelu(x):
+    return torch.nn.functional.gelu(x, approximate="tanh")
+
+# 3. Đưa cách 1 qua trình biên dịch của PyTorch
+compiled_gelu = torch.compile(naive_gelu)</code></pre>
+<p>Cả ba được kiểm tra cho ra cùng kết quả (<code>check_equal_1d</code>; biên dịch không được làm thay đổi kết quả). Rồi benchmark với ma trận \(16384 \times 16384\). Kết luận: <b>builtin và compiled nhanh hơn hẳn</b>. Profiler cho thấy vì sao:</p>
+<div class="tbl"><table>
+  <tr><th>Cách</th><th>Kernel GPU</th><th>Self CUDA total</th></tr>
+  <tr><td>naive_gelu</td><td>nhiều kernel <code>vectorized_elementwise_kernel</code> (mỗi phép toán một kernel)</td><td class="hi">3,38 ms</td></tr>
+  <tr><td>builtin_gelu</td><td>một kernel <code>GeluCUDAKernelImpl</code></td><td>0,30 ms</td></tr>
+  <tr><td>compiled_gelu</td><td>một kernel <code>triton_poi_fused_add_mul_tanh_0</code></td><td>0,34 ms</td></tr>
+</table></div>
+<ul>
+  <li><b>Naive</b>: mỗi phép <code>*</code>, <code>+</code>, <code>tanh</code> là một kernel riêng. Mỗi kernel đọc input từ HBM rồi ghi kết quả trung gian về HBM. Đây là <b>không gộp</b> (no fusion).</li>
+  <li><b>Builtin và compiled</b>: chỉ <b>một kernel</b>, đọc \(x\) từ HBM một lần, ghi kết quả một lần. Đây là <dfn>kernel fusion</dfn>.</li>
+  <li>Kernel của bản compiled có tên <code>triton_…</code>: <code>torch.compile</code> đã <b>tự sinh ra một kernel Triton</b>. Phần 3 sẽ viết tay đúng loại kernel này.</li>
+</ul>
+<div class="note num">
+  <p>Đếm số lần đọc/ghi HBM, ta sẽ giải thích được gần đúng con số "nhanh gấp 10 lần".</p>
+  <p>Python tính <code>0.5 * x * (1 + torch.tanh(0.79788456 * (x + 0.044715 * x * x * x)))</code> thành 9 phép tính, mỗi phép một kernel:</p>
+  <div class="tbl"><table>
+    <tr><th>#</th><th>Phép tính</th><th>Đọc</th><th>Ghi</th></tr>
+    <tr><td>1</td><td><code>t1 = 0.5 * x</code></td><td>1</td><td>1</td></tr>
+    <tr><td>2</td><td><code>t2 = 0.044715 * x</code></td><td>1</td><td>1</td></tr>
+    <tr><td>3–4</td><td><code>t3 = t2 * x</code>, <code>t4 = t3 * x</code></td><td>2 + 2</td><td>1 + 1</td></tr>
+    <tr><td>5</td><td><code>t5 = x + t4</code></td><td>2</td><td>1</td></tr>
+    <tr><td>6–8</td><td><code>t6 = 0.798 * t5</code>, <code>t7 = tanh(t6)</code>, <code>t8 = 1 + t7</code></td><td>1 + 1 + 1</td><td>1 + 1 + 1</td></tr>
+    <tr><td>9</td><td><code>y = t1 * t8</code></td><td>2</td><td>1</td></tr>
+    <tr><td></td><td><b>Tổng</b></td><td><b>13</b></td><td><b>9</b></td></tr>
+  </table></div>
+  <p>Mỗi lần đọc hoặc ghi một ma trận \(16384^2\) số float32 là \(\approx 1{,}07\) GB:</p>
+  <ul>
+    <li><b>Naive:</b> \(22 \times 1{,}07 \approx 23{,}6\) GB. Ở 8 TB/s, mất ít nhất \(\approx 2{,}95\) ms. Đo được 3,38 ms.</li>
+    <li><b>Gộp:</b> \(2 \times 1{,}07 \approx 2{,}15\) GB, mất ít nhất \(\approx 0{,}27\) ms. Đo được 0,30 ms.</li>
+  </ul>
+  <p>Theo lý thuyết, bản gộp nhanh hơn \(22/2 = 11\) lần. Đo thật được \(3{,}38 / 0{,}30 \approx 11\) lần. GeLU có rất ít phép tính trên mỗi byte, nên <mark>thời gian gần như chỉ phụ thuộc vào số byte phải chở qua lại HBM</mark>.</p>
+</div>
+<p>Lecture 5 gọi đây là "mẹo 2: gộp phép tính" (<a href="#l05-fusion">xem lại</a>). Lecture này cho thấy con số đo thật trên GPU.</p>
+
+<!-- ============================================================ -->
+<div class="part" id="l06-part3" data-short="Phần 3 · Viết kernel Triton">Phần 3 · Tự viết kernel bằng Triton<small>Bốn ví dụ khó dần: GeLU, softmax, tổng theo hàng, nhân ma trận.</small></div>
+
+<h2 id="l06-triton" data-short="CUDA và Triton"><span>CUDA và Triton: nghĩ theo thread hay theo block?</span><span class="slide-range">trang 8–9</span></h2>
+<div class="slides" data-s="8,9"></div>
+<ul>
+  <li><b>CUDA</b> (của NVIDIA): bạn viết code cho <b>từng thread</b>. Ưu điểm: kiểm soát tới từng chi tiết. Nhược điểm: phải tự quản lý nhiều thứ, như chép dữ liệu lên shared memory, tránh bank conflict, đồng bộ giữa các thread.</li>
+  <li><b>Triton</b> (của OpenAI): bạn viết code cho <b>từng thread block</b>. Thường là đủ mạnh, nhất là khi mới bắt đầu.</li>
+</ul>
+<p>Khung suy nghĩ khi viết Triton gồm ba bước: <mark>đọc dữ liệu lên (shared memory/register) → tính toán trên đó → ghi về global memory (HBM)</mark>.</p>
+<div class="note life"><p>Viết CUDA giống làm quản đốc phải chỉ việc cho từng công nhân: "anh số 7 lấy ô số 7, rồi đứng chờ anh số 8". Viết Triton giống chỉ giao việc cho cả tổ: "tổ này lo đoạn từ 1024 đến 2047". Còn chia việc cho từng người thế nào thì để Triton (người điều phối) tự lo.</p></div>
+<p>Trong Triton, mỗi lần chạy kernel tạo ra nhiều <dfn>program</dfn>, mỗi program tương ứng một thread block. Bên trong program, bạn viết như viết NumPy: thao tác trên cả một vector <code>BLOCK_SIZE</code> phần tử. Trình biên dịch Triton tự chia vector đó cho các thread, tự lo việc đọc gộp (coalescing) và việc dùng shared memory.</p>
+
+<h2 id="l06-tgelu" data-short="Kernel 1: GeLU"><span>Kernel 1: GeLU, phép tính từng phần tử</span><span class="slide-range">trang 9–10</span></h2>
+<div class="slides" data-s="9,10"></div>
+<p>Mỗi kernel Triton có hai phần: hàm <b>bọc ngoài</b> chạy trên CPU (chuẩn bị và chạy kernel), và <b>kernel</b> chạy trên GPU.</p>
+<pre class="l06-py"><code>def triton_gelu(x: torch.Tensor):
+    assert x.is_cuda
+    assert x.is_contiguous()
+
+    y = torch.empty_like(x)  # Cấp chỗ cho kết quả
+
+    # Chia các phần tử thành từng block:
+    # | T T T T T T T T | T T T T T T T T | T T T T T T T T | T T T T T T T T |
+    # |    Block 0      |    Block 1      |    Block 2      |    Block 3      |
+    num_elements = x.numel()
+    BLOCK_SIZE = 1024
+    num_blocks = triton.cdiv(num_elements, BLOCK_SIZE)  # chia làm tròn lên
+
+    # Chạy kernel với grid gồm num_blocks program
+    triton_gelu_kernel[(num_blocks,)](x, y, num_elements, BLOCK_SIZE=BLOCK_SIZE)
+    return y
+
+
+@triton.jit
+def triton_gelu_kernel(x_ptr, y_ptr, num_elements, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(axis=0)       # Mình là block số mấy?
+    start = pid * BLOCK_SIZE          # Phần của mình bắt đầu từ đâu
+
+    offsets = start + tl.arange(0, BLOCK_SIZE)  # Các chỉ số mình phụ trách
+    mask = offsets &lt; num_elements               # Đừng đọc/ghi quá cuối tensor
+
+    x = tl.load(x_ptr + offsets, mask=mask)     # Đọc
+
+    # tanh(a) = (exp(2a) - 1) / (exp(2a) + 1)
+    a = 0.79788456 * (x + 0.044715 * x * x * x)
+    exp = tl.exp(2 * a)
+    tanh = (exp - 1) / (exp + 1)
+    y = 0.5 * x * (1 + tanh)
+
+    tl.store(y_ptr + offsets, y, mask=mask)     # Ghi</code></pre>
+<p>Đọc từng dòng của kernel:</p>
+<ul>
+  <li><code>x_ptr</code>, <code>y_ptr</code> là <b>địa chỉ</b> phần tử đầu tiên của input và output trong HBM. Truyền tensor vào kernel thực chất là truyền con trỏ.</li>
+  <li><code>tl.program_id(0)</code> cho biết program này là số mấy (0, 1, 2, …), tức block số mấy.</li>
+  <li><code>offsets</code> là một <b>vector</b> gồm <code>BLOCK_SIZE</code> chỉ số. Block 2 có <code>offsets = [2048, 2049, …, 3071]</code>.</li>
+  <li><code>mask</code> xử lý block cuối khi số phần tử không chia hết cho <code>BLOCK_SIZE</code>. Ví dụ có 10.000 phần tử: <code>cdiv</code> cho 10 block, block cuối phụ trách chỉ số 9216–10239, nhưng chỉ 9216–9999 là thật. 240 vị trí còn lại bị <code>mask</code> tắt: không đọc, không ghi.</li>
+  <li><code>tl.load</code> / <code>tl.store</code> đọc và ghi cả vector một lúc. Mọi phép tính ở giữa nằm trên register, <b>không chạm HBM</b>. Đây chính là fusion: một lần đọc, một lần ghi.</li>
+  <li>Comment trong trace nói Triton không có sẵn <code>tl.tanh</code>, nên thầy tự tính tanh qua \(\exp\).</li>
+</ul>
+
+<div class="note warn">
+  <p><b><code>BLOCK_SIZE</code> không phải là số thread.</b> Comment trong trace ghi <code>BLOCK_SIZE = 1024 # Number of threads</code>, nhưng thật ra <code>BLOCK_SIZE</code> là <i>số phần tử</i> mỗi program xử lý. Số thread của mỗi program do tham số <code>num_warps</code> quyết định, mặc định là 4 warp = 128 thread. Vì vậy mỗi thread lo \(1024 / 128 = 8\) phần tử. Điều này khớp với quan sát của thầy khi đọc mã PTX bên dưới: "một thread xử lý 8 phần tử cùng lúc" (thread coarsening).</p>
+</div>
+<div class="note warn">
+  <p><b>Công thức tanh này có thể ra NaN.</b> Khi \(x\) lớn (khoảng \(x \gtrsim 10\)), \(2a\) vượt quá 88,7 nên \(\exp(2a)\) tràn thành \(\infty\) trong float32, và \(\infty / \infty = \text{NaN}\). Bài kiểm tra dùng <code>torch.randn</code>, gần như không bao giờ sinh ra số lớn như vậy, nên lỗi không lộ ra. Cách viết an toàn hơn: \(\tanh(a) = 1 - \dfrac{2}{e^{2a} + 1}\). Khi \(e^{2a} = \infty\), công thức này cho đúng \(1\).</p>
+</div>
+
+<h3>Nhìn xuống tầng thấp nhất: PTX</h3>
+<p>Triton biên dịch kernel xuống <dfn>PTX</dfn> (parallel thread execution), một loại hợp ngữ cho GPU. Thầy ghi PTX ra file bằng <code>kernel.asm["ptx"]</code> (<a href="https://github.com/stanford-cs336/lectures/blob/main/var/triton_gelu-ptx.txt" target="_blank" rel="noopener">xem file PTX của thầy</a>). Bạn không cần biết viết PTX, chỉ cần nhận ra vài thứ:</p>
+<ul>
+  <li><code>ld.global.*</code> và <code>st.global.*</code>: đọc và ghi global memory (HBM). Đây là các <code>tl.load</code>, <code>tl.store</code>.</li>
+  <li><code>%ctaid.x</code> là chỉ số block (tương ứng <code>tl.program_id</code>), <code>%tid.x</code> là chỉ số thread trong block. Triton tự sinh phần tính chỉ số theo thread mà bạn không phải viết.</li>
+  <li><code>%f…</code> là register số thực, <code>%r…</code> là register số nguyên.</li>
+  <li>Mỗi thread xử lý 8 phần tử cùng lúc (thread coarsening).</li>
+</ul>
+
+<h2 id="l06-softmax" data-short="Kernel 2: softmax"><span>Kernel 2: softmax, khi cả hàng vừa trong một block</span><span class="slide-range">trang 10–11</span></h2>
+<div class="slides" data-s="10,11"></div>
+<p>GeLU là phép tính <i>từng phần tử</i>. Softmax thì phải <b>gộp nhiều giá trị</b>: mỗi phần tử cần biết max và tổng của cả hàng. Softmax dùng trong attention và để biến điểm số thành xác suất: lấy mũ từng phần tử của mỗi hàng, rồi chia cho tổng của hàng.</p>
+<pre class="l06-py"><code>[0 0 0]      =>  [1/3 1/3 1/3]
+[1 1 -inf]   =>  [1/2 1/2 0  ]</code></pre>
+
+<h3>Bản ngây thơ: đếm số lần đọc/ghi</h3>
+<p>Ma trận có \(M\) hàng, \(N\) cột. Viết bằng các phép PyTorch, mỗi dòng là một kernel:</p>
+<pre class="l06-py"><code>def naive_softmax(x: torch.Tensor):
+    M, N = x.shape
+    x_max = x.max(dim=1)[0]               # MN đọc, M ghi
+    x = x - x_max[:, None]                # MN + M đọc, MN ghi
+    numerator = torch.exp(x)              # MN đọc, MN ghi
+    denominator = numerator.sum(dim=1)    # MN đọc, M ghi
+    y = numerator / denominator[:, None]  # MN + M đọc, MN ghi
+    return y</code></pre>
+<p>Cộng lại: khoảng \(5MN\) lần đọc và \(3MN\) lần ghi. Về nguyên tắc chỉ cần đọc \(MN\) và ghi \(MN\), nên bản gộp có thể nhanh hơn khoảng \(8MN / 2MN = 4\) lần.</p>
+<div class="note warn"><p>Trace ghi tổng là "5MN + M reads". Cộng kỹ từng dòng thì là \(5MN + 2M\) (cả phép trừ và phép chia đều đọc thêm \(M\) giá trị). Sai khác rất nhỏ vì \(M \ll MN\), không ảnh hưởng kết luận 4 lần.</p></div>
+
+<h3>Bản Triton: mỗi program lo một hàng</h3>
+<figure class="l06-fig"><img src="img/l06/f-softmax.png" width="1536" height="426" alt="Mỗi program (pid = chỉ số hàng) đọc một hàng, trừ max, lấy mũ và cộng, chuẩn hoá rồi ghi" loading="lazy"><figcaption>Một program (pid = chỉ số hàng): đọc hàng → trừ max → exp và cộng → chuẩn hoá và ghi.</figcaption></figure>
+<pre class="l06-py"><code>def triton_softmax(x: torch.Tensor):
+    y = torch.empty_like(x)
+    M, N = x.shape
+    block_size = triton.next_power_of_2(N)  # Mỗi block chứa cả hàng
+    triton_softmax_kernel[(M,)](            # Grid: M program, mỗi hàng một program
+        x_ptr=x, y_ptr=y,
+        x_row_stride=x.stride(0), y_row_stride=y.stride(0),
+        num_cols=N, BLOCK_SIZE=block_size,
+    )
+    return y
+
+
+@triton.jit
+def triton_softmax_kernel(x_ptr, y_ptr, x_row_stride, y_row_stride, num_cols, BLOCK_SIZE: tl.constexpr):
+    row_idx = tl.program_id(0)            # Mình lo hàng số mấy
+    col_offsets = tl.arange(0, BLOCK_SIZE)
+
+    # Đọc cả hàng từ HBM
+    x_start_ptr = x_ptr + row_idx * x_row_stride
+    x_ptrs = x_start_ptr + col_offsets
+    x_row = tl.load(x_ptrs, mask=col_offsets &lt; num_cols, other=float("-inf"))
+
+    # Tính (hoàn toàn trên chip)
+    x_row = x_row - tl.max(x_row, axis=0)
+    numerator = tl.exp(x_row)
+    denominator = tl.sum(numerator, axis=0)
+    y_row = numerator / denominator
+
+    # Ghi về HBM
+    y_start_ptr = y_ptr + row_idx * y_row_stride
+    tl.store(y_start_ptr + col_offsets, y_row, mask=col_offsets &lt; num_cols)</code></pre>
+<p>Ba chi tiết đáng chú ý:</p>
+<ul>
+  <li><b><code>block_size = next_power_of_2(N)</code>.</b> <code>tl.arange</code> yêu cầu độ dài là luỹ thừa của 2. Với \(N = 1000\) thì <code>BLOCK_SIZE = 1024</code>, và 24 vị trí thừa bị <code>mask</code> che đi.</li>
+  <li><b><code>other=float("-inf")</code>.</b> Vị trí bị che được điền \(-\infty\), không phải 0. Như vậy chúng không ảnh hưởng tới max, và \(\exp(-\infty) = 0\) nên cũng không ảnh hưởng tới tổng. Nếu điền 0 thì sai: một hàng toàn số âm sẽ có max bị kéo lên 0.</li>
+  <li><b><code>x_row_stride</code>.</b> Dùng <i>stride</i> (khoảng cách giữa hai hàng trong bộ nhớ) thay vì giả định khoảng cách bằng \(N\). Nhờ vậy kernel chạy được cả với ma trận là một lát cắt của ma trận to hơn.</li>
+</ul>
+<div class="note key"><p><b>Giá trị đệm phải là "phần tử trung hoà" của phép gộp:</b> \(-\infty\) cho max, 0 cho tổng, 1 cho tích. Kernel tiếp theo (tổng theo hàng) sẽ dùng <code>other=0.0</code> vì lý do này.</p></div>
+<div class="note num">
+  <p>Ví dụ của thầy, <code>x = [[5, 5, 5], [0, 0, 100]]</code>, có lý do khi chọn số 100:</p>
+  <ul>
+    <li>\(e^{100} \approx 2{,}7 \times 10^{43}\), lớn hơn số float32 lớn nhất (\(\approx 3{,}4 \times 10^{38}\)). Nếu không trừ max, \(e^{100}\) thành \(\infty\), và kết quả thành \(\infty/\infty = \text{NaN}\).</li>
+    <li>Trừ max trước: hàng thành \([-100, -100, 0]\), lấy mũ được \([3{,}7\times 10^{-44},\; 3{,}7\times 10^{-44},\; 1]\), và kết quả \(\approx [0, 0, 1]\) như mong đợi.</li>
+  </ul>
+  <p>Trừ max không đổi kết quả, vì \(\dfrac{e^{x_i - m}}{\sum_j e^{x_j - m}} = \dfrac{e^{x_i}}{\sum_j e^{x_j}}\), nhưng nó giữ mọi số mũ \(\le 0\) nên không bao giờ tràn.</p>
+</div>
+<p>Hạn chế của kernel này: <code>assert num_cols &lt;= BLOCK_SIZE</code>, tức <b>cả hàng phải vừa trong một block</b>. Hàng dài 100.000 phần tử thì mỗi program phải giữ 131.072 số trên register, không thể vừa. Kernel tiếp theo xử lý trường hợp này.</p>
+
+<h2 id="l06-rowsum" data-short="Kernel 3: tổng theo hàng"><span>Kernel 3: tổng theo hàng, khi hàng dài hơn một block</span><span class="slide-range">trang 11–12</span></h2>
+<div class="slides" data-s="11,12"></div>
+<p>Ở softmax, cả hàng vừa trong một block, nên phép gộp (max, tổng) diễn ra gọn trong block và Triton tự lo. Nếu hàng <b>không</b> vừa thì sao? Ví dụ hàng có 4096 cột nhưng block chỉ chứa 1024.</p>
+<p>Chiến lược của thầy:</p>
+<ol>
+  <li>Cắt hàng thành nhiều <b>tile</b> (ví dụ trên: 4096 / 1024 = 4 tile).</li>
+  <li>Mỗi thread <b>đi lần lượt qua các tile</b> và cộng dồn vào một biến tích luỹ riêng của nó.</li>
+  <li>Cuối cùng, gộp các biến tích luỹ của mọi thread thành một số. Bước này dùng shared memory hoặc <i>warp shuffle</i> (các thread trong một warp trao đổi register trực tiếp với nhau).</li>
+</ol>
+<p>Để dễ thấy, thầy dùng phép tính đơn giản hơn softmax: <b>tổng theo hàng</b>. Kết quả phải giống <code>x.sum(dim=1)</code>.</p>
+<figure class="l06-fig md"><img src="img/l06/f-rowsum.png" width="1077" height="871" alt="Block 1 xử lý hàng 1 gồm 10 cột với BLOCK_SIZE 4: tile 0, tile 1, tile 2 (che 2 cột), cộng dồn acc rồi tl.sum ra 39" loading="lazy"><figcaption>Hàng 1 có 10 cột, BLOCK_SIZE = 4. Ba tile (tile cuối bị che 2 vị trí), cộng dồn vào acc, rồi <code>tl.sum</code> ra 39.</figcaption></figure>
+<pre class="l06-py"><code>def triton_row_sum(x: torch.Tensor, BLOCK_SIZE: int = 1024) -> torch.Tensor:
+    M, N = x.shape
+    y = torch.empty(M, device=x.device, dtype=x.dtype)
+    row_sum_kernel[(M,)](x, y, N, BLOCK_SIZE=BLOCK_SIZE)  # Mỗi hàng một program
+    return y
+
+
+@triton.jit
+def row_sum_kernel(x_ptr, out_ptr, N, BLOCK_SIZE: tl.constexpr):
+    row = tl.program_id(0)  # Mình lo hàng số mấy
+
+    # Biến tích luỹ: một vector BLOCK_SIZE số, nằm trên register
+    acc = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+
+    # Đi qua từng tile của hàng
+    for start in range(0, N, BLOCK_SIZE):
+        cols = start + tl.arange(0, BLOCK_SIZE)
+        mask = cols &lt; N
+        x = tl.load(x_ptr + row * N + cols, mask=mask, other=0.0)
+        acc += x
+
+    # Gộp BLOCK_SIZE giá trị thành một số
+    result = tl.sum(acc, axis=0)
+    tl.store(out_ptr + row, result)</code></pre>
+<p>Thử từng bước bên dưới. Hàng mặc định là hàng 1 trong hình của thầy: 10 cột, giá trị là các chữ số của số π (3, 1, 4, 1, 5, 9, 2, 6, 5, 3).</p>
+
+<div class="widget" id="rowW">
+  <h4>Thử nghiệm: một program cộng một hàng dài</h4>
+  <p style="margin:0 0 4px"><label for="rowN">Số cột N: <span class="chip" id="rowNv"></span></label></p>
+  <input type="range" id="rowN" min="1" max="24" value="10">
+  <div class="row" role="group" aria-label="BLOCK_SIZE" style="margin-top:10px">
+    <span>BLOCK_SIZE:</span>
+    <button class="l06-btn" data-b="2">2</button><button class="l06-btn" data-b="4">4</button><button class="l06-btn" data-b="8">8</button>
+    <span style="flex:1"></span>
+    <button class="l06-btn" id="rowStep">Bước tiếp ▶</button>
+    <button class="l06-btn" id="rowReset">Làm lại</button>
+  </div>
+  <div id="rowView" style="margin-top:12px"></div>
+  <p id="rowMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('rowW'); if (!box) return;
+  const V = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4];
+  const nS = box.querySelector('#rowN');
+  let B = 4, step = 0;
+  function upd() {
+    const N = parseInt(nS.value, 10), tiles = Math.ceil(N / B);
+    box.querySelector('#rowNv').textContent = N;
+    box.querySelectorAll('[data-b]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.b === B)));
+    const acc = new Array(B).fill(0);
+    let h = `<div class="l06-tile"><span class="lab">acc ban đầu</span>${acc.map(() => '<span class="l06-cell acc">0</span>').join('')}</div>`;
+    for (let k = 0; k < Math.min(step, tiles); k++) {
+      let cells = '';
+      for (let i = 0; i < B; i++) {
+        const c = k * B + i;
+        if (c < N) { acc[i] += V[c]; cells += `<span class="l06-cell">x[${c}]=${V[c]}</span>`; }
+        else cells += '<span class="l06-cell m">masked</span>';
+      }
+      h += `<div class="l06-tile"><span class="lab">tile ${k} (cột ${k * B}–${k * B + B - 1})</span>${cells}</div>`;
+      h += `<div class="l06-tile"><span class="lab">acc += x</span>${acc.map(a => `<span class="l06-cell acc">${a}</span>`).join('')}</div>`;
+    }
+    const total = V.slice(0, N).reduce((s, v) => s + v, 0);
+    if (step > tiles) h += `<div class="l06-tile"><span class="lab">tl.sum(acc)</span><span class="l06-cell out">out = ${total}</span></div>`;
+    box.querySelector('#rowView').innerHTML = h;
+    let m;
+    if (step === 0) m = `Vòng lặp sẽ chạy ${tiles} lần (⌈${N} / ${B}⌉). Mỗi ô acc là một vị trí của vector, Triton chia các vị trí này cho các thread.`;
+    else if (step <= tiles) {
+      const masked = step === tiles ? tiles * B - N : 0;
+      m = `Đã xong tile ${step - 1}.` + (masked ? ` Tile cuối có ${masked} vị trí vượt quá N nên bị che. Chúng được điền 0 (other=0.0), cộng vào không làm thay đổi gì.` : ' Tất cả phép cộng nằm trên register, chỉ có phép đọc x là chạm HBM.');
+    } else m = `Bước cuối: tl.sum gộp ${B} giá trị của acc thành một số (cây cộng dồn giữa các thread). Kết quả ${total} bằng x.sum() của ${N} cột đầu. Toàn bộ hàng chỉ được đọc từ HBM đúng một lần.`;
+    box.querySelector('#rowMsg').textContent = m;
+    box.querySelector('#rowStep').disabled = step > tiles;
+  }
+  box.querySelector('#rowStep').addEventListener('click', () => { step++; upd(); });
+  box.querySelector('#rowReset').addEventListener('click', () => { step = 0; upd(); });
+  box.querySelectorAll('[data-b]').forEach(b => b.addEventListener('click', () => { B = +b.dataset.b; step = 0; upd(); }));
+  nS.addEventListener('input', () => { step = 0; upd(); });
+  upd();
+})();
+</script>
+<ul>
+  <li><b><code>acc</code> là một vector, không phải một số.</b> Comment trong trace gọi nó là "accumulator for each thread". Chính xác hơn, mỗi vị trí của vector là một biến tích luỹ, và Triton chia các vị trí đó cho các thread (giống <code>BLOCK_SIZE</code> ở kernel GeLU). Cộng theo vector như vậy giữ cho mọi thread cùng bận, và các lần đọc trong mỗi tile là các ô liền nhau, nên được gộp (coalesced).</li>
+  <li><b><code>tl.zeros(..., dtype=tl.float32)</code>.</b> Luôn cộng dồn bằng float32, kể cả khi input là bf16, để tránh mất chính xác khi cộng nhiều số.</li>
+  <li><b>Kernel này dùng <code>x_ptr + row * N</code></b>, tức giả định ma trận liền mạch trong bộ nhớ. Kernel softmax thì dùng stride nên tổng quát hơn.</li>
+</ul>
+<div class="note key"><p>Đây là phiên bản "tập tành" của tiling: <mark>đọc từng tile, tích luỹ trên chip, chỉ ghi kết quả cuối</mark>. Áp dụng cho softmax thì có một khó khăn: max của cả hàng chỉ biết được sau tile cuối, trong khi tổng mũ cần max ngay từ đầu. Online softmax giải quyết việc này (<a href="#l05-online-softmax">Lecture 5</a>), và đó cũng là trái tim của FlashAttention.</p></div>
+
+<h2 id="l06-matmul" data-short="Kernel 4: tiling cho matmul"><span>Kernel 4: nhân ma trận, ý tưởng tiling</span><span class="slide-range">trang 12–13</span></h2>
+<div class="slides" data-s="12,13"></div>
+<p>Nhân ma trận là "cơm ăn hằng ngày" của deep learning. Thầy tính \(C = \text{ReLU}(A\,B)\) với \(A\) cỡ \(M \times K\), \(B\) cỡ \(K \times N\):</p>
+<pre class="l06-py"><code>|          k                  n
+|    [ A1 A2 A3 ]       [ B1 B2 B3 ]   [ C1 C2 C3 ]
+|  m [ A4 A5 A6 ]  *  k [ B4 B5 B6 ] = [ C4 C5 C6 ]
+|    [ A7 A8 A9 ]       [ B7 B8 B9 ]   [ C7 C8 C9 ]</code></pre>
+
+<h3>Cách ngây thơ</h3>
+<p>Mỗi ô \((m, n)\) của \(C\): với mỗi \(k\), đọc \(A[m,k]\) và \(B[k,n]\) từ HBM, nhân rồi cộng dồn. Cuối cùng ghi \(C[m,n]\) về HBM.</p>
+<ul>
+  <li>Số lần đọc: \(MKN\) cặp, tức \(2MKN\) số. Số lần ghi: \(MN\).</li>
+  <li><b>Cường độ tính toán \(O(1)\)</b>: mỗi số đọc từ HBM chỉ dùng cho đúng một phép nhân-cộng. Rất tệ.</li>
+</ul>
+<p>Nhận xét then chốt: tính \(C_4\) và \(C_5\) <b>đều cần</b> \(A_4, A_5, A_6\). Có thể đọc \(A_4, A_5, A_6\) từ HBM <b>một lần</b> rồi dùng cho cả hai không? <b>Có, nhờ shared memory.</b></p>
+
+<h3>Cách lý tưởng (không khả thi)</h3>
+<p>Đọc <i>toàn bộ</i> \(A\) và \(B\) lên shared memory rồi mới tính \(C\). Khi đó chỉ cần \(MK + KN\) lần đọc và \(MN\) lần ghi, đạt cường độ \(O(N)\) như đã tính ở Lecture 5. Nhưng \(A\) và \(B\) thường quá lớn: ma trận \(4096 \times 4096\) float32 đã là 64 MB, trong khi shared memory mỗi SM chỉ có tối đa khoảng 228 KB (H100).</p>
+
+<h3>Tiling: cách làm thật</h3>
+<figure class="l06-fig"><img src="img/l06/f-tiling.png" width="850" height="368" alt="Ma trận A, B, C chia thành tile. Một tile kết quả của C (cam) được tính bằng cách đi dọc hàng tile của A và cột tile của B" loading="lazy"><figcaption>Tile kết quả (cam) trong \(C\) được tính bằng cách đi dọc một hàng tile của \(A\) và một cột tile của \(B\) (tím).</figcaption></figure>
+<ol>
+  <li>Chia \(C\) thành các <b>tile kết quả</b>. Mỗi tile do một thread block (program) phụ trách.</li>
+  <li>Cố định một tile của \(C\). Với mỗi cặp (tile trên hàng của \(A\), tile trên cột của \(B\)):
+    <ul>
+      <li>Chở tile của \(A\) và tile của \(B\) từ HBM lên shared memory.</li>
+      <li>Nhân hai tile đó với nhau.</li>
+      <li>Cộng dồn vào tổng tạm của tile kết quả.</li>
+    </ul>
+  </li>
+  <li>Ghi tile kết quả về HBM.</li>
+</ol>
+<p>Mỗi số được chở lên chip giờ được dùng lại khoảng <i>kích thước tile</i> lần, nên <b>cường độ tính toán là \(O(\text{tile size})\)</b>.</p>
+<p><b>Thêm một lợi ích:</b> thường ta muốn áp dụng hàm kích hoạt ngay sau phép nhân, ví dụ \(\text{GeLU}(A B)\). Với kernel tự viết, chỉ cần áp hàm đó lên tile kết quả <i>trước khi</i> ghi về HBM. Đó là kernel fusion, và lý do kernel của thầy tên là <code>matmul_relu</code>.</p>
+
+<div class="widget" id="tileW">
+  <h4>Thử nghiệm: chọn kích thước tile cho kernel nhân ma trận</h4>
+  <p style="margin:0 0 4px"><label for="tileS">Ma trận vuông M = N = K = <span class="chip" id="tileSv"></span></label></p>
+  <input type="range" id="tileS" min="8" max="14" value="10">
+  <div class="row" role="group" aria-label="BLOCK_M = BLOCK_N" style="margin-top:10px"><span>BLOCK_M = BLOCK_N:</span>
+    <button class="l06-btn" data-m="16">16</button><button class="l06-btn" data-m="32">32</button><button class="l06-btn" data-m="64">64</button><button class="l06-btn" data-m="128">128</button><button class="l06-btn" data-m="256">256</button></div>
+  <div class="row" role="group" aria-label="BLOCK_K" style="margin-top:8px"><span>BLOCK_K:</span>
+    <button class="l06-btn" data-k="16">16</button><button class="l06-btn" data-k="32">32</button><button class="l06-btn" data-k="64">64</button><button class="l06-btn" data-k="128">128</button></div>
+  <div class="row" role="group" aria-label="Kiểu số" style="margin-top:8px"><span>Kiểu số của A, B:</span>
+    <button class="l06-btn" data-t="4">float32</button><button class="l06-btn" data-t="2">bf16</button></div>
+  <div class="l06-bars" id="tileBars"></div>
+  <div class="l06-stats" id="tileStats"></div>
+  <p id="tileMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('tileW'); if (!box) return;
+  const sS = box.querySelector('#tileS');
+  let BM = 64, BK = 32, b = 4;
+  const fmt = (x, d = 1) => x.toLocaleString('vi-VN', { maximumFractionDigits: d });
+  const by = x => x >= 1e12 ? fmt(x / 1e12) + ' TB' : x >= 1e9 ? fmt(x / 1e9) + ' GB' : x >= 1e6 ? fmt(x / 1e6) + ' MB' : fmt(x / 1e3) + ' KB';
+  function upd() {
+    const S = 2 ** parseInt(sS.value, 10), g = Math.ceil(S / BM), gk = Math.ceil(S / BK);
+    const progs = g * g, waves = Math.ceil(progs / 132), last = progs - (waves - 1) * 132;
+    const tiled = progs * gk * (BM * BK + BK * BM) * b, naive = 2 * S ** 3 * b, ideal = 2 * S * S * b, wr = S * S * 4;
+    const I = 2 * S ** 3 / (tiled + wr), smem = (BM * BK * 2) * b, regs = BM * BM / 128;
+    const ridge = b === 4 ? 148 : 295;
+    box.querySelector('#tileSv').textContent = S.toLocaleString('vi-VN');
+    box.querySelectorAll('[data-m]').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.m === BM)));
+    box.querySelectorAll('[data-k]').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.k === BK)));
+    box.querySelectorAll('[data-t]').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.t === b)));
+    const L = v => Math.log10(v), lo = L(ideal) - 0.3, hi = L(naive);
+    const bar = (lab, v) => `<div class="l06-bar"><span>${lab}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(2, (L(v) - lo) / (hi - lo) * 100)}%"></span></span><b>${by(v)}</b></div>`;
+    box.querySelector('#tileBars').innerHTML = bar('Ngây thơ', naive) + bar('Tiling', tiled) + bar('Lý tưởng', ideal) +
+      '<small style="color:var(--muted);font-size:12px">Lượng đọc từ HBM, thang log. Chưa tính L2 cache.</small>';
+    box.querySelector('#tileStats').innerHTML =
+      `<div><small>Grid (số program)</small><b>${g} × ${g} = ${fmt(progs, 0)}</b></div>` +
+      `<div class="${waves > 1 && last / 132 < 0.5 ? 'bad' : ''}"><small>Số đợt trên H100 (132 SM, 1 block/SM)</small><b>${waves} (đợt cuối ${last}/132)</b></div>` +
+      `<div><small>Mỗi số được dùng lại</small><b>${fmt(naive / tiled)} lần</b></div>` +
+      `<div class="${I >= ridge ? 'good' : 'bad'}"><small>Cường độ (điểm gãy H100 ≈ ${ridge})</small><b>${fmt(I)} FLOP/byte</b></div>` +
+      `<div class="${smem > 228 * 1024 ? 'bad' : ''}"><small>Shared memory cho 1 cặp tile A, B</small><b>${fmt(smem / 1024)} KB</b></div>` +
+      `<div class="${regs > 255 ? 'bad' : regs > 128 ? '' : 'good'}"><small>Register cho acc mỗi thread (128 thread)</small><b>${fmt(regs, 0)}</b></div>`;
+    let m = `Mỗi program giữ một tile kết quả ${BM}×${BM} và đi qua ${gk} cặp tile dọc chiều K. `;
+    if (regs > 255) m += `Tile kết quả quá lớn: riêng acc đã cần ${regs} register mỗi thread, vượt giới hạn 255. Trình biên dịch phải đẩy bớt ra bộ nhớ chậm (register spilling), hoặc phải dùng nhiều warp hơn.`;
+    else if (progs < 132) m += `Chỉ có ${progs} program, chưa đủ cho 132 SM. Đây là lý do PyTorch chọn tile nhỏ hơn (32×32) cho ma trận nhỏ.`;
+    else if (I < ridge) m += `Tile to hơn thì mỗi số được dùng lại nhiều hơn. Nhưng tile to hơn lại cần nhiều shared memory và register hơn, nên occupancy giảm. Chọn tile là một bài toán cân bằng.`;
+    else m += `Đủ cường độ để vượt điểm gãy: về lý thuyết, kernel bị giới hạn bởi tốc độ tính toán, không còn bởi băng thông.`;
+    box.querySelector('#tileMsg').textContent = m;
+  }
+  box.querySelectorAll('[data-m]').forEach(x => x.addEventListener('click', () => { BM = +x.dataset.m; upd(); }));
+  box.querySelectorAll('[data-k]').forEach(x => x.addEventListener('click', () => { BK = +x.dataset.k; upd(); }));
+  box.querySelectorAll('[data-t]').forEach(x => x.addEventListener('click', () => { b = +x.dataset.t; upd(); }));
+  sS.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<p>Vài điều thử nghiệm cho thấy:</p>
+<ul>
+  <li><b>Lượng đọc của bản tiling</b> là \(MNK\left(\frac{1}{B_M} + \frac{1}{B_N}\right)\) số, với \(B_M\), \(B_N\) là <code>BLOCK_M</code>, <code>BLOCK_N</code>. Tile \(64 \times 64\) giảm lượng đọc 64 lần so với bản ngây thơ. <code>BLOCK_K</code> không ảnh hưởng tới tổng lượng đọc, chỉ ảnh hưởng tới kích thước mỗi lần chở và lượng shared memory cần.</li>
+  <li><b>Điểm gãy</b> lấy từ Lecture 5: H100 có băng thông 3,35 TB/s, tensor core đạt khoảng 989 TFLOP/s với bf16 (≈ 295 FLOP/byte) và khoảng 495 TFLOP/s với TF32 (≈ 148 FLOP/byte).</li>
+  <li>Thực tế kernel còn được lợi từ <b>L2 cache</b>: các program chạy cạnh nhau đọc chung nhiều tile, nên nhiều lần "đọc HBM" ở trên thật ra được L2 phục vụ. Hướng dẫn matmul của Triton còn sắp lại thứ tự chạy các program ("grouped ordering") để tăng tỉ lệ trúng L2.</li>
+</ul>
+
+<h2 id="l06-matmul-code" data-short="Matmul: đọc từng dòng code"><span>Kernel nhân ma trận: đọc từng dòng code</span><span class="slide-range">trang 13–15</span></h2>
+<div class="slides" data-s="13,14,15"></div>
+<h3>Ôn lại: ma trận nằm trong bộ nhớ như thế nào</h3>
+<p>Bộ nhớ chỉ là một dãy ô dài. Ma trận 2 chiều được "trải phẳng" ra theo hàng, và <dfn>stride</dfn> cho biết phải nhảy bao nhiêu ô để sang hàng tiếp theo hoặc cột tiếp theo:</p>
+<pre class="l06-py"><code>x = torch.tensor([[0., 1, 2, 3], [4, 5, 6, 7]])
+stride_row, stride_col = x.stride()   # (4, 1): sang hàng mới nhảy 4 ô, sang cột mới nhảy 1 ô
+row, col = 1, 2
+index = row * stride_row + col * stride_col   # 1*4 + 2*1 = 6  →  x[1, 2] = 6</code></pre>
+<p>Mọi kernel Triton đều tính địa chỉ theo cách này: <b>địa chỉ = con trỏ đầu + hàng × stride hàng + cột × stride cột</b>.</p>
+
+<h3>Hàm bọc ngoài</h3>
+<pre class="l06-py"><code>def triton_matmul_relu(a: torch.Tensor, b: torch.Tensor):
+    assert a.is_cuda and b.is_cuda
+    assert a.is_contiguous() and b.is_contiguous()
+    assert a.shape[1] == b.shape[0]
+
+    M, K = a.shape   # A là M x K
+    K, N = b.shape   # B là K x N
+    c = torch.empty((M, N), device=a.device)
+
+    BLOCK_M, BLOCK_N, BLOCK_K = 64, 64, 32
+    grid = (triton.cdiv(M, BLOCK_M), triton.cdiv(N, BLOCK_N))   # Grid 2 chiều: mỗi tile của C một program
+
+    matmul_relu_kernel[grid](
+        a, b, c,
+        M, N, K,
+        a.stride(0), a.stride(1),
+        b.stride(0), b.stride(1),
+        c.stride(0), c.stride(1),
+        BLOCK_M, BLOCK_N, BLOCK_K,
+    )
+    return c</code></pre>
+<p>Lần đầu tiên grid có <b>hai chiều</b>: với \(M = N = 1024\) và tile \(64 \times 64\), grid là \(16 \times 16 = 256\) program, mỗi program tính một tile \(64 \times 64\) của \(C\).</p>
+
+<h3>Kernel</h3>
+<pre class="l06-py"><code>@triton.jit
+def matmul_relu_kernel(
+    a_ptr, b_ptr, c_ptr,      # Tính c = relu(a @ b)
+    M, N, K,                  # a là M x K, b là K x N, c là M x N
+    stride_am, stride_ak,     # Cách đi trong a
+    stride_bk, stride_bn,     # Cách đi trong b
+    stride_cm, stride_cn,     # Cách đi trong c
+    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr,
+):
+    # Mình phụ trách tile (pid_m, pid_n) của c
+    pid_m = tl.program_id(0)
+    pid_n = tl.program_id(1)
+
+    # Chỉ số
+    indices_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)  # hàng của a   [BLOCK_M]
+    indices_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)  # cột của b    [BLOCK_N]
+    indices_k = tl.arange(0, BLOCK_K)                    # cột của a = hàng của b  [BLOCK_K]
+
+    # Ma trận con trỏ ban đầu cho a và b
+    a_ptrs = a_ptr + indices_m[:, None] * stride_am + indices_k[None, :] * stride_ak  # [BLOCK_M, BLOCK_K]
+    b_ptrs = b_ptr + indices_k[:, None] * stride_bk + indices_n[None, :] * stride_bn  # [BLOCK_K, BLOCK_N]
+
+    acc = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
+
+    # Đi dọc hàng tile của a và cột tile của b
+    for k in range(0, K, BLOCK_K):
+        a = tl.load(a_ptrs, mask=(indices_m[:, None] &lt; M) &amp; (indices_k[None, :] + k &lt; K), other=0.0)
+        b = tl.load(b_ptrs, mask=(indices_k[:, None] + k &lt; K) &amp; (indices_n[None, :] &lt; N), other=0.0)
+        acc += tl.dot(a, b)
+        a_ptrs += BLOCK_K * stride_ak   # Sang tile kế tiếp trên hàng của a
+        b_ptrs += BLOCK_K * stride_bk   # Sang tile kế tiếp trên cột của b
+
+    # Hàm kích hoạt (ReLU), áp ngay trên chip
+    acc = tl.maximum(acc, 0.0)
+
+    # Ghi tile kết quả
+    c_ptrs = c_ptr + indices_m[:, None] * stride_cm + indices_n[None, :] * stride_cn
+    tl.store(c_ptrs, acc, mask=(indices_m[:, None] &lt; M) &amp; (indices_n[None, :] &lt; N))</code></pre>
+<p>Những chỗ đáng chú ý:</p>
+<ul>
+  <li><b>Ma trận con trỏ bằng broadcasting.</b> <code>indices_m[:, None]</code> là cột dọc (BLOCK_M × 1), <code>indices_k[None, :]</code> là hàng ngang (1 × BLOCK_K). Cộng hai cái lại được một bảng BLOCK_M × BLOCK_K, mỗi ô là địa chỉ của một phần tử trong tile của \(A\). Đây đúng là công thức "con trỏ đầu + hàng × stride hàng + cột × stride cột", nhưng làm cho cả tile một lúc.</li>
+  <li><b>Vòng lặp theo <code>k</code></b> chính là vòng "đi dọc hàng tile của \(A\), cột tile của \(B\)" trong hình. Mỗi vòng, con trỏ của \(A\) dịch sang phải <code>BLOCK_K</code> cột, con trỏ của \(B\) dịch xuống <code>BLOCK_K</code> hàng.</li>
+  <li><b>Mask hai chiều</b> che các phần tử nằm ngoài ma trận (khi \(M\), \(N\), \(K\) không chia hết cho kích thước tile). Các ô bị che điền 0, và 0 không làm thay đổi tổng của phép nhân-cộng.</li>
+  <li><b><code>tl.dot(a, b)</code></b> nhân hai tile. Triton dịch lệnh này thành lệnh tensor core khi phần cứng và kiểu số cho phép.</li>
+  <li><b><code>acc</code> nằm trên register</b> trong suốt vòng lặp, ở dạng float32. \(C\) chỉ được ghi về HBM <b>một lần</b>, sau khi đã áp ReLU. Nếu viết <code>relu(a @ b)</code> bằng PyTorch thì sẽ phải ghi \(C\) ra HBM, đọc lại để áp ReLU, rồi ghi lần nữa.</li>
+  <li>Trace không viết rõ việc chép tile lên shared memory. Triton <b>tự lo</b> việc đó (kể cả swizzle để tránh bank conflict và chép trước tile sau trong lúc tính tile hiện tại). Đây chính là lợi ích của việc "nghĩ theo block".</li>
+</ul>
+<div class="note warn"><p><b>Kết quả có thể hơi khác PyTorch.</b> Với input float32, <code>tl.dot</code> mặc định dùng TF32 trên tensor core (chỉ giữ khoảng 10 bit phần định trị), trong khi phép <code>@</code> float32 của PyTorch mặc định tính đủ float32 (bảng profiler ở trên có chữ <code>simt</code>). Vì vậy nếu so <code>triton_matmul_relu</code> với <code>naive_matmul_relu</code> bằng <code>atol=1e-6</code> như các hàm kiểm tra khác trong trace, phép so sánh có thể thất bại. Trace không kiểm tra hàm này. Muốn kết quả khớp hơn thì truyền <code>input_precision="ieee"</code> cho <code>tl.dot</code>, hoặc nới sai số cho phép.</p></div>
+<div class="note warn"><p>Một lỗi nhỏ trong trace: ở trang 14, comment <code># Compute c = a</code> bị cắt cụt. Ý đúng là "tính c = relu(a @ b)".</p></div>
+
+<h2 id="l06-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">trang 1</span></h2>
+<div class="note key">
+  <ul>
+    <li><b>Mô hình lập trình</b> (grid → block → thread) khớp với các tầng bộ nhớ (HBM → shared memory → register). Hiểu mô hình để code đúng.</li>
+    <li><b>Phần cứng quyết định tốc độ:</b> warp (32 thread chạy cùng lệnh), occupancy (register giới hạn số warp), bank conflict (shared memory), coalescing (HBM), wave quantization (số block so với số SM).</li>
+    <li><b>Benchmark đúng cách:</b> warmup, <code>torch.cuda.synchronize()</code>, CUDA event, đo nhiều lần.</li>
+    <li><b>Profile</b> để thấy kernel nào chạy và mất bao lâu. GeLU naive gọi 9 kernel. Bản gộp chỉ một kernel và nhanh hơn khoảng 11 lần, đúng bằng tỉ lệ số byte phải chở.</li>
+    <li><b>Triton:</b> viết code cho một block. Đọc lên chip → làm hết việc → ghi về một lần. GeLU (từng phần tử), softmax (gộp trong một block), tổng theo hàng (lặp qua các tile), matmul (tiling 2 chiều + fusion ReLU).</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao cần tầng "thread block" mà không chỉ có grid và thread?</summary>
+    <div><p>Các phép như softmax hay nhân ma trận cần các thread trao đổi dữ liệu với nhau. Trao đổi qua HBM quá chậm, nên phải qua shared memory, mà shared memory nằm trong một SM. Thread block là nhóm thread dùng chung shared memory, vì vậy cả block phải chạy trên cùng một SM.</p></div></details>
+  <details><summary>2. Block 256 thread, mỗi thread dùng 64 register. Occupancy là bao nhiêu (SM có 65.536 register, tối đa 64 warp)?</summary>
+    <div><p>Mỗi block cần \(256 \times 64 = 16.384\) register, nên SM chứa được 4 block. Mỗi block có 8 warp, tổng 32 warp trên 64, tức occupancy 50%.</p></div></details>
+  <details><summary>3. Ma trận float32 trong shared memory có hàng dài 32 số. 32 thread của một warp cùng đọc một cột. Chuyện gì xảy ra, và sửa thế nào?</summary>
+    <div><p>Cả 32 ô đều nằm cùng một bank, gây xung đột 32 chiều: 32 lần đọc phải chạy lần lượt. Sửa bằng swizzle (đổi vị trí theo kiểu hàng XOR cột), hoặc đơn giản là thêm một ô đệm để mỗi hàng dài 33 số.</p></div></details>
+  <details><summary>4. Bạn đo <code>a @ b</code> (dim 8192) bằng <code>time.time()</code> trước và sau, được 20 µs. Có tin được không?</summary>
+    <div><p>Không. GPU chạy bất đồng bộ: dòng <code>a @ b</code> chỉ xếp kernel vào hàng đợi rồi trả về ngay. 20 µs là thời gian gửi lệnh. Cần <code>torch.cuda.synchronize()</code> trước khi dừng đồng hồ (hoặc dùng CUDA event), và cần warmup trước.</p></div></details>
+  <details><summary>5. Vì sao <code>naive_gelu</code> chậm hơn <code>builtin_gelu</code> khoảng 11 lần, dù làm cùng số phép tính?</summary>
+    <div><p>Naive gọi 9 kernel riêng, mỗi kernel đọc và ghi các tensor trung gian qua HBM, tổng cộng 22 lượt đọc/ghi một tensor đầy đủ. Bản builtin gộp làm một kernel: đọc 1 lần, ghi 1 lần, tức 2 lượt. GeLU bị giới hạn bởi băng thông bộ nhớ, nên thời gian tỉ lệ với số lượt: 22/2 = 11.</p></div></details>
+  <details><summary>6. Trong kernel Triton GeLU, <code>mask = offsets &lt; num_elements</code> để làm gì? Với 5000 phần tử và <code>BLOCK_SIZE = 1024</code> thì có bao nhiêu vị trí bị che?</summary>
+    <div><p>Để block cuối không đọc/ghi ra ngoài tensor khi số phần tử không chia hết cho <code>BLOCK_SIZE</code>. Có \(\lceil 5000/1024 \rceil = 5\) block, phụ trách 5120 vị trí, nên 120 vị trí cuối bị che.</p></div></details>
+  <details><summary>7. Trong kernel softmax, vì sao các vị trí bị che được điền <code>-inf</code> chứ không phải 0?</summary>
+    <div><p>Để chúng không ảnh hưởng tới phép gộp. Với max, \(-\infty\) không bao giờ thắng. Sau khi lấy mũ, \(e^{-\infty} = 0\), nên tổng cũng không đổi. Điền 0 sẽ làm sai max khi cả hàng toàn số âm.</p></div></details>
+  <details><summary>8. <code>BLOCK_SIZE = 1024</code> trong kernel GeLU có phải là 1024 thread không?</summary>
+    <div><p>Không. Đó là số phần tử mỗi program xử lý. Số thread do <code>num_warps</code> quyết định (mặc định 4 warp = 128 thread), nên mỗi thread lo 8 phần tử. Điều này khớp với quan sát trong mã PTX.</p></div></details>
+  <details><summary>9. Kernel softmax xử lý được hàng dài bao nhiêu? Kernel tổng theo hàng khắc phục giới hạn đó thế nào?</summary>
+    <div><p>Softmax cần cả hàng vừa trong một block (<code>num_cols &lt;= BLOCK_SIZE</code>). Hàng quá dài sẽ không vừa register. Kernel tổng theo hàng lặp qua từng tile của hàng, cộng dồn vào vector <code>acc</code> trên register, và cuối cùng mới gộp bằng <code>tl.sum</code>. Hàng dài bao nhiêu cũng được.</p></div></details>
+  <details><summary>10. Kernel matmul dùng tile 64 × 64. So với cách ngây thơ, lượng đọc HBM giảm bao nhiêu lần? Tăng tile lên 256 × 256 có lợi gì và hại gì?</summary>
+    <div><p>Giảm 64 lần: mỗi số được chở lên chip dùng lại 64 lần. Tile 256 × 256 giảm thêm 4 lần nữa, nhưng riêng <code>acc</code> đã cần \(256 \times 256 / 128 = 512\) register mỗi thread (với 128 thread). Con số đó vượt giới hạn 255, nên phải spill hoặc dùng nhiều warp hơn. Tile lớn cũng cần nhiều shared memory hơn, và với ma trận nhỏ thì có quá ít program để chia đều cho các SM.</p></div></details>
+  <details><summary>11. Fusion ReLU trong kernel matmul tiết kiệm được gì?</summary>
+    <div><p>Không cần ghi \(C\) ra HBM, đọc lại để áp ReLU, rồi ghi lần nữa. ReLU được áp lên <code>acc</code> ngay trên register trước lần ghi duy nhất, tiết kiệm hai lượt đọc/ghi \(MN\) số.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Trace</td><td>Bản in của file code lecture, gồm cả lời giảng và kết quả chạy</td></tr>
+  <tr><td>Grid / Thread block (CTA) / Thread</td><td>Toàn bộ một lần chạy kernel / nhóm thread dùng chung shared memory trên một SM / một luồng xử lý</td></tr>
+  <tr><td>Thread block cluster</td><td>Vài block trên các SM gần nhau, đọc được shared memory của nhau (H100, B200)</td></tr>
+  <tr><td>Warp</td><td>32 thread luôn chạy cùng một lệnh</td></tr>
+  <tr><td>Control divergence</td><td>Các thread trong warp rẽ nhánh khác nhau nên phải chạy lần lượt</td></tr>
+  <tr><td>Occupancy</td><td>Số warp đang ở trên SM chia cho số warp tối đa</td></tr>
+  <tr><td>Thread coarsening</td><td>Mỗi thread xử lý nhiều phần tử thay vì một</td></tr>
+  <tr><td>Register spilling</td><td>Hết register nên trình biên dịch đẩy bớt biến ra bộ nhớ chậm</td></tr>
+  <tr><td>Bank / Bank conflict</td><td>Shared memory chia 32 cột 4 byte / nhiều thread đọc các ô khác nhau trong cùng một bank nên phải xếp hàng</td></tr>
+  <tr><td>Swizzling</td><td>Đổi chỗ dữ liệu trong shared memory (ví dụ hàng XOR cột) để tránh bank conflict</td></tr>
+  <tr><td>Memory coalescing</td><td>Các lần đọc HBM của một warp được gộp thành giao dịch 128 byte</td></tr>
+  <tr><td>Wave / Wave quantization</td><td>Một đợt block lấp các SM / lãng phí khi đợt cuối có ít block</td></tr>
+  <tr><td>Benchmark / Profiling</td><td>Đo tổng thời gian / xem thời gian bị tiêu vào kernel nào</td></tr>
+  <tr><td>Warmup</td><td>Chạy trước vài lần để bỏ qua chi phí lần đầu (biên dịch, khởi tạo)</td></tr>
+  <tr><td><code>torch.cuda.synchronize()</code></td><td>Bắt CPU chờ GPU chạy xong mọi lệnh đã gửi</td></tr>
+  <tr><td>CUDA event</td><td>Mốc thời gian ghi ngay trên GPU, dùng để đo chính xác</td></tr>
+  <tr><td>CUTLASS / SIMT / SGEMM</td><td>Thư viện matmul của NVIDIA / chạy trên CUDA core thường / nhân ma trận float32</td></tr>
+  <tr><td>Kernel fusion</td><td>Gộp nhiều phép tính vào một kernel, chỉ đọc/ghi HBM một lần</td></tr>
+  <tr><td><code>torch.compile</code></td><td>Trình biên dịch của PyTorch, tự sinh kernel Triton đã gộp</td></tr>
+  <tr><td>Triton / Program</td><td>Ngôn ngữ viết kernel theo block (OpenAI) / một bản chạy của kernel, ứng với một block</td></tr>
+  <tr><td><code>tl.program_id</code>, <code>tl.arange</code>, <code>tl.load</code>, <code>tl.store</code></td><td>Mình là block số mấy / dãy chỉ số / đọc vector từ HBM / ghi vector về HBM</td></tr>
+  <tr><td>Mask / <code>other</code></td><td>Che các vị trí ngoài tensor / giá trị điền vào chỗ bị che (phải là phần tử trung hoà)</td></tr>
+  <tr><td>PTX</td><td>Hợp ngữ trung gian của GPU NVIDIA mà Triton biên dịch ra</td></tr>
+  <tr><td>Stride</td><td>Số ô phải nhảy để sang hàng/cột tiếp theo trong bộ nhớ</td></tr>
+  <tr><td>Tiling</td><td>Chia ma trận thành tile, chở lên chip và dùng lại nhiều lần</td></tr>
+  <tr><td>TF32</td><td>Định dạng của tensor core: phạm vi như float32 nhưng chỉ khoảng 10 bit phần định trị</td></tr>
+</table></div>
+
+<script>
+(function () {
+  // Tô màu code Python trong các khối pre.l06-py
+  const KW = new Set('def return for in range if else elif assert import from as with None True False lambda and or not'.split(' '));
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const RE = /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(@[\w.]+)|\b(\d+(?:\.\d*)?(?:e-?\d+)?)\b|\b([A-Za-z_]\w*)\b/g;
+  document.querySelectorAll('pre.l06-py > code').forEach(code => {
+    const src = code.textContent; let out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while ((m = RE.exec(src))) {
+      out += esc(src.slice(last, m.index)); last = RE.lastIndex;
+      const t = esc(m[0]);
+      if (m[1]) out += `<span class="c">${t}</span>`;
+      else if (m[2]) out += `<span class="s">${t}</span>`;
+      else if (m[3]) out += `<span class="d">${t}</span>`;
+      else if (m[4]) out += `<span class="n">${t}</span>`;
+      else out += KW.has(m[5]) ? `<span class="k">${t}</span>` : t;
+    }
+    code.innerHTML = out + esc(src.slice(last));
+  });
+})();
+</script>

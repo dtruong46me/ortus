@@ -236,6 +236,9 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 .sl:focus-visible { outline: 2px solid var(--accent); }
 .sl img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 6px; background: #fff; }
 .sl span { font: 600 12px var(--f-display); color: var(--muted); padding: 0 4px 2px; }
+/* Lecture dạng trace (code): ảnh là cả trang dọc, chỉ hiện phần đầu trang */
+.slides.pages { grid-template-columns: repeat(auto-fill, minmax(150px, 190px)); }
+.slides.pages .sl img { aspect-ratio: 4 / 3; object-fit: cover; object-position: top; }
 
 /* Bảng */
 .tbl { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
@@ -387,6 +390,9 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 .lightbox img { max-width: min(1400px, 100%); max-height: calc(100% - 60px); border-radius: 8px; background: #fff; }
+.lightbox.page { justify-content: flex-start; overflow-y: auto; }
+.lightbox.page img { max-height: none; width: min(980px, 100%); max-width: none; flex: none; }
+.lightbox.page .lb-bar { position: sticky; bottom: 0; background: rgba(8,10,16,.92); padding: 8px 12px; border-radius: 10px; }
 .lightbox .lb-bar { display: flex; gap: 10px; align-items: center; color: #E6E8F0; font: 600 14px var(--f-display); }
 .lightbox button { font: 600 14px var(--f-display); padding: 7px 14px; border-radius: 8px; border: 1px solid #3A4052; background: #1B1F2B; color: #E6E8F0; cursor: pointer; }
 
@@ -449,9 +455,9 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 <div class="lightbox" id="lightbox" hidden>
   <img id="lbImg" alt="">
   <div class="lb-bar">
-    <button id="lbPrev" aria-label="Previous slide">←</button>
+    <button id="lbPrev" aria-label="Previous">←</button>
     <span id="lbCap"></span>
-    <button id="lbNext" aria-label="Next slide">→</button>
+    <button id="lbNext" aria-label="Next">→</button>
     <button id="lbClose">Close</button>
   </div>
 </div>
@@ -538,6 +544,10 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   /* ---------- Danh sách lecture ---------- */
   const reader = $('reader'), tocEl = $('toc'), lecBtn = $('lecBtn'), lecMenu = $('lecMenu');
   let lectures = [], current = null, ready = false, sections = [];
+  // "unit": "page" cho lecture dạng trace (ảnh là trang PDF), mặc định là slide
+  const unitOf = l => l.unit || 'slide';
+  const Unit = l => unitOf(l)[0].toUpperCase() + unitOf(l).slice(1);
+  const countOf = l => `${l.slides} ${unitOf(l)}${l.slides === 1 ? '' : 's'}`;
 
   function setMenu(open) { lecMenu.hidden = !open; lecBtn.setAttribute('aria-expanded', String(open)); }
   lecBtn.addEventListener('click', e => { e.stopPropagation(); setMenu(lecMenu.hidden); });
@@ -559,7 +569,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
       const d = doneCount(l);
       return `<a href="#${l.id}" ${current && current.id === l.id ? 'aria-current="page"' : ''}>
         <span class="lm-num">${String(l.num).padStart(2, '0')}</span>
-        <span><span class="lm-title">${esc(l.titleVi)}</span><span class="lm-meta">${esc(l.title)} · ${l.slides} slides${d ? ` · ${d} understood` : ''}</span></span></a>`;
+        <span><span class="lm-title">${esc(l.titleVi)}</span><span class="lm-meta">${esc(l.title)} · ${countOf(l)}${d ? ` · ${d} understood` : ''}</span></span></a>`;
     }).join('') + '<div class="lm-foot">New lectures show up here as they are added.</div>';
   }
 
@@ -582,7 +592,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
     renderMenu();
     $('lecBtnNum').textContent = `L${lec.num}`;
     $('lecBtnTitle').textContent = lec.titleVi;
-    $('sideKicker').textContent = `Lecture ${lec.num} · ${lec.slides} slides`;
+    $('sideKicker').textContent = `Lecture ${lec.num} · ${countOf(lec)}`;
     $('sideTitle').textContent = lec.titleVi;
     document.title = `L${lec.num} · CS336 Notebook`;
     reader.innerHTML = '<p class="loading">Loading lecture…</p>';
@@ -597,12 +607,12 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
       expandSlides(reader, lec);
       buildSections(reader, lec);
       appendLecNav(lec);
-      if (anchor && anchor !== lec.id) { const t = document.getElementById(anchor); if (t) t.scrollIntoView(); }
-      else window.scrollTo(0, 0);
+      if (anchor && anchor !== lec.id) { const t = document.getElementById(anchor); if (t) t.scrollIntoView({ behavior: 'instant' }); }
+      else window.scrollTo({ top: 0, behavior: 'instant' });
       typeset(reader).then(() => {
         if (current !== lec) return;
         ready = true; applyAnnos(); renderPanel();
-        if (anchor && anchor !== lec.id) { const t = document.getElementById(anchor); if (t) t.scrollIntoView(); }
+        if (anchor && anchor !== lec.id) { const t = document.getElementById(anchor); if (t) t.scrollIntoView({ behavior: 'instant' }); }
       });
     }).catch(e => { console.error(e); reader.innerHTML = '<p class="error">Couldn\'t load this lecture. Please reload the page.</p>'; });
   }
@@ -619,10 +629,11 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   function expandSlides(root, lec) {
     root.querySelectorAll('.slides[data-s]').forEach(box => {
       const nums = box.dataset.s.split(',').map(s => parseInt(s, 10));
-      if (nums.length === 1) box.classList.add('one');
+      const pages = unitOf(lec) === 'page';
+      if (pages) box.classList.add('pages'); else if (nums.length === 1) box.classList.add('one');
       box.innerHTML = nums.map(n => {
         const src = `${lec.imgDir}/s-${String(n).padStart(2, '0')}.jpg`;
-        return `<button class="sl" data-n="${n}" aria-label="Enlarge slide ${n}"><img src="${src}" alt="Slide ${n} of lecture ${lec.num}" loading="lazy"><span>Slide ${n}</span></button>`;
+        return `<button class="sl" data-n="${n}" aria-label="Enlarge ${unitOf(lec)} ${n}"><img src="${src}" alt="${Unit(lec)} ${n} of lecture ${lec.num}" loading="lazy"><span>${Unit(lec)} ${n}</span></button>`;
       }).join('');
     });
     root.querySelectorAll('.sl').forEach(b => b.addEventListener('click', () => openLb(parseInt(b.dataset.n, 10))));
@@ -1044,9 +1055,11 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   function openLb(n) {
     lbN = Math.max(1, Math.min(current.slides, n));
     lbImg.src = `${current.imgDir}/s-${String(lbN).padStart(2, '0')}.jpg`;
-    lbImg.alt = `Slide ${lbN}`;
-    lbCap.textContent = `Slide ${lbN} / ${current.slides}`;
+    lbImg.alt = `${Unit(current)} ${lbN}`;
+    lbCap.textContent = `${Unit(current)} ${lbN} / ${current.slides}`;
+    lb.classList.toggle('page', unitOf(current) === 'page');
     lb.hidden = false;
+    lb.scrollTop = 0;
   }
   $('lbPrev').onclick = () => openLb(lbN - 1);
   $('lbNext').onclick = () => openLb(lbN + 1);

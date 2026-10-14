@@ -26,6 +26,16 @@
       "slides": 55,
       "file": "lectures/l05.html",
       "imgDir": "img/l05"
+    },
+    {
+      "id": "l06",
+      "num": 6,
+      "title": "Benchmarking, Profiling & Triton Kernels",
+      "titleVi": "Benchmark, profiling & viết kernel Triton",
+      "slides": 16,
+      "unit": "page",
+      "file": "lectures/l06.html",
+      "imgDir": "img/l06"
     }
   ]
 }

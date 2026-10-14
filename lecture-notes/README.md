@@ -6,6 +6,7 @@ Thêm một lecture mới:
 1. Xuất ảnh slide: `pdftoppm -jpeg -jpegopt quality=72 -scale-to-x 1400 -scale-to-y -1 lecture_XX.pdf img/lXX/s`
 2. Viết `lectures/lXX.html` theo mẫu `lectures/l04.html` hoặc `lectures/l05.html` (`<h2 id="lXX-...">`, `<div class="slides" data-s="2,3">`, các khung `.note.key/.life/.warn/.num`, `.quiz`).
 3. Thêm một mục vào `lectures.json`.
+   - Lecture dạng trace (file code in ra PDF, không có slide, ví dụ L6): xuất từng trang thành `img/lXX/s-NN.jpg` như trên, tách hình bằng `pdfimages -png`, rồi thêm `"unit": "page"` vào mục của lecture. Khung sẽ ghi "pages" thay cho "slides", ảnh nhỏ chỉ hiện phần đầu trang, và khung phóng to cuộn được cả trang.
 4. Đăng lại `index.html` lên cùng URL artifact, kèm các file mới.
 
 Giao diện (`index.html`):
