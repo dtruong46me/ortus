@@ -1,0 +1,1260 @@
+<style>
+  .l11-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l11-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l11-btn.ghost { font-weight: 600; }
+  .l11-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
+  .l11-ctl > span { font-size: 13px; color: var(--muted); margin-right: 2px; }
+  .l11-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l11-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l11-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l11-stats small { color: var(--muted); font-size: 12.5px; }
+  .l11-stats .bad b { color: var(--warn); }
+  .l11-stats .good b { color: var(--life); }
+  .l11-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .l11-legend i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: 3px; margin-right: 6px; }
+  .l11-legend i.d { border-top-style: dashed; }
+  .l11-legend i.o { width: 9px; height: 9px; border: 0; border-radius: 50%; vertical-align: 0; }
+  .l11-msg { margin: 10px 0 0; }
+  .l11-plot { position: relative; margin: 12px 0 4px; touch-action: pan-y; }
+  .l11-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .l11-plot svg text { font: 11.5px var(--f-display); fill: var(--muted); }
+  .l11-plot svg .lab { font-weight: 600; font-size: 12px; }
+  .l11-plot svg .g { stroke: var(--line); stroke-width: 1; }
+  .l11-plot svg .ax { stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  .l11-plot svg .ln { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  .l11-plot svg .dot { stroke: var(--surface); stroke-width: 2; }
+  .l11-plot svg .dl { fill: var(--ink); font-weight: 600; font-size: 11.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .l11-plot svg .vl { stroke: var(--muted); stroke-dasharray: 3 4; stroke-width: 1.2; }
+  .l11-plot svg .hv { fill: none; stroke: var(--ink); stroke-width: 2; }
+  .l11-plot .tip { font-family: var(--f-display); position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; line-height: 1.45; box-shadow: 0 4px 14px rgba(0,0,0,.14); white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); display: none; z-index: 3; }
+  .l11-plot .tip b { font-variant-numeric: tabular-nums; }
+  .l11-ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 10px 0; }
+  .l11-ladder > div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg); }
+  .l11-ladder h5 { margin: 0 0 4px; font: 700 13.5px var(--f-display); }
+  .l11-ladder p { margin: 0; font-size: 14px; }
+  .l11-fig { margin: 18px 0 22px; }
+  .l11-fig img { display: block; width: 100%; height: auto; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; box-sizing: border-box; }
+  .l11-fig.md img { max-width: 600px; }
+  .l11-fig.sm img { max-width: 440px; }
+  .l11-fig figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  .l11-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; align-items: start; }
+  .l11-duo figure { margin: 0; }
+  .l11-duo img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-sizing: border-box; }
+  .l11-duo figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  .l11-hbars { display: flex; flex-direction: column; gap: 7px; margin: 12px 0 4px; }
+  .l11-hbar { display: grid; grid-template-columns: 210px 1fr 112px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l11-hbar .track { height: 16px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l11-hbar .fill { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; }
+  .l11-hbar.base .fill { background: var(--muted); }
+  .l11-hbar.best .fill { background: var(--life); }
+  .l11-hbar b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .l11-hbars h5 { margin: 10px 0 2px; font: 700 12.5px var(--f-display); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .l11-hbar .fill.alt { background: var(--num); }
+  pre.l11-py { line-height: 1.5; }
+  pre.l11-py code { font-size: 13.5px; line-height: inherit; }
+  pre.l11-py .k { color: var(--accent); font-weight: 600; }
+  pre.l11-py .c { color: var(--muted); font-style: italic; }
+  pre.l11-py .n { color: var(--num); }
+  .l11-cmp td, .l11-cmp th { font-variant-numeric: tabular-nums; }
+  .l11-cmp td.best { color: var(--life); font-weight: 700; }
+  .l11-cmp td.bad { color: var(--warn); }
+  .l11-verdict { display: inline-block; font: 700 13px var(--f-display); padding: 3px 10px; border-radius: 999px; }
+  .l11-verdict.ok { background: color-mix(in oklab, var(--life) 18%, var(--surface)); color: var(--life); }
+  .l11-verdict.no { background: color-mix(in oklab, var(--warn) 18%, var(--surface)); color: var(--warn); }
+  @media (max-width: 640px) {
+    .l11-btn { font-size: 13px; padding: 5px 10px; }
+    .l11-stats b { font-size: 17px; }
+    .l11-duo { grid-template-columns: minmax(0, 1fr); }
+    .l11-hbar { grid-template-columns: 118px 1fr 84px; font-size: 12px; }
+  }
+</style>
+
+<script>
+/* Bộ vẽ biểu đồ nhỏ dùng chung cho các ô thử nghiệm của Lecture 11 */
+(function () {
+  if (window.L11P) return;
+  const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  const pow = e => '10' + String(e).replace(/./g, c => SUP[c] || c);
+  const nice = x => { const e = Math.pow(10, Math.floor(Math.log10(x))), m = x / e; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * e; };
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k == null ? 2 : k });
+  // số lớn: 3,2 tỉ · 1,4 nghìn tỉ · 2,3·10²⁵
+  const big = x => {
+    if (!isFinite(x)) return '∞';
+    if (x >= 1e15) { const e = Math.floor(Math.log10(x)); return nf(x / Math.pow(10, e), 1) + '·' + pow(e); }
+    if (x >= 1e12) return nf(x / 1e12, x < 1e13 ? 1 : 0) + ' nghìn tỉ';
+    if (x >= 1e9) return nf(x / 1e9, x < 1e10 ? 1 : 0) + ' tỉ';
+    if (x >= 1e6) return nf(x / 1e6, x < 1e7 ? 1 : 0) + ' triệu';
+    if (x >= 1e4) return nf(x / 1e3, 0) + ' nghìn';
+    return nf(x, x < 10 ? 2 : 0);
+  };
+  const sci = x => { const e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e); return (Math.abs(m - 1) < 0.05 ? '' : nf(m, 1) + '·') + pow(e); };
+  function mk(ax, a, b) {
+    const f = ax.log ? Math.log10 : v => v, lo = f(ax.min), hi = f(ax.max);
+    return v => a + (f(v) - lo) / (hi - lo) * (b - a);
+  }
+  function ticks(ax) {
+    if (ax.ticks) return ax.ticks;
+    const t = [];
+    if (ax.log) {
+      const s = ax.every || 1;
+      for (let e = Math.ceil(Math.log10(ax.min) - 1e-9); e <= Math.floor(Math.log10(ax.max) + 1e-9); e += s) t.push(Math.pow(10, e));
+      return t;
+    }
+    const st = nice((ax.max - ax.min) / (ax.n || 5));
+    for (let v = Math.ceil(ax.min / st - 1e-9) * st; v <= ax.max + st * 1e-6; v += st) t.push(+v.toPrecision(10));
+    return t;
+  }
+  const tfmt = (ax, v) => ax.fmt ? ax.fmt(v) : ax.log ? pow(Math.round(Math.log10(v))) : nf(v, 3);
+  let uid = 0;
+  function draw(host) {
+    const o = host._o; if (!o) return;
+    const W = Math.max(280, Math.round(host.clientWidth || 600)), narrow = W < 520;
+    const H = o.H || (narrow ? 236 : 280);
+    const m = { l: o.ml || (narrow ? 46 : 56), r: o.mr || 18, t: 14, b: 44 };
+    const X = mk(o.x, m.l, W - m.r), Y = mk(o.y, H - m.b, m.t);
+    const id = host._id || (host._id = 'l11c' + (++uid));
+    const ok = p => isFinite(p[0]) && isFinite(p[1]) && (!o.x.log || p[0] > 0) && (!o.y.log || p[1] > 0);
+    let h = `<defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t - 6}" width="${W - m.l - m.r + 6}" height="${H - m.t - m.b + 6}"/></clipPath></defs>`;
+    ticks(o.x).forEach(v => { const x = X(v).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="g"/><text x="${x}" y="${H - m.b + 16}" text-anchor="middle">${tfmt(o.x, v)}</text>`; });
+    ticks(o.y).forEach(v => { const y = Y(v).toFixed(1); h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="g"/><text x="${m.l - 6}" y="${(+y + 4).toFixed(1)}" text-anchor="end">${tfmt(o.y, v)}</text>`; });
+    h += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" class="ax"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" class="ax"/>`;
+    h += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle" class="lab">${o.x.label || ''}</text>`;
+    h += `<text transform="translate(12 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle" class="lab">${o.y.label || ''}</text>`;
+    h += `<g clip-path="url(#${id})">`;
+    (o.vlines || []).forEach(v => { const x = X(v.x).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="vl"/>`; if (v.label) h += `<text x="${+x + 4}" y="${m.t + 12}" class="dl" style="font-weight:500">${v.label}</text>`; });
+    (o.hlines || []).forEach(v => { const y = Y(v.y).toFixed(1); h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="vl"/>`; if (v.label) h += `<text x="${W - m.r - 4}" y="${+y - 5}" text-anchor="end" class="dl" style="font-weight:500">${v.label}</text>`; });
+    const hits = [];
+    (o.series || []).forEach(s => {
+      const pts = s.pts.filter(ok);
+      if (!pts.length) return;
+      if (s.line !== false) {
+        const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+        h += `<path d="${d}" class="ln" style="stroke:${s.color};stroke-width:${s.width || 2}${s.dash ? ';stroke-dasharray:' + s.dash : ''}${s.opacity != null ? ';opacity:' + s.opacity : ''}"/>`;
+      }
+      if (s.dots) pts.forEach(p => { h += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${s.dots === true ? 4.5 : s.dots}" class="dot" style="fill:${s.color}"/>`; });
+      if (s.tip !== false) pts.forEach(p => hits.push({ x: X(p[0]), y: Y(p[1]), t: (s.tip || o.tip)(p, s) }));
+    });
+    (o.marks || []).forEach(k => {
+      if (!ok([k.x, k.y])) return;
+      const x = X(k.x), y = Y(k.y);
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${k.r || 6.5}" class="dot" style="fill:${k.color || 'var(--accent)'};stroke-width:2.5"/>`;
+      if (k.tip) hits.push({ x, y, t: k.tip, pri: 1 });
+    });
+    h += `</g>`;
+    // nhãn trực tiếp (ngoài vùng cắt để không bị cụt)
+    (o.series || []).forEach(s => {
+      if (!s.label) return;
+      const pts = s.pts.filter(ok).filter(p => p[1] >= Math.min(o.y.min, o.y.max) && p[1] <= Math.max(o.y.min, o.y.max) && p[0] >= o.x.min && p[0] <= o.x.max);
+      if (!pts.length) return;
+      const p = s.labelAt === 'min' ? pts.reduce((a, q) => q[1] < a[1] ? q : a) : s.labelAt === 'start' ? pts[0] : s.labelAt === 'mid' ? pts[Math.floor(pts.length / 2)] : pts[pts.length - 1];
+      let x = X(p[0]) + (s.ldx || 0), y = Y(p[1]) + (s.ldy || -8);
+      const anc = s.anchor || (x > W - 90 ? 'end' : 'start');
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="dl">${s.label}</text>`;
+    });
+    (o.marks || []).forEach(k => {
+      if (!k.label || !ok([k.x, k.y])) return;
+      const x = X(k.x) + (k.dx != null ? k.dx : 10), y = Y(k.y) + (k.dy != null ? k.dy : -10);
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${k.anchor || 'start'}" class="dl">${k.label}</text>`;
+    });
+    h += `<circle class="hv" r="7" cx="-99" cy="-99"/>`;
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${o.aria || ''}">${h}</svg><div class="tip"></div>`;
+    const svg = host.firstChild, tip = host.lastChild, ring = svg.querySelector('.hv');
+    function move(e) {
+      const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width, sy = (e.clientY - r.top) * H / r.height;
+      let best = null, bd = 1e9;
+      hits.forEach(p => { const d = Math.hypot(p.x - sx, p.y - sy) - (p.pri ? 8 : 0); if (d < bd) { bd = d; best = p; } });
+      if (!best || bd > 36) { hide(); return; }
+      ring.setAttribute('cx', best.x.toFixed(1)); ring.setAttribute('cy', best.y.toFixed(1));
+      tip.innerHTML = best.t; tip.style.display = 'block';
+      const k = r.width / W, tw = tip.offsetWidth;
+      const left = Math.min(Math.max(best.x * k, tw / 2 + 2), r.width - tw / 2 - 2);
+      tip.style.left = left + 'px'; tip.style.top = (best.y * k) + 'px';
+    }
+    function hide() { tip.style.display = 'none'; ring.setAttribute('cx', -99); ring.setAttribute('cy', -99); }
+    svg.addEventListener('pointermove', move);
+    svg.addEventListener('pointerdown', move);
+    svg.addEventListener('pointerleave', hide);
+  }
+  window.L11P = {
+    pow, nf, big, sci,
+    plot(host, o) {
+      host._o = o;
+      if (!host._ro && window.ResizeObserver) {
+        let w = host.clientWidth;
+        host._ro = new ResizeObserver(() => { if (Math.abs(host.clientWidth - w) > 1) { w = host.clientWidth; draw(host); } });
+        host._ro.observe(host);
+      }
+      draw(host);
+    },
+    range(lo, hi, n, log) { const a = []; for (let i = 0; i <= n; i++) { const t = i / n; a.push(log ? Math.pow(10, Math.log10(lo) + t * (Math.log10(hi) - Math.log10(lo))) : lo + t * (hi - lo)); } return a; }
+  };
+})();
+</script>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 11 · 58 slides</span>
+  <h1>Scaling trong thực tế: các công thức thật, optimizer và muP</h1>
+  <p class="sub">Scaling – case study and details — các nhóm làm mô hình thật (MiniCPM, DeepSeek, Qwen, Kimi K2, Hunyuan, Llama 3, MiniMax) dùng scaling law thế nào để chọn learning rate, batch size, cỡ mô hình và số token; vì sao lịch learning rate WSD làm phân tích Chinchilla rẻ đi nhiều; optimizer (AdamW, Muon…) thay đổi theo quy mô ra sao; và muP thật ra là gì, dẫn ra từ đâu, khi nào nó gãy.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l11-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">slide 1–5</span></h2>
+<div class="slides" data-s="2,3"></div>
+<p><a href="#l09-overview">Lecture 9</a> học scaling law qua các bài báo "kinh điển": Kaplan 2020, Chinchilla 2022. Hôm nay thầy hỏi một câu thực tế hơn (slide 2): <mark>khi làm một mô hình thật, người ta scale và chỉnh siêu tham số như thế nào cho đúng?</mark> Câu hỏi đó tách thành ba:</p>
+<ul>
+  <li>Cách làm của Chinchilla có thật sự dùng được không?</li>
+  <li>Có tiết kiệm được tính toán khi huấn luyện và khi khớp scaling law không?</li>
+  <li>Có nên chọn kiến trúc hay cách tham số hoá đặc biệt để mô hình "scale đẹp" hơn không?</li>
+</ul>
+<p>Slide 3 cho thấy vì sao cần bài này. Chinchilla (2022) là bài báo mới nhất trong lớp có công bố chi tiết về scaling. Sau đó các nhóm lớn (OpenAI, Anthropic, Google) gần như không công bố gì nữa. Những gì ta biết về scaling "ngoài đời" đến từ các nhóm công bố mô hình mở: DeepSeek LLM (2024), MiniCPM (2024), Llama 3 (2024), Hunyuan-Large (2024), MiniMax-01 (2025), Kimi K2 (slide ghi 2026; báo cáo kỹ thuật lên arXiv tháng 7/2025).</p>
+
+<div class="slides" data-s="4"></div>
+<p>Slide 4 là lời cảnh báo mở đầu: <b>khởi tạo, optimizer và các siêu tham số như learning rate, batch size đều nhạy với quy mô.</b></p>
+<ul>
+  <li><b>Hai hình trên</b> (từ bài Step Law, sẽ học ở <a href="#l11-steplaw">Phần 4</a>): learning rate tốt nhất thay đổi theo cả cỡ mô hình \(N\) (mỗi màu một cỡ) lẫn số token \(D\) (trục ngang). Batch size tốt nhất tăng theo \(D\).</li>
+  <li><b>Ba hình dưới</b> (Wen và cộng sự 2025, cũng ở Stanford): so AdamW, NAdamW, Muon, Soap. Khoảng cách giữa các optimizer phụ thuộc vào cỡ mô hình và <dfn>tỉ lệ Chinchilla</dfn> (<span class="en">Chinchilla ratio</span>: số token chia cho mức tối ưu khoảng 20 token mỗi tham số; tỉ lệ 1 nghĩa là đúng mức Chinchilla, 8 nghĩa là gấp 8 lần).</li>
+</ul>
+
+<div class="slides" data-s="5"></div>
+<p>Thầy đi qua chi tiết hai "công thức scale" được công bố đầy đủ nhất: <b>MiniCPM</b> và <b>DeepSeek LLM</b>. Sau đó điểm nhanh các mô hình gần đây, rồi đào sâu hai chủ đề siêu tham số: optimizer theo quy mô, và muP. Tài liệu này chia thành năm phần:</p>
+<ol>
+  <li><b>Phần 1 — MiniCPM</b> (slide 6–18): dùng muP để giữ siêu tham số ổn định, khớp batch size theo loss, và lịch learning rate WSD để làm phân tích Chinchilla rẻ hơn.</li>
+  <li><b>Phần 2 — DeepSeek LLM</b> (slide 19–24): không dùng muP, khớp thẳng learning rate và batch size theo lượng tính toán, rồi dùng isoFLOP để chọn cỡ mô hình.</li>
+  <li><b>Phần 3 — Các mô hình gần đây</b> (slide 25–30): Qwen, Kimi K2, Hunyuan, Llama 3, MiniMax, và bảng tổng kết các công thức.</li>
+  <li><b>Phần 4 — Siêu tham số và optimizer theo quy mô</b> (slide 31–43): Step Law, vì sao so optimizer rất dễ sai, và Muon.</li>
+  <li><b>Phần 5 — muP chi tiết</b> (slide 44–58): muP dẫn ra từ hai điều kiện đơn giản, áp dụng cho Transformer ra sao, và một nghiên cứu kiểm chứng xem nó đúng tới đâu.</li>
+</ol>
+<div class="note life"><p>Hình ảnh cho lecture này: Lecture 9 dạy cách dùng <b>hầm gió</b> (thử mô hình nhỏ để đoán mô hình lớn). Hôm nay ta vào xưởng của các hãng máy bay xem họ <i>thật sự</i> dùng hầm gió thế nào: mỗi hãng một quy trình, có hãng chỉnh mô hình thu nhỏ sao cho "đồng dạng" hoàn hảo (muP), có hãng chấp nhận không đồng dạng nhưng đo thật nhiều rồi kẻ đường xu hướng (DeepSeek).</p></div>
+
+
+<div class="part" id="l11-part1" data-short="Phần 1 · MiniCPM">Phần 1 · MiniCPM: muP, batch size và lịch learning rate WSD<small>Một mô hình nhỏ, nhưng công bố quy trình scale chi tiết hiếm thấy.</small></div>
+
+<h2 id="l11-minicpm" data-short="MiniCPM là gì"><span>MiniCPM: mô hình nhỏ, bài học lớn</span><span class="slide-range">slide 6–7</span></h2>
+<div class="slides" data-s="6,7"></div>
+<p><b>MiniCPM</b> (2024) là mô hình ngôn ngữ nhỏ của nhóm Đại học Thanh Hoa (Tsinghua) và công ty ModelBest. Hai điều làm nó đáng học (slide 6):</p>
+<ul>
+  <li>Tính toán scaling <b>rất cẩn thận và đầy đủ</b>, cộng với <b>muP</b> để việc scale ổn định và đơn giản hơn.</li>
+  <li>Thầy nói rõ: đây không hẳn là mô hình tốt nhất thời đó, nhưng có rất nhiều bài học về scaling.</li>
+</ul>
+<p>Kết quả (slide 7): hai mô hình 1,2 tỉ và 2,4 tỉ tham số thắng phần lớn các mô hình cỡ 2 tỉ, và ngang nhiều mô hình 7 tỉ thời đó. Ví dụ MiniCPM-2.4B đạt MMLU 53,46 (Llama2-7B: 44,32), HumanEval 50,00 (Mistral-7B: 27,44), GSM8K 53,83 (Mistral-7B: 33,13). Mô hình nhỏ mà mạnh như vậy chỉ có được khi mọi siêu tham số đều được chọn khéo: đó là lý do quy trình của họ đáng xem.</p>
+
+<h2 id="l11-minicpm-mup" data-short="muP trong MiniCPM"><span>Kỹ thuật 1: muP để scale ổn định</span><span class="slide-range">slide 8–9</span></h2>
+<div class="slides" data-s="8"></div>
+<p><a href="#l09-mup">Lecture 9</a> đã giới thiệu <dfn>muP</dfn> (µP, <span class="en">Maximal Update Parametrization</span>): đổi cách khởi tạo và cách nhân learning rate theo độ rộng, để learning rate tốt nhất của mô hình nhỏ dùng thẳng được cho mô hình lớn. Slide 8 là bảng 5 thao tác MiniCPM áp dụng. Gọi \(d_m\) là độ rộng (\(d_{model}\)) của mô hình đang huấn luyện, \(d_{base}\) là độ rộng của mô hình gốc dùng để chỉnh siêu tham số:</p>
+<div class="tbl"><table>
+  <tr><th>Thao tác</th><th>Làm gì</th><th>Vì sao (trực giác)</th></tr>
+  <tr><td>Nhân đầu ra embedding</td><td>Nhân đầu ra của lớp embedding với <code>scale_emb</code></td><td>Embedding chỉ có <i>một</i> chiều lớn lên theo độ rộng (chiều kia là từ vựng, cố định), nên được giữ hằng số. <code>scale_emb</code> là một núm chỉnh độc lập với độ rộng.</td></tr>
+  <tr><td>Thu nhỏ nhánh residual</td><td>Nhân phần cộng thêm ở mỗi kết nối residual với \(\texttt{scale\_depth}/\sqrt{\texttt{num\_layers}}\)</td><td>Cộng \(L\) phần nhỏ "gần ngẫu nhiên" thì tổng lớn cỡ \(\sqrt{L}\). Chia cho \(\sqrt{L}\) giữ tổng không đổi khi mô hình sâu hơn. Đây là phần "muP theo độ sâu".</td></tr>
+  <tr><td>Khởi tạo ma trận</td><td>Độ lệch chuẩn khởi tạo của mọi tham số hai chiều là \(\texttt{init\_std}/\sqrt{d_m/d_{base}}\); tham số khác khởi tạo 0,1</td><td>Mỗi đầu ra là tổng của \(d_m\) số hạng. Độ lệch chuẩn \(\propto 1/\sqrt{d_m}\) giữ đầu ra cỡ không đổi.</td></tr>
+  <tr><td>Learning rate của ma trận</td><td>Learning rate của mọi tham số hai chiều nhân \(1/(d_m/d_{base})\)</td><td>Với Adam, một bước cập nhật làm đầu ra thay đổi tỉ lệ với \(d_m\). Chia learning rate cho \(d_m\) giữ mức thay đổi không đổi (<a href="#l11-mup-a2">Phần 5</a> sẽ dẫn ra).</td></tr>
+  <tr><td>Thu nhỏ đầu ra LM head</td><td>Nhân logits với \(1/(d_m/d_{base})\)</td><td>Lớp cuối biến chiều lớn \(d_m\) thành chiều cố định (từ vựng). Đây là hệ số "\(\tau/r\)" của lớp đầu ra trong bảng muP ở <a href="#l09-mup">Lecture 9</a>.</td></tr>
+</table></div>
+<p>Bốn hằng số MiniCPM chỉnh trên mô hình nhỏ rồi giữ nguyên cho mọi cỡ: <code>scale_emb = 12</code>, <code>scale_depth = 1.4</code>, <code>init_std = 0.1</code>, <code>lr = 0.01</code>.</p>
+
+<div class="note num">
+  <p>Thử tính cho vài cỡ mô hình. File cấu hình công khai của MiniCPM dùng \(d_{base} = 256\). Gọi \(r = d_m/256\):</p>
+  <div class="tbl"><table class="l11-cmp">
+    <tr><th>Mô hình</th><th>\(d_m\)</th><th>\(L\)</th><th>\(r\)</th><th>std khởi tạo ma trận</th><th>lr của ma trận</th><th>hệ số residual</th><th>hệ số logits</th></tr>
+    <tr><td>9M (thử nghiệm)</td><td>320</td><td>8</td><td>1,25</td><td>0,089</td><td>0,0080</td><td>0,49</td><td>0,80</td></tr>
+    <tr><td>0,5B (thử nghiệm)</td><td>1344</td><td>24</td><td>5,25</td><td>0,044</td><td>0,0019</td><td>0,29</td><td>0,19</td></tr>
+    <tr><td>MiniCPM-1.2B</td><td>1536</td><td>52</td><td>6</td><td>0,041</td><td>0,0017</td><td>0,19</td><td>0,17</td></tr>
+    <tr><td>MiniCPM-2.4B</td><td>2304</td><td>40</td><td>9</td><td>0,033</td><td>0,0011</td><td>0,22</td><td>0,11</td></tr>
+  </table></div>
+  <p>"Learning rate 0,01" là learning rate <i>gốc</i>. Mỗi ma trận thực tế dùng 0,01 chia \(r\). Người dùng chỉ phải chọn một con số, phần còn lại muP lo.</p>
+</div>
+
+<div class="slides" data-s="9"></div>
+<p>Chiến lược scale của MiniCPM (slide 9): <mark>dùng muP để khởi tạo, giữ cố định tỉ lệ hình dạng (rộng so với sâu), rồi tăng cỡ toàn bộ mô hình.</mark> Bảng các mô hình thử nghiệm:</p>
+<ul>
+  <li>\(d_h = 64\) (kích thước mỗi head) cố định, nên số head \(n_h = d_m/64\).</li>
+  <li>\(d_{ff} = 2{,}5\, d_m\). MLP có cổng (<a href="#l03-glu">GLU</a>, 3 ma trận) nên tốn \(3 \times 2{,}5 = 7{,}5\, d_m^2\) tham số mỗi lớp, cộng \(4 d_m^2\) của attention: tổng khoảng \(11{,}5\, L\, d_m^2\). Thử: \(11{,}5 \times 24 \times 1344^2 \approx 0{,}499\) tỉ, khớp cột \(N\) của mô hình 0,5B. Vậy \(N\) ở đây là số tham số không thuộc embedding.</li>
+  <li>Tỉ lệ \(d_m / L\) đi từ 40 (9M) tới 56 (0,5B): gần cố định, chỉ tăng nhẹ. (<a href="#l03-aspect">Lecture 3</a> và <a href="#l09-shape">Lecture 9</a> cho thấy loss ít nhạy với tỉ lệ này trong một khoảng rộng.)</li>
+</ul>
+<p>Hai ghi chú của thầy:</p>
+<ul>
+  <li>Mô hình lớn nhất trong bảng (0,5B) nhỏ hơn mô hình thật (2,4B) khoảng 5 lần. Khoảng ngoại suy khá ngắn, so với Llama 3 ngoại suy hơn 1000 lần về tính toán.</li>
+  <li>Batch size tối ưu, learning rate tối ưu và tỉ lệ token trên tham số được <b>khớp trực tiếp</b> bằng phân tích scaling, như các mục dưới đây.</li>
+</ul>
+
+<h2 id="l11-minicpm-lr" data-short="Learning rate có ổn định?"><span>Learning rate tối ưu có thật sự đứng yên?</span><span class="slide-range">slide 10</span></h2>
+<div class="slides" data-s="10"></div>
+<p>muP hứa: learning rate tốt nhất gần như không đổi khi tăng quy mô. Slide 10 kiểm tra trên 5 cỡ từ 0,04 tỉ đến 2,1 tỉ tham số:</p>
+<ul>
+  <li>Đáy của mọi đường loss đều nằm quanh learning rate <b>\(10^{-2}\)</b>. Đó chính là <code>lr = 0.01</code> ở slide 8.</li>
+  <li>Đáy khá bằng phẳng: từ khoảng \(3\times10^{-3}\) đến \(3\times10^{-2}\) loss gần như không đổi.</li>
+  <li>Vượt quá khoảng \(3\times10^{-2}\) là loss vọt lên (huấn luyện mất ổn định). Mô hình 0,5B chịu được tới gần \(6\times10^{-2}\), mô hình khác thì không.</li>
+</ul>
+<p>So với hình "cách làm tiêu chuẩn" ở <a href="#l09-mup">Lecture 9</a> (đáy trôi dần sang trái khi mô hình rộng hơn), đây là cải thiện rõ: chỉnh learning rate một lần ở mô hình nhỏ là xong.</p>
+
+<h2 id="l11-minicpm-batch" data-short="Batch size tối ưu theo loss"><span>Batch size tối ưu: tăng theo luật luỹ thừa khi loss giảm</span><span class="slide-range">slide 11–12</span></h2>
+<div class="slides" data-s="11"></div>
+<p>Batch size thì muP không lo. MiniCPM đo trực tiếp (slide 11) trên ba cỡ mô hình (9M, 30M, 170M). Cách đọc mỗi hình:</p>
+<ul>
+  <li>Trục ngang: batch size. Trục dọc: số token đã xử lý. Màu: loss (tím đậm là thấp, vàng là cao).</li>
+  <li><b>Mỗi cột chấm dọc là một lần huấn luyện</b> với batch cố định. Đi lên trong cột là đi tiếp theo thời gian (đọc thêm token, loss giảm dần).</li>
+  <li>Các đường nối nằm ngang gần như là đường đồng mức theo số token. Với mỗi lượng token đã đọc (mỗi giá trị trên trục dọc), có một batch cho loss thấp nhất. <b>Đường đỏ</b> nối các điểm đó: batch tối ưu cho từng tổ hợp cỡ mô hình và lượng dữ liệu.</li>
+</ul>
+<p>Đường đỏ nghiêng sang phải khi đi lên: đọc càng nhiều token (loss càng thấp) thì batch tối ưu càng lớn. Đúng hiện tượng <a href="#l09-batch">critical batch size</a> của Lecture 9.</p>
+
+<div class="slides" data-s="12"></div>
+<p>Rồi họ làm theo phân tích của Kaplan 2020: vẽ batch tối ưu theo loss cuối (slide 12). Kết quả là một đường thẳng khá sạch trên log–log:</p>
+<p>\[ \ln(\text{BS}) = -6{,}24\,\ln(L) + 20{,}91 \quad\Longleftrightarrow\quad \text{BS} \approx \frac{1{,}2 \times 10^{9}}{L^{6{,}24}} \text{ token}. \]</p>
+<p>(\(e^{20{,}91} \approx 1{,}2\times10^9\). Kiểm tra: ở \(L = 3{,}5\) cho khoảng \(5\times10^5\) token, khớp hình.) <mark>Loss giảm thì batch tối ưu tăng theo luật luỹ thừa.</mark> Ví dụ loss từ 4,5 xuống 3,5 thì batch tối ưu tăng \((4{,}5/3{,}5)^{6{,}24} \approx 4{,}8\) lần.</p>
+<div class="note warn"><p>So với Kaplan, \(\mathcal{B}_{crit} \approx 2{,}1\times10^{8} / L^{4{,}8}\) (<a href="#l09-batch">Lecture 9</a>): cùng dạng, nhưng số mũ khác (6,24 so với 4,8). Hằng số và số mũ <b>không so trực tiếp được</b> vì loss đo trên dữ liệu khác, tokenizer khác. Điểm chung đáng tin là hình dạng: batch tối ưu tăng nhanh khi loss giảm.</p></div>
+
+<h2 id="l11-wsd" data-short="Lịch learning rate WSD"><span>Lịch learning rate WSD: phân tích Chinchilla với chi phí tuyến tính</span><span class="slide-range">slide 13–15</span></h2>
+<div class="slides" data-s="13"></div>
+<p>Còn lại câu hỏi lớn nhất: chia ngân sách giữa cỡ mô hình và dữ liệu thế nào (slide 13). Có một cái bẫy tốn kém mà Chinchilla đã chỉ ra: <mark>muốn khớp scaling law theo dữ liệu, phải huấn luyện lại từ đầu cho mỗi lượng dữ liệu, không thể chỉ dừng sớm một lần chạy dài.</mark></p>
+<p>Lý do nằm ở lịch learning rate <dfn>cosine</dfn>: learning rate giảm dần theo nửa chu kỳ cosine, chạm đáy đúng ở bước cuối. Hình của Chinchilla vẽ các lần chạy có chu kỳ cosine dài 1×, 1,1×, 1,25×, 1,5×, 2× và 5× số bước thật sự chạy:</p>
+<ul>
+  <li>Cột trái: chu kỳ càng dài thì khi dừng, learning rate còn càng cao (chưa kịp giảm).</li>
+  <li>Cột giữa và phải: loss của chúng <b>tệ hơn</b> lần chạy có chu kỳ vừa khít (1×). Dừng giữa chừng một lần chạy cosine dài cho loss tệ hơn một lần chạy ngắn được lên lịch đúng.</li>
+</ul>
+<p>Vậy muốn có điểm dữ liệu ở \(D\), \(2D\), …, \(kD\) token thì phải chạy \(k\) lần riêng biệt, tổng cộng \((1 + 2 + \dots + k)\,D \approx \tfrac{k^2}{2} D\) token. Thầy gọi đây là chi phí <b>từ \(n\) thành \(n^2\)</b>.</p>
+
+<div class="slides" data-s="14"></div>
+<p>Lời giải (một phần) của MiniCPM là lịch <dfn>WSD</dfn> (<span class="en">Warmup–Stable–Decay</span>), chia learning rate thành ba giai đoạn (slide 14):</p>
+<ol>
+  <li><b>Warmup</b>: tăng nhanh từ 0 lên mức tối đa.</li>
+  <li><b>Stable</b>: giữ nguyên ở mức tối đa trong phần lớn thời gian.</li>
+  <li><b>Decay</b>: giảm nhanh xuống thấp trong một đoạn ngắn ở cuối.</li>
+</ol>
+<p>Mẹo nằm ở chỗ giai đoạn stable <b>không biết trước</b> khi nào sẽ kết thúc. Muốn một điểm dữ liệu ở \(D_i\) token, chỉ cần lấy checkpoint của giai đoạn stable ở gần \(D_i\) rồi chạy thêm một đoạn decay ngắn. Mọi điểm dữ liệu dùng chung một giai đoạn stable (hình trái: WSD(40N, 4N) và WSD(80N, 8N) trùng nhau cho tới khi nhánh đầu rẽ xuống). Đoạn trích bên phải của slide: MiniCPM huấn luyện 6 cỡ mô hình từ 0,04B đến 2B, mỗi cỡ có 6 nhánh decay rẽ ra từ checkpoint ở \(10N\) đến \(60N\) token. Họ nói chi phí giảm còn tuyến tính, \(O(mC)\). Loss được tính trung bình theo byte thay vì theo token, để so được các mô hình dùng tokenizer khác nhau.</p>
+
+<div class="slides" data-s="15"></div>
+<p>WSD có hoạt động tốt không? Slide 15 so các nhánh WSD với cosine (vàng):</p>
+<ul>
+  <li><b>Trong giai đoạn stable</b>, loss giảm <i>chậm hơn</i> cosine: learning rate cao làm mô hình "rung lắc" quanh đáy.</li>
+  <li><b>Trong giai đoạn decay</b>, loss giảm <i>rất nhanh</i>, và cuối cùng bắt kịp (thậm chí nhỉnh hơn một chút) cosine cùng độ dài. Đoạn decay chỉ cần khoảng <b>10%</b> tổng số token.</li>
+</ul>
+<div class="note life"><p>Một cách hình dung phổ biến: đường loss giống một <b>thung lũng có dòng sông</b> chảy dọc đáy. Learning rate cao giống người đi bộ bước dài: vừa tiến nhanh xuôi dòng, vừa nhảy qua lại giữa hai sườn núi nên trông như chẳng xuống thấp hơn. Giai đoạn decay là lúc bước ngắn lại: người đó tụt xuống đúng lòng sông, và loss "rơi" xuống. Cosine thì bước ngắn dần đều từ đầu, nên lúc nào cũng gần lòng sông hơn nhưng đi xuôi dòng chậm hơn.</p></div>
+
+<div class="widget" id="wsdW">
+  <h4>Thử nghiệm: lịch cosine và WSD tốn bao nhiêu để có k điểm dữ liệu</h4>
+  <div class="l11-ctl" data-g="dec">
+    <span>Độ dài decay:</span>
+    <button class="l11-btn" data-v="0.1" aria-pressed="true">10%</button>
+    <button class="l11-btn" data-v="0.2" aria-pressed="false">20%</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="wsdK">Số điểm dữ liệu cần (mỗi điểm cách nhau 10N token): <span class="chip" id="wsdKv"></span></label></p>
+  <input type="range" id="wsdK" min="2" max="12" value="6">
+  <div class="l11-plot" id="wsdP"></div>
+  <div class="l11-legend"><span><i style="border-color:var(--warn)"></i>các lần chạy cosine riêng biệt</span><span><i style="border-color:var(--accent)"></i>WSD: giai đoạn stable dùng chung</span><span><i class="d" style="border-color:var(--accent)"></i>các nhánh decay</span></div>
+  <div class="l11-stats" id="wsdS"></div>
+  <p class="l11-msg" id="wsdM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('wsdW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#wsdK');
+  let dec = 0.1;
+  const WU = 0.6; // warmup (đơn vị N token)
+  function cosRun(Di) {
+    const pts = [[0, 0], [WU, 1]];
+    for (let i = 0; i <= 60; i++) { const t = WU + (Di - WU) * i / 60; pts.push([t, 0.1 + 0.9 * 0.5 * (1 + Math.cos(Math.PI * (t - WU) / (Di - WU)))]); }
+    return pts;
+  }
+  function upd() {
+    const k = +sl.value, Ds = Array.from({ length: k }, (_, i) => 10 * (i + 1)), Dmax = Ds[k - 1];
+    box.querySelector('#wsdKv').textContent = k + ' điểm: 10N … ' + Dmax + 'N';
+    const series = [];
+    Ds.forEach((Di, i) => series.push({ pts: cosRun(Di), color: 'var(--warn)', width: 1.6, opacity: 0.35 + 0.45 * (i + 1) / k, tip: p => `cosine dài ${Di}N<br>token ${P.nf(p[0], 1)}N, lr ${P.nf(p[1] * 100, 0)}% mức tối đa` }));
+    const stEnd = Dmax * (1 - dec);
+    series.push({ pts: [[0, 0], [WU, 1], [stEnd, 1]], color: 'var(--accent)', width: 3, tip: p => `WSD stable<br>token ${P.nf(p[0], 1)}N, lr 100%` });
+    Ds.forEach(Di => series.push({ pts: [[Di * (1 - dec), 1], [Di, 0.1]], color: 'var(--accent)', width: 2, dash: '5 4', tip: p => `nhánh decay cho điểm ${Di}N<br>rẽ ra ở ${P.nf(Di * (1 - dec), 1)}N` }));
+    P.plot(box.querySelector('#wsdP'), {
+      aria: 'Learning rate theo số token cho lịch cosine và WSD',
+      x: { min: 0, max: Dmax * 1.02, label: 'token đã huấn luyện (đơn vị N = số tham số)', fmt: v => P.nf(v, 0) + 'N' },
+      y: { min: 0, max: 1.08, label: 'learning rate (÷ mức tối đa)', ticks: [0, 0.25, 0.5, 0.75, 1], fmt: v => P.nf(v * 100, 0) + '%' },
+      series
+    });
+    const cos = Ds.reduce((a, b) => a + b, 0), wsd = stEnd + dec * cos;
+    box.querySelector('#wsdS').innerHTML = `
+      <div class="bad"><b>${P.nf(cos, 0)}N</b><small>tổng token với cosine (${k} lần chạy riêng)</small></div>
+      <div class="good"><b>${P.nf(wsd, 0)}N</b><small>tổng token với WSD (1 stable + ${k} nhánh decay)</small></div>
+      <div><b>× ${P.nf(cos / wsd, 1)}</b><small>WSD rẻ hơn</small></div>`;
+    box.querySelector('#wsdM').innerHTML = `Cosine tăng theo bình phương số điểm: gấp đôi số điểm thì chi phí gần gấp 4. WSD chỉ tốn một lần chạy dài nhất cộng các đoạn decay ngắn. Phần decay vẫn cộng dồn theo bình phương, nhưng nhân với ${P.nf(dec * 100, 0)}%, nên với ${k} điểm WSD rẻ hơn ${P.nf(cos / wsd, 1)} lần. (Hình vẽ decay tuyến tính xuống 10% mức tối đa cho dễ nhìn; bài báo dùng dạng giảm khác.)`;
+  }
+  box.querySelectorAll('[data-g="dec"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    dec = +b.dataset.v; box.querySelectorAll('[data-g="dec"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<h2 id="l11-minicpm-chin" data-short="Tỉ lệ dữ liệu/mô hình của MiniCPM"><span>Phân tích kiểu Chinchilla: MiniCPM ra tỉ lệ dữ liệu rất cao</span><span class="slide-range">slide 16–18</span></h2>
+<div class="slides" data-s="16"></div>
+<p>Có WSD rồi, MiniCPM đi tìm tỉ lệ dữ liệu trên mô hình tối ưu (slide 16). Họ khớp loss theo cỡ mô hình \(N\) và lượng dữ liệu \(D\) giống <a href="#l09-methods">cách 3 của Chinchilla</a>:</p>
+<p>\[ L(N, D) = C_N N^{-\alpha} + C_D D^{-\beta} + L_0, \]</p>
+<p>rồi suy ra với ngân sách cố định \(C = 6ND\):</p>
+<p>\[ \frac{N_{opt}}{D_{opt}} = K^2 \left(\frac{C}{6}\right)^{\eta}. \]</p>
+<p>Từ công thức nghiệm ở <a href="#l09-methods">Lecture 9</a>, \(N_{opt} \propto C^{\beta/(\alpha+\beta)}\) và \(D_{opt} \propto C^{\alpha/(\alpha+\beta)}\), nên \(\eta = \frac{\beta - \alpha}{\alpha + \beta}\). Nếu \(\eta = 0\) thì tỉ lệ dữ liệu trên mô hình <b>không đổi</b> ở mọi ngân sách. MiniCPM dùng cả cách 1 (đường bao dưới) và cách 3 (khớp chung).</p>
+
+<div class="slides" data-s="17"></div>
+<p><b>Cách 1</b> (slide 17): loss thật theo tính toán trên ba tập (code, tiếng Anh Wikihow, tiếng Trung Wikihow), mỗi màu một cỡ mô hình. Xu hướng khá rõ, dù thầy để ý có lẽ không hẳn là đường thẳng. Mỗi đoạn màu là các nhánh decay của một mô hình: chúng đi xuống khá đều mà không chững lại, tức là <mark>thêm dữ liệu vẫn còn lợi khá nhiều</mark> (lợi ích giảm dần theo dữ liệu thấp).</p>
+
+<div class="slides" data-s="18"></div>
+<p><b>Cách 3</b> là cách chính của họ (slide 18). Trên tập Ultratext:</p>
+<p>\[ L(N, D) = \frac{7{,}54\times10^{-2}}{N^{0{,}30}} + \frac{2{,}92\times10^{-1}}{D^{0{,}30}} + 0{,}25, \qquad K^2 = 0{,}01,\ \ \eta = -0{,}00,\ \ \frac{D_{opt}}{N_{opt}}\Big|_{C=10^{21}} = 95{,}6. \]</p>
+<p>Hai số mũ bằng nhau (0,30), nên \(\eta = 0\): <b>khoảng 96 token mỗi tham số, ở mọi ngân sách</b>. So với khoảng 20 của Chinchilla, cao gần gấp 5. Thầy nhấn mạnh chữ <i>very</i>: tỉ lệ rất cao.</p>
+<div class="note num">
+  <p>Kiểm tra nhanh tỉ lệ này từ công thức. Khi \(\alpha = \beta = a\), điều kiện tối ưu (đạo hàm theo \(N\) với \(D = C/(6N)\) bằng 0) cho \(C_N N^{-a} = C_D D^{-a}\), tức</p>
+  <p>\[ \frac{D}{N} = \left(\frac{C_D}{C_N}\right)^{1/a} = \left(\frac{0{,}292}{0{,}0754}\right)^{1/0{,}30} = 3{,}87^{3{,}33} \approx 91. \]</p>
+  <p>Gần 95,6 (phần chênh do số mũ trên slide đã làm tròn). Phép tính này cần \(N\) và \(D\) cùng đơn vị (ở đây đều tính theo tỉ). Điều kiện tối ưu cũng có nghĩa: <i>ở điểm tối ưu, phần lỗi do mô hình nhỏ bằng phần lỗi do thiếu dữ liệu</i>.</p>
+</div>
+<div class="note warn"><p>Đừng coi "96" là hằng số của tự nhiên. Tỉ lệ tối ưu phụ thuộc vào chất lượng dữ liệu, kiến trúc, cách đếm tham số, lịch learning rate và khoảng quy mô được đo (MiniCPM chỉ đo tới 2B). Hai số mũ bằng nhau đúng 0,30 cũng có thể là trùng hợp của phép khớp. Ở <a href="#l11-recipes">Phần 3</a> ta sẽ thấy các nhóm khác ra 20, 39 hay 96.</p></div>
+
+
+<div class="part" id="l11-part2" data-short="Phần 2 · DeepSeek LLM">Phần 2 · DeepSeek LLM: không muP, đo thẳng rồi kẻ đường<small>Bỏ qua lý thuyết tham số hoá, coi learning rate và batch size là hai đại lượng cần khớp scaling law như mọi thứ khác.</small></div>
+
+<h2 id="l11-deepseek" data-short="DeepSeek: lưới batch × LR"><span>DeepSeek LLM: quét lưới batch size × learning rate</span><span class="slide-range">slide 19–20</span></h2>
+<div class="slides" data-s="19,20"></div>
+<p><b>DeepSeek LLM</b> (2024) là mô hình 7 tỉ và 67 tỉ tham số (slide 19), hiệu năng cao so với các mô hình mở thời đó. Đây là bản dense trước khi DeepSeek chuyển sang MoE (<a href="#l04-deepseek">Lecture 4</a>). Bài báo này cũng có một phân tích scaling cẩn thận, nhưng theo hướng ngược với MiniCPM (slide 20):</p>
+<div class="note key"><p><b>Chiến lược của DeepSeek:</b> không dùng muP. Ước lượng trực tiếp batch size và learning rate tối ưu ở quy mô nhỏ, rồi khớp scaling law cho chúng.</p></div>
+<p>Họ quét lưới batch size × learning rate ở ngân sách nhỏ. Hai bảng nhiệt ở slide 20 (màu càng nhạt loss càng thấp):</p>
+<ul>
+  <li><b>(a) \(10^{17}\) FLOP</b>, mô hình 177 triệu FLOP mỗi token.</li>
+  <li><b>(b) \(10^{20}\) FLOP</b>, mô hình 2,94 tỉ FLOP mỗi token. Ngôi sao đỏ là điểm siêu tham số mà scaling law (khớp từ các thí nghiệm nhỏ hơn) dự đoán.</li>
+</ul>
+<p>Phát hiện quan trọng nhất: <mark>vùng tối ưu rất rộng.</mark> Có cả một dải lớn các tổ hợp batch và learning rate cho loss gần như bằng nhau, nên chỉ cần rơi vào gần đúng chỗ là đủ. Đây cũng là điều làm cho việc khớp scaling law cho siêu tham số khả thi: ta không cần trúng một điểm chính xác.</p>
+
+<h2 id="l11-ds-laws" data-short="LR và batch theo tính toán"><span>Learning rate và batch size theo lượng tính toán</span><span class="slide-range">slide 21</span></h2>
+<div class="slides" data-s="21"></div>
+<p>Từ các lần chạy nhỏ, DeepSeek gom tất cả các mô hình "gần tối ưu" (loss không quá 0,25% so với loss nhỏ nhất ở ngân sách đó), rồi khớp hai luật luỹ thừa theo lượng tính toán \(C\) (slide 21):</p>
+<p>\[ \eta_{opt} = 0{,}3118 \cdot C^{-0{,}1250}, \qquad B_{opt} = 0{,}2920 \cdot C^{0{,}3271}. \]</p>
+<ul>
+  <li><b>Batch size tăng theo tính toán</b>: tính toán gấp 10 thì batch gấp \(10^{0{,}327} \approx 2{,}1\).</li>
+  <li><b>Learning rate giảm theo tính toán</b>: tính toán gấp 10 thì learning rate chỉ còn \(10^{-0{,}125} \approx 0{,}75\) lần.</li>
+</ul>
+<p>Hai ngôi sao là hai mô hình thật: 7B (batch 9,2 triệu token, learning rate \(4{,}2\times10^{-4}\)) và 67B (19,7 triệu token, \(3{,}2\times10^{-4}\)). Hình batch (trái) khá gọn. Hình learning rate (phải) thì thầy nhận xét: <b>đường khớp trông hơi đáng ngờ</b>. Các chấm ở quy mô nhỏ chồng lên nhau thành từng cột, trải rộng gần gấp 4 lần theo chiều dọc, và vùng xám (khoảng tin cậy) rất rộng. Độ dốc \(-0{,}125\) được quyết định bởi khá ít thông tin.</p>
+<div class="note num">
+  <p>Thử kiểm tra ngôi sao 67B. DeepSeek dùng \(C = M \cdot D\), với \(M\) là số FLOP mỗi token không tính embedding (mục sau). Mô hình 67B có \(M \approx 4{,}3\times10^{11}\) và được huấn luyện trên \(2\times10^{12}\) token, nên \(C \approx 8{,}6\times10^{23}\):</p>
+  <p>\[ B_{opt} = 0{,}292 \times (8{,}6\times10^{23})^{0{,}3271} \approx 1{,}97\times10^{7}, \qquad \eta_{opt} = 0{,}3118 \times (8{,}6\times10^{23})^{-0{,}125} \approx 3{,}2\times10^{-4}. \]</p>
+  <p>Đúng 19,7 triệu token và \(3{,}2\times10^{-4}\) như ngôi sao. Mỗi bước dùng gần 20 triệu token, nên cả lần huấn luyện chỉ khoảng \(2\times10^{12} / 2\times10^{7} \approx 100\,000\) bước.</p>
+</div>
+
+<div class="widget" id="dsW">
+  <h4>Thử nghiệm: công thức của DeepSeek cho một ngân sách tính toán</h4>
+  <div class="l11-ctl" data-g="show">
+    <span>Vẽ:</span>
+    <button class="l11-btn" data-v="B" aria-pressed="true">Batch size</button>
+    <button class="l11-btn" data-v="lr" aria-pressed="false">Learning rate</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="dsC">Ngân sách tính toán C: <span class="chip" id="dsCv"></span> FLOP</label></p>
+  <input type="range" id="dsC" min="0" max="80" value="60">
+  <div class="l11-plot" id="dsP"></div>
+  <div class="l11-legend"><span><i style="border-color:var(--accent)"></i>công thức khớp của DeepSeek</span><span><i class="o" style="background:var(--num)"></i>mô hình thật 7B, 67B</span><span><i class="d" style="border-color:var(--muted)"></i>vùng có thí nghiệm (10¹⁷ … 3·10²⁰)</span></div>
+  <div class="l11-stats" id="dsS"></div>
+  <p class="l11-msg" id="dsM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('dsW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#dsC');
+  let show = 'B';
+  const C_ = v => Math.pow(10, 17 + v / 10);
+  const lr = C => 0.3118 * Math.pow(C, -0.125), bs = C => 0.292 * Math.pow(C, 0.3271);
+  const Mopt = C => 0.1715 * Math.pow(C, 0.5243), Dopt = C => 5.8316 * Math.pow(C, 0.4757);
+  const REAL = [['7B', 4.2e10 * 2e12], ['67B', 4.3e11 * 2e12]];
+  function upd() {
+    const C = C_(+sl.value);
+    box.querySelector('#dsCv').textContent = P.sci(C);
+    const xs = P.range(1e17, 1e25, 80, true), isB = show === 'B';
+    const f = isB ? bs : lr;
+    P.plot(box.querySelector('#dsP'), {
+      aria: isB ? 'Batch size tối ưu theo tính toán' : 'Learning rate tối ưu theo tính toán',
+      x: { min: 1e17, max: 1e25, log: true, every: 2, label: 'tính toán huấn luyện C (FLOP)' },
+      y: isB ? { min: 1e5, max: 1e8, log: true, label: 'batch size tối ưu (token)', ticks: [1e5, 1e6, 1e7, 1e8], fmt: v => P.big(v) }
+             : { min: 1e-4, max: 1e-2, log: true, label: 'learning rate tối ưu' },
+      ml: 70,
+      vlines: [{ x: 1e17 }, { x: 3e20, label: 'hết vùng đo' }],
+      series: [{ pts: xs.map(c => [c, f(c)]), color: 'var(--accent)', width: 2.5, tip: p => `C = ${P.sci(p[0])} FLOP<br>${isB ? 'batch ' + P.big(p[1]) + ' token' : 'learning rate ' + p[1].toExponential(1).replace('.', ',')}` }],
+      marks: REAL.map(([n, c]) => ({ x: c, y: f(c), color: 'var(--num)', r: 6, label: n, dx: -10, dy: -10, anchor: 'end', tip: `DeepSeek LLM ${n} (2 nghìn tỉ token)<br>C ≈ ${P.sci(c)} FLOP` }))
+        .concat([{ x: C, y: f(C), tip: `Bạn chọn: C = ${P.sci(C)} FLOP` }])
+    });
+    const M = Mopt(C), D = Dopt(C), N = M / 6, B = bs(C);
+    box.querySelector('#dsS').innerHTML = `
+      <div><b>${P.big(B)}</b><small>batch tối ưu (token)</small></div>
+      <div><b>${lr(C).toExponential(1).replace('.', ',')}</b><small>learning rate tối ưu</small></div>
+      <div><b>≈ ${P.big(N)}</b><small>tham số tối ưu (M/6, theo isoFLOP)</small></div>
+      <div><b>${P.big(D)}</b><small>token tối ưu · ${P.nf(D / N, 0)} token/tham số</small></div>
+      <div><b>${P.big(D / B)}</b><small>số bước huấn luyện = D ÷ batch</small></div>`;
+    const out = C > 3e20 * 1.01;
+    box.querySelector('#dsM').innerHTML = (out ? `Ngân sách này nằm ngoài vùng có thí nghiệm khoảng ${P.nf(Math.log10(C / 3e20), 1)} bậc độ lớn: mọi con số là ngoại suy. ` : 'Ngân sách này nằm trong vùng có thí nghiệm. ') +
+      'Batch tăng nhanh hơn số bước: tính toán gấp 10 thì batch gấp khoảng 2,1 còn số token gấp khoảng 3, nên số bước chỉ tăng khoảng 1,4 lần. Hai dòng "tham số" và "token" dùng công thức isoFLOP của DeepSeek ở mục sau.';
+  }
+  box.querySelectorAll('[data-g="show"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    show = b.dataset.v; box.querySelectorAll('[data-g="show"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<h2 id="l11-ds-wsd" data-short="Lịch nhiều bậc"><span>Lịch learning rate nhiều bậc, cùng ý tưởng với WSD</span><span class="slide-range">slide 22</span></h2>
+<div class="slides" data-s="22"></div>
+<p>Để phân tích kiểu Chinchilla cho rẻ, DeepSeek cũng dùng một lịch kiểu WSD (slide 22): <b>warmup nhanh rồi hai bậc giảm</b>.</p>
+<ul>
+  <li>Warmup 2000 bước lên mức tối đa.</li>
+  <li>Sau 80% số token: giảm còn <b>31,6%</b> mức tối đa.</li>
+  <li>Sau 90% số token: giảm còn <b>10%</b>.</li>
+  <li>Gradient clipping đặt ở 1,0.</li>
+</ul>
+<p>Con số 31,6% không ngẫu nhiên: \(\sqrt{0{,}1} \approx 0{,}316\). Hai bậc bằng nhau trên thang log, mỗi bậc chia learning rate cho \(\sqrt{10}\). Hình (a): loss của lịch nhiều bậc nằm trên cosine trong phần lớn thời gian, rồi tụt xuống ở mỗi bậc và về đích ngang cosine. Hình (b): tỉ lệ 80/10/10, 70/15/15 hay 60/20/20 cho kết quả cuối gần như nhau.</p>
+<p>Lợi ích giống WSD: 80% đầu của lần chạy (giai đoạn learning rate cao) dùng chung được. Muốn huấn luyện tiếp lên nhiều token hơn, chỉ cần quay lại checkpoint trước bậc giảm đầu tiên.</p>
+
+<h2 id="l11-ds-isoflop" data-short="IsoFLOP với M = FLOP/token"><span>Chọn cỡ mô hình: isoFLOP với M thay cho N</span><span class="slide-range">slide 23–24</span></h2>
+<div class="slides" data-s="23"></div>
+<p>Để chọn cỡ mô hình, DeepSeek dùng <a href="#l09-methods">cách 2 của Chinchilla</a>: đường isoFLOP (slide 23). Ở mỗi ngân sách từ \(10^{17}\) đến \(3\times10^{20}\) FLOP, huấn luyện nhiều cỡ mô hình, vẽ loss cuối thành chữ U, lấy đáy, rồi nối các đáy (hình b và c). Hai khác biệt nhỏ nhưng có ý nghĩa:</p>
+<ul>
+  <li><b>Loss đo bằng bits-per-byte</b> trên tập kiểm tra: số bit cần để mã hoá mỗi byte văn bản. Không phụ thuộc tokenizer, nên so được giữa các mô hình.</li>
+  <li><b>Cỡ mô hình đo bằng \(M\)</b>: số FLOP mỗi token không tính embedding, thay cho số tham số \(N\). Ngân sách viết là \(C = M \cdot D\) thay cho \(6ND\).</li>
+</ul>
+<div class="note key">
+  <p>Vì sao dùng \(M\)? Công thức \(6N\) chỉ đếm các phép nhân ma trận với trọng số. Nó bỏ qua phần tính attention (\(QK^\top\) và nhân với \(V\)), vốn không có tham số nhưng tốn FLOP và tăng theo độ dài chuỗi. Bài báo DeepSeek dùng</p>
+  <p>\[ M = 72\, n_{layer}\, d_{model}^2 + 12\, n_{layer}\, d_{model}\, l_{seq}. \]</p>
+  <p>Số hạng đầu chính là \(6N\) (với \(N = 12\, n_{layer} d_{model}^2\)), số hạng sau là attention. Với mô hình nhỏ, \(d_{model}\) nhỏ so với \(l_{seq}\), nên phần attention chiếm tỉ trọng lớn. Theo bài báo, dùng \(6N\) có thể lệch tới khoảng 50% ở mô hình nhỏ: đủ để làm méo độ dốc khi khớp, giống chuyện đếm tham số embedding đã làm méo kết quả của Kaplan (<a href="#l09-discrepancy">Lecture 9</a>).</p>
+</div>
+<p>Kết quả khớp (theo bài báo; slide chỉ vẽ đường):</p>
+<p>\[ M_{opt} = 0{,}1715 \cdot C^{0{,}5243}, \qquad D_{opt} = 5{,}8316 \cdot C^{0{,}4757}. \]</p>
+<p>Hai số mũ gần 0,5: tăng mô hình và dữ liệu gần như đều nhau, đúng tinh thần Chinchilla. Chiếu tới \(4{,}5\times10^{23}\) FLOP cho \(M \approx 4{,}3\times10^{11}\) FLOP mỗi token (cỡ 67B) và \(D \approx 1{,}04\times10^{12}\) token, đúng hai con số ghi trên hình. Thực tế DeepSeek huấn luyện 67B trên 2 nghìn tỉ token, khoảng gấp đôi mức tối ưu theo chính luật của họ.</p>
+
+<div class="slides" data-s="24"></div>
+<p>Và nó dự đoán đúng (slide 24): khớp một luật luỹ thừa cho loss tốt nhất theo tính toán, chỉ dùng các mô hình nhỏ (chấm xám), rồi kéo dài lên. Hai ngôi sao (7B và 67B thật, xa hơn 1000 lần về tính toán) nằm gần như đúng trên đường. <mark>Thí nghiệm nhỏ dự đoán chính xác loss của mô hình lớn</mark>: đây là bằng chứng mạnh cho cả quy trình.</p>
+<div class="note life"><p>So hai triết lý. <b>MiniCPM</b>: sửa mô hình (muP) để siêu tham số không đổi theo quy mô, rồi chỉ cần chỉnh một lần. <b>DeepSeek</b>: để nguyên mô hình, chấp nhận siêu tham số thay đổi, nhưng đo đủ nhiều để kẻ được đường xu hướng cho chính siêu tham số. Cách thứ hai tốn thí nghiệm hơn, nhưng không phụ thuộc vào việc muP có đúng cho kiến trúc của bạn hay không.</p></div>
+
+
+<div class="part" id="l11-part3" data-short="Phần 3 · Mô hình gần đây">Phần 3 · Các mô hình gần đây: ít chi tiết hơn, nhưng cùng bộ công cụ<small>Từ cuối 2024, các báo cáo kỹ thuật vẫn nhắc scaling law, nhưng thường chỉ vài dòng và một hình.</small></div>
+
+<h2 id="l11-qwen" data-short="Qwen 2.5 và Qwen 3"><span>Qwen: scaling law cho siêu tham số, cả dense lẫn MoE</span><span class="slide-range">slide 25</span></h2>
+<div class="slides" data-s="25"></div>
+<p><b>Qwen 2.5</b> (slide 25) xây scaling law cho siêu tham số, đi theo hướng của DeepSeek:</p>
+<ul>
+  <li>Nghiên cứu learning rate tối ưu \(\mu_{opt}\) và batch size tối ưu \(B_{opt}\) thay đổi thế nào theo cỡ mô hình \(N\) và lượng dữ liệu \(D\).</li>
+  <li>Thí nghiệm rộng: mô hình dense từ 44 triệu đến 14 tỉ tham số, MoE từ 44 triệu đến 1 tỉ tham số kích hoạt, dữ liệu từ 0,8 tỉ đến 600 tỉ token.</li>
+  <li>Dùng scaling law để so MoE với dense, và chỉnh số tham số kích hoạt lẫn tổng số tham số của MoE sao cho ngang hiệu năng Qwen2.5-72B và Qwen2.5-14B dense.</li>
+</ul>
+<p><b>Qwen 3</b> làm tương tự, thêm sự phụ thuộc vào ba giai đoạn tiền huấn luyện, và dự đoán cả lịch learning rate lẫn batch size cho từng mô hình dense hay MoE. Nhận xét của thầy: <b>rất ít chi tiết</b>. Không có công thức, không có hệ số. Ta chỉ biết họ làm, không biết họ làm thế nào.</p>
+
+<h2 id="l11-kimi" data-short="Kimi K2: độ thưa của MoE"><span>Kimi K2: scaling law cho độ thưa của MoE</span><span class="slide-range">slide 26</span></h2>
+<div class="slides" data-s="26"></div>
+<p>Nhiều bài báo gần đây dùng scaling law để chọn <b>độ thưa</b> của MoE. Kimi K2 (slide 26) định nghĩa <dfn>độ thưa</dfn> (<span class="en">sparsity</span>) là tổng số expert chia cho số expert được kích hoạt mỗi token. Thí nghiệm dùng optimizer Muon (<a href="#l11-muon">Phần 4</a>):</p>
+<ul>
+  <li>Giữ cố định số tham số kích hoạt (tức FLOP mỗi token không đổi), chỉ tăng tổng số expert. Kết quả: <mark>độ thưa càng cao, loss huấn luyện và loss kiểm tra càng thấp</mark>, đều đặn.</li>
+  <li>Để đạt cùng loss kiểm tra 1,5, độ thưa 48 cần ít FLOP hơn độ thưa 8, 16, 32 lần lượt <b>1,69×, 1,39×, 1,15×</b>. Lợi ích giảm dần.</li>
+  <li>Đổi lại, độ thưa cao làm hạ tầng phức tạp hơn (nhiều expert hơn phải chia cho nhiều GPU, xem <a href="#l08-ep">expert parallel</a> ở Lecture 8). Kimi K2 chọn độ thưa 48: <b>kích hoạt 8 trong 384 expert</b> mỗi lượt.</li>
+</ul>
+<p>Hình 6 ở slide xét một lựa chọn khác: số attention head. Gấp đôi số head (so với số head bằng số lớp) giảm loss kiểm tra 0,5% đến 1,2%. Theo báo cáo Kimi K2, họ vẫn <i>không</i> gấp đôi (dùng 64 head, một nửa của DeepSeek-V3), vì lợi ích nhỏ đó không đáng với chi phí suy luận tăng thêm khi ngữ cảnh dài. Đây là kiểu quyết định mà <a href="#l10-overview">Lecture 10</a> đã giải thích: attention lúc sinh văn bản bị nghẽn ở bộ nhớ.</p>
+
+<h2 id="l11-hunyuan-llama" data-short="Hunyuan và Llama 3"><span>Hunyuan và Llama 3: isoFLOP, và dự đoán cả tác vụ thật</span><span class="slide-range">slide 27–28</span></h2>
+<div class="slides" data-s="27"></div>
+<p><b>Hunyuan-Large</b> (Tencent, 2024; slide 27) lại dùng isoFLOP, nhưng lần này cho <b>số tham số kích hoạt</b> của MoE:</p>
+<ul>
+  <li>Hình trái: mỗi đường là một ngân sách từ \(5\times10^{18}\) đến \(9{,}5\times10^{19}\) FLOP. Họ khớp một đa thức bậc hai cho mỗi đường (vì vậy các đường trông như parabol trơn), rồi lấy đáy.</li>
+  <li>Hình phải: số tham số kích hoạt tối ưu theo ngân sách, một đường thẳng trên log–log. Kéo dài tới ngân sách của họ cho khoảng 58,1 tỉ tham số kích hoạt (mô hình thật dùng 52 tỉ).</li>
+  <li>Tỉ lệ tối ưu: khoảng <b>96 token mỗi tham số kích hoạt</b>.</li>
+</ul>
+
+<div class="slides" data-s="28"></div>
+<p><b>Llama 3</b> (Meta, 2024; slide 28) có hai ý:</p>
+<ol>
+  <li><b>IsoFLOP chuẩn</b> (hình trái): ngân sách từ \(6\times10^{18}\) đến \(10^{22}\) FLOP, mỗi đường khớp bằng đa thức bậc hai, đáy đánh dấu bằng hình thoi. Tỉ lệ khoảng <b>39 token mỗi tham số</b> (Llama 3 405B đọc khoảng 15,6 nghìn tỉ token: \(15{,}6\times10^{12} / 405\times10^{9} \approx 38{,}5\)). <a href="#l09-isoeverywhere">Lecture 9</a> đã kể họ ngoại suy ra cỡ 405B thế nào.</li>
+  <li><b>Từ tính toán đến tác vụ thật</b> (hai hình phải): <a href="#l09-downstream">Lecture 9</a> cảnh báo hiệu năng trên tác vụ thật khó đoán hơn loss. Llama 3 giải bằng <b>hai bước</b>. Bước 1: tính toán → NLL (log-likelihood âm) chuẩn hoá theo ký tự của đáp án đúng; quan hệ này gần đường thẳng theo log tính toán. Bước 2: NLL → độ chính xác; quan hệ này có dạng chữ S (sigmoid), được khớp bằng cả các mô hình scaling law nhỏ lẫn các mô hình Llama 2. Ghép hai bước lại, họ dự đoán đúng độ chính xác của 405B trên ARC Challenge trước khi huấn luyện.</li>
+</ol>
+<div class="note life"><p>Vì sao độ chính xác có hình chữ S còn NLL thì không? NLL đo "mô hình tin vào đáp án đúng bao nhiêu", thay đổi mượt. Độ chính xác chỉ hỏi "đáp án đúng có xếp hạng cao nhất không". Khi niềm tin còn thấp, cải thiện một chút không đổi được thứ hạng (đáy chữ S). Đến một ngưỡng, đáp án đúng lần lượt vượt các đáp án sai (đoạn dốc). Khi đã gần chắc chắn, chẳng còn gì để tăng (đỉnh chữ S). Đây cũng là một cách giải thích hiện tượng "năng lực đột ngột xuất hiện".</p></div>
+
+<h2 id="l11-minimax" data-short="MiniMax-01: scaling cho kiến trúc"><span>MiniMax-01: dùng scaling law để chọn kiến trúc</span><span class="slide-range">slide 29</span></h2>
+<div class="slides" data-s="29"></div>
+<p><b>MiniMax-01</b> (2025; slide 29) dùng scaling law để quyết định kiến trúc attention, kết hợp với <a href="#l09-methods">cách 1 của Chinchilla</a> (đường bao dưới). Ba lựa chọn được so:</p>
+<ul>
+  <li><b>Softmax attention</b> (vàng): attention thường.</li>
+  <li><b>Lightning attention</b> (tím): một dạng <a href="#l04-linear">linear attention</a>, chi phí tăng tuyến tính theo độ dài chuỗi.</li>
+  <li><b>Hybrid-lightning</b> (đỏ): xen kẽ, đa số lớp là lightning, cứ vài lớp có một lớp softmax (<a href="#l04-minimax">Lecture 4</a> nói về tỉ lệ 7:1 của MiniMax).</li>
+</ul>
+<p>Mô hình từ 70 triệu đến 7 tỉ tham số. Hình trái: loss theo tính toán (đơn vị PFLOP/s-ngày, tức \(10^{15} \times 86\,400 \approx 8{,}6\times10^{19}\) FLOP). Hình giữa và phải: cỡ mô hình và số token tối ưu theo tính toán cho từng kiến trúc. Ba đường gần như chồng lên nhau, hybrid nhỉnh hơn một chút ở loss: <mark>hybrid scale tốt ngang softmax</mark>, trong khi rẻ hơn nhiều với ngữ cảnh dài. Scaling law ở đây là công cụ ra quyết định kiến trúc, đúng như quy trình thiết kế ở <a href="#l09-engineering">Lecture 9</a>.</p>
+
+<h2 id="l11-recipes" data-short="Tổng kết các công thức"><span>Tổng kết: các công thức scale gần đây</span><span class="slide-range">slide 30</span></h2>
+<div class="slides" data-s="30"></div>
+<div class="tbl"><table>
+  <tr><th>Nhóm</th><th>Siêu tham số (LR, batch)</th><th>Cỡ mô hình và dữ liệu</th><th>Mẹo tiết kiệm</th></tr>
+  <tr><td><b>DeepSeek</b></td><td>Giả sử phần lớn siêu tham số của Transformer không đổi theo quy mô; khớp scaling law cho batch và LR</td><td>IsoFLOP (cách 2)</td><td>Lịch nhiều bậc để phân tích Chinchilla rẻ</td></tr>
+  <tr><td><b>MiniCPM</b></td><td>muP để Transformer và LR không đổi theo quy mô; khớp batch theo loss</td><td>Khớp chung (cách 3) và đường bao (cách 1)</td><td>Lịch WSD để lấy điểm dữ liệu cho cách 3</td></tr>
+  <tr><td>Qwen</td><td>Scaling law cho LR và batch (rất ít chi tiết)</td><td>—</td><td>—</td></tr>
+  <tr><td>Kimi K2</td><td>—</td><td>Scaling law cho độ thưa MoE</td><td>—</td></tr>
+  <tr><td>Llama 3, Hunyuan</td><td>Không nói</td><td>Chỉ isoFLOP</td><td>—</td></tr>
+  <tr><td>MiniMax</td><td>—</td><td>Cách 1, dùng để chọn kiến trúc</td><td>—</td></tr>
+</table></div>
+<p>Một điểm đáng chú ý khi đặt các con số cạnh nhau: tỉ lệ token trên tham số "tối ưu" rất khác nhau. Chinchilla khoảng 20, DeepSeek khoảng 20 ở \(10^{21}\) FLOP rồi giảm dần khi ngân sách tăng, Llama 3 khoảng 39, MiniCPM và Hunyuan khoảng 96. Ô dưới đây cho thấy sự chênh lệch đó thật ra ảnh hưởng tới cỡ mô hình ít hơn ta tưởng.</p>
+
+<div class="widget" id="ratioW">
+  <h4>Thử nghiệm: cùng một ngân sách, mỗi công thức chọn mô hình cỡ nào?</h4>
+  <p style="margin:6px 0 4px"><label for="ratioC">Ngân sách tính toán C: <span class="chip" id="ratioCv"></span> FLOP</label></p>
+  <input type="range" id="ratioC" min="0" max="50" value="38">
+  <div class="l11-hbars" id="ratioB"></div>
+  <div class="l11-stats" id="ratioS"></div>
+  <p class="l11-msg" id="ratioM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('ratioW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#ratioC');
+  const C_ = v => Math.pow(10, 21 + v / 10);
+  const fixed = r => C => { const N = Math.sqrt(C / (6 * r)); return [N, r * N]; };
+  const R = [
+    { n: 'Chinchilla (≈20)', f: fixed(20), base: true },
+    { n: 'DeepSeek (công thức isoFLOP)', f: C => { const M = 0.1715 * Math.pow(C, 0.5243), D = 5.8316 * Math.pow(C, 0.4757); return [M / 6, D]; } },
+    { n: 'Llama 3 (≈39)', f: fixed(39) },
+    { n: 'MiniCPM (≈96)', f: fixed(96) },
+    { n: 'Hunyuan (≈96, tham số kích hoạt)', f: fixed(96) }
+  ];
+  function upd() {
+    const C = C_(+sl.value);
+    box.querySelector('#ratioCv').textContent = P.sci(C);
+    const rows = R.map(r => { const [N, D] = r.f(C); return { ...r, N, D }; });
+    const mN = Math.max(...rows.map(r => r.N)), mD = Math.max(...rows.map(r => r.D));
+    const bar = (r, v, m, s, alt) => `<div class="l11-hbar${r.base ? ' base' : ''}"><span>${r.n}</span><div class="track"><div class="fill${alt ? ' alt' : ''}" style="width:${(100 * v / m).toFixed(1)}%"></div></div><b>${P.big(v)}${s}</b></div>`;
+    box.querySelector('#ratioB').innerHTML = '<h5>Cỡ mô hình N (tham số)</h5>' + rows.map(r => bar(r, r.N, mN, '')).join('') +
+      '<h5>Số token D</h5>' + rows.map(r => bar(r, r.D, mD, '', true)).join('');
+    const c = rows[0], m = rows[3], d = rows[1];
+    box.querySelector('#ratioS').innerHTML = `
+      <div><b>× ${P.nf(c.N / m.N, 2)}</b><small>mô hình Chinchilla lớn hơn MiniCPM</small></div>
+      <div><b>× ${P.nf(m.D / c.D, 2)}</b><small>MiniCPM đọc nhiều token hơn Chinchilla</small></div>
+      <div><b>${P.nf(d.D / d.N, 0)}</b><small>token/tham số theo công thức DeepSeek ở ngân sách này</small></div>`;
+    box.querySelector('#ratioM').innerHTML = `Tỉ lệ token/tham số chênh nhau ${P.nf(96 / 20, 1)} lần (96 so với 20), nhưng cỡ mô hình chỉ chênh ${P.nf(Math.sqrt(96 / 20), 2)} lần: với C = 6ND và D = r·N thì N = √(C ÷ 6r), nên N chỉ thay đổi theo căn bậc hai của tỉ lệ. Công thức của DeepSeek có hai số mũ hơi khác nhau (0,52 và 0,48), nên tỉ lệ của nó giảm dần khi ngân sách tăng. Ghi chú: "N" của DeepSeek ở đây là M ÷ 6, một quy đổi gần đúng.`;
+  }
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<div class="note warn"><p>Các tỉ lệ trên không so được với nhau một cách sòng phẳng. Mỗi nhóm đếm tham số khác nhau (có hay không embedding, tổng hay kích hoạt), đo loss khác nhau, dữ liệu khác nhau. Một tỉ lệ cao có thể phản ánh dữ liệu chất lượng cao (mỗi token "đáng học" hơn) chứ không chỉ khác biệt về phương pháp. Và nhớ rằng tối ưu cho huấn luyện vẫn chưa phải tối ưu cho triển khai (<a href="#l09-overtrain">Lecture 9</a>).</p></div>
+
+
+<div class="part" id="l11-part4" data-short="Phần 4 · Optimizer & Step Law">Phần 4 · Siêu tham số và optimizer theo quy mô<small>Learning rate và batch size nên là hàm của gì? Và vì sao so hai optimizer lại dễ sai đến vậy?</small></div>
+
+<h2 id="l11-opt-scale" data-short="Optimizer nhạy với quy mô"><span>Optimizer và siêu tham số đều nhạy với quy mô</span><span class="slide-range">slide 31</span></h2>
+<div class="slides" data-s="31"></div>
+<p>Slide 31 quay lại hình ở slide 4, giờ với câu hỏi rõ hơn. Hàng trên: learning rate và batch size tối ưu thay đổi theo quy mô, nên chỉnh ở một quy mô rồi dùng cho quy mô khác là sai. Hàng dưới: <b>nên chọn optimizer thế nào?</b> Hình giữa đáng đọc kỹ vì nó định nghĩa cách đo "nhanh hơn" một cách sòng phẳng:</p>
+<ul>
+  <li>Trục ngang: số token mà optimizer mới dùng (theo bội số của mức Chinchilla).</li>
+  <li>Trục dọc: số token mà AdamW cần để đạt <i>cùng loss</i>.</li>
+  <li>Tỉ số hai trục là <dfn>tốc độ</dfn> (<span class="en">speedup</span>) tính theo dữ liệu. Ở mô hình 1,2B, Muon và NAdamW nằm trong dải 1,0–1,2×, Soap nhỉnh hơn một chút.</li>
+</ul>
+<p>Đo theo token thay vì theo loss là điểm mấu chốt. <a href="#l11-opt-problems">Mục sau</a> có một ô thử nghiệm cho thấy vì sao.</p>
+
+<h2 id="l11-steplaw" data-short="Step Law: LR và batch theo N, D"><span>Step Law: learning rate và batch size theo N và D</span><span class="slide-range">slide 32–34</span></h2>
+<div class="slides" data-s="32,33"></div>
+<p>Nghiên cứu scaling law lớn của StepFun (slide 32), tên là <b>Step Law</b>, hỏi đúng câu hỏi của DeepSeek và Qwen: <mark>khi scale, đặt learning rate và batch size thế nào?</mark> Theo bài báo, họ huấn luyện khoảng 3 700 mô hình từ đầu để trả lời.</p>
+<p>Câu hỏi cốt lõi là chọn <b>biến</b> và <b>dạng hàm</b> nào (slide 33). Bảng so các "luật" đã có:</p>
+<div class="tbl"><table class="l11-cmp">
+  <tr><th>Luật</th><th>Learning rate</th><th>Batch size</th><th>Sai số tương đối</th></tr>
+  <tr><td>OpenAI (Kaplan)</td><td>\(3{,}239\times10^{-3} - 1{,}395\times10^{-4}\log N\)</td><td>\(2\text{e}18\,\mathcal{L}^{-4{,}76}\)</td><td>9,51‰</td></tr>
+  <tr><td>Microsoft</td><td>\(1{,}3192\text{e}{-5}\, N^{-0{,}23} D^{-0{,}32}\)</td><td>—</td><td>9,25‰</td></tr>
+  <tr><td>DeepSeek</td><td>\(0{,}3188\, C^{-0{,}125}\)</td><td>\(0{,}2920\, C^{0{,}3271}\)</td><td>9,26‰</td></tr>
+  <tr><td>Porian</td><td>\(3{,}7\, N^{-0{,}36}\)</td><td>\(0{,}7576\, N^{0{,}703}\)</td><td>3,71‰</td></tr>
+  <tr><td>MiniCPM</td><td>—</td><td>\(2\text{e}18 / \mathcal{L}^{6{,}24}\)</td><td>—</td></tr>
+  <tr><td>MeiTuan</td><td>\(\lambda \mathcal{L}^{-\alpha}\)</td><td>\(\lambda_B \mathcal{L}^{-\alpha_B^{-1}}\)</td><td>—</td></tr>
+  <tr><td><b>Step Law</b></td><td class="best">\(1{,}79\, N^{-0{,}713} D^{0{,}307}\)</td><td class="best">\(0{,}58\, D^{0{,}571}\)</td><td class="best">0,94‰</td></tr>
+</table></div>
+<p>"Sai số tương đối" đo loss đạt được khi dùng siêu tham số mà luật dự đoán, so với loss nhỏ nhất tìm được bằng quét lưới. Step Law tệ hơn mức tốt nhất chưa tới 0,1%. Hai cột trong slide mà bảng trên lược đi ("Data Recipe", "Model Sparsity") cho biết luật có được kiểm tra với nhiều công thức dữ liệu và với MoE hay không. Chỉ Step Law có cả hai.</p>
+<div class="note warn"><p>Vài con số trong bảng của slide nên đọc cẩn thận. Hằng số của Kaplan là \(2\times10^{8}\) token (\(\mathcal{B}_{crit} \approx 2\times10^8/L^{4{,}76}\), xem <a href="#l09-batch">Lecture 9</a>), không phải 2e18. Hằng số của MiniCPM theo đường khớp ở <a href="#l11-minicpm-batch">slide 12</a> là khoảng \(1{,}2\times10^{9}\). Hệ số của DeepSeek ở đây là 0,3188, còn bài báo DeepSeek (slide 21) ghi 0,3118. Có lẽ là lỗi chép lại trong bảng gốc.</p></div>
+<p>Ba quan điểm về <i>biến</i> nên dùng:</p>
+<ul>
+  <li><b>Batch là hàm của loss</b> (critical batch, OpenAI; MiniCPM cũng vậy).</li>
+  <li><b>Luật luỹ thừa theo tính toán \(C\)</b> (DeepSeek).</li>
+  <li><b>Hay một thứ khác?</b> Step Law dùng \(N\) và \(D\) <i>riêng rẽ</i>. Cùng một \(C = 6ND\), chia khác nhau giữa \(N\) và \(D\) thì siêu tham số khác nhau.</li>
+</ul>
+
+<div class="slides" data-s="34"></div>
+<p>Cách làm thuần thực nghiệm, giống DeepSeek (slide 34): quét lưới để vẽ bản đồ loss theo learning rate và batch size. Hình trái là bản đồ của một mô hình. Các đường đồng mức ghi +0,125%, +0,25%, +0,5%, +1%, +2% so với loss nhỏ nhất (dấu ×). Ngôi sao của Step Law gần như trùng dấu ×. Tam giác DeepSeek chọn learning rate nhỏ hơn và batch lớn hơn, rơi vào vòng +0,25% đến +0,5%. Hai đường thẳng đứng (Microsoft, OpenAI) chỉ cho learning rate, và cả hai đều quá nhỏ. Bảng bên phải là 18 cấu hình dense: từ 215 triệu đến 1,07 tỉ tham số, từ 11 tỉ đến 100 tỉ token.</p>
+
+<h2 id="l11-step-obs" data-short="Ba quan sát của Step Law"><span>Ba quan sát: lồi, xu hướng theo D, và tổng quát hoá</span><span class="slide-range">slide 35–37</span></h2>
+<div class="slides" data-s="35"></div>
+<p><b>Quan sát 1: loss theo batch và learning rate là hàm lồi</b> (slide 35). Mỗi lát cắt (cố định learning rate, đổi batch; hoặc ngược lại) đều có hình chữ U một đáy, và mặt 3D là một cái bát. <mark>Với loss tiền huấn luyện, điểm tối ưu của learning rate và batch xác định được rõ ràng.</mark> Không có nhiều đáy, không có vùng phẳng kỳ lạ, nên quét lưới rồi khớp là cách làm đáng tin.</p>
+
+<div class="slides" data-s="36"></div>
+<p><b>Quan sát 2: xu hướng</b> (slide 36):</p>
+<ul>
+  <li><b>Batch tối ưu chủ yếu phụ thuộc lượng dữ liệu \(D\).</b> Hình phải: chấm của mọi cỡ mô hình (mọi màu) nằm trên cùng một đường. Cỡ mô hình gần như không ảnh hưởng.</li>
+  <li><b>Learning rate tối ưu giảm khi mô hình lớn hơn</b> (các dải màu xếp từ trên xuống theo \(N\)), và <b>tăng khi đọc nhiều dữ liệu hơn</b> (mỗi dải dốc lên theo \(D\)).</li>
+</ul>
+<p>Thầy lưu ý chiều "learning rate tăng theo \(D\)" có lẽ mong manh hơn: nó có thể thay đổi nếu đổi lịch learning rate sang WSD. Bài báo scaling law của InternLM (Zhou và cộng sự, 2026) bàn về điều này.</p>
+
+<div class="widget" id="stepW">
+  <h4>Thử nghiệm: Step Law và DeepSeek nói gì cho cùng một mô hình?</h4>
+  <div class="l11-ctl" data-g="show">
+    <span>Vẽ:</span>
+    <button class="l11-btn" data-v="lr" aria-pressed="true">Learning rate</button>
+    <button class="l11-btn" data-v="B" aria-pressed="false">Batch size</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="stepN">Cỡ mô hình N (tham số không thuộc embedding): <span class="chip" id="stepNv"></span></label></p>
+  <input type="range" id="stepN" min="0" max="30" value="10">
+  <p style="margin:12px 0 4px"><label for="stepD">Số token D: <span class="chip" id="stepDv"></span></label></p>
+  <input type="range" id="stepD" min="0" max="40" value="20">
+  <div class="l11-plot" id="stepP"></div>
+  <div class="l11-legend"><span><i style="border-color:var(--accent)"></i>Step Law (theo N và D)</span><span><i class="d" style="border-color:var(--warn)"></i>DeepSeek (theo C = 6ND)</span></div>
+  <div class="l11-stats" id="stepS"></div>
+  <p class="l11-msg" id="stepM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('stepW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sN = box.querySelector('#stepN'), sD = box.querySelector('#stepD');
+  let show = 'lr';
+  const N_ = v => Math.pow(10, 8 + v / 10), D_ = v => Math.pow(10, 9 + v / 10);
+  const sLR = (N, D) => 1.79 * Math.pow(N, -0.713) * Math.pow(D, 0.307), sB = D => 0.58 * Math.pow(D, 0.571);
+  const dLR = (N, D) => 0.3118 * Math.pow(6 * N * D, -0.125), dB = (N, D) => 0.292 * Math.pow(6 * N * D, 0.3271);
+  const e1 = x => x.toExponential(1).replace('.', ',');
+  function upd() {
+    const N = N_(+sN.value), D = D_(+sD.value), isLR = show === 'lr';
+    box.querySelector('#stepNv').textContent = P.big(N);
+    box.querySelector('#stepDv').textContent = P.big(D) + ' (' + P.nf(D / N, D / N < 10 ? 1 : 0) + ' token/tham số)';
+    const xs = P.range(1e9, 1e13, 60, true);
+    const fs = isLR ? (d => sLR(N, d)) : (d => sB(d)), fd = isLR ? (d => dLR(N, d)) : (d => dB(N, d));
+    const fmt = v => isLR ? e1(v) : P.big(v) + ' token';
+    P.plot(box.querySelector('#stepP'), {
+      aria: isLR ? 'Learning rate tối ưu theo số token' : 'Batch size tối ưu theo số token',
+      x: { min: 1e9, max: 1e13, log: true, label: 'số token D' },
+      y: isLR ? { min: 1e-4, max: 3e-2, log: true, label: 'learning rate tối ưu', ticks: [1e-4, 1e-3, 1e-2] } : { min: 1e5, max: 3e8, log: true, label: 'batch tối ưu (token)', ticks: [1e5, 1e6, 1e7, 1e8], fmt: v => P.big(v) },
+      ml: 66,
+      series: [
+        { pts: xs.map(d => [d, fs(d)]), color: 'var(--accent)', width: 2.5, tip: p => `Step Law, D = ${P.big(p[0])}<br>${fmt(p[1])}` },
+        { pts: xs.map(d => [d, fd(d)]), color: 'var(--warn)', width: 2, dash: '6 4', tip: p => `DeepSeek, D = ${P.big(p[0])}<br>C = ${P.sci(6 * N * p[0])}: ${fmt(p[1])}` }
+      ],
+      marks: [{ x: D, y: fs(D), tip: `Step Law tại D bạn chọn: <b>${fmt(fs(D))}</b>` }, { x: D, y: fd(D), color: 'var(--warn)', r: 5.5, tip: `DeepSeek tại D bạn chọn: <b>${fmt(fd(D))}</b>` }]
+    });
+    box.querySelector('#stepS').innerHTML = `
+      <div><b>${e1(sLR(N, D))}</b><small>learning rate, Step Law</small></div>
+      <div><b>${e1(dLR(N, D))}</b><small>learning rate, DeepSeek</small></div>
+      <div><b>${P.big(sB(D))}</b><small>batch (token), Step Law</small></div>
+      <div><b>${P.big(dB(N, D))}</b><small>batch (token), DeepSeek</small></div>
+      <div><b>${P.big(D / sB(D))}</b><small>số bước theo Step Law</small></div>`;
+    const r = sLR(N, D) / dLR(N, D);
+    box.querySelector('#stepM').innerHTML = `Ở điểm này Step Law cho learning rate ${r > 1 ? 'lớn hơn' : 'nhỏ hơn'} DeepSeek ${P.nf(r > 1 ? r : 1 / r, 1)} lần. Thử giữ nguyên tích N × D (tăng D, giảm N cùng tỉ lệ): DeepSeek không đổi vì chỉ nhìn C, còn Step Law đổi cả learning rate lẫn batch. Batch của Step Law không phụ thuộc N: kéo thanh N sẽ thấy đường batch xanh đứng yên. Ngoài vùng Step Law đã đo (khoảng 0,2–1 tỉ tham số, 10–100 tỉ token) mọi con số là ngoại suy.`;
+  }
+  box.querySelectorAll('[data-g="show"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    show = b.dataset.v; box.querySelectorAll('[data-g="show"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sN.addEventListener('input', upd); sD.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<div class="slides" data-s="37"></div>
+<p><b>Quan sát 3 (có dấu hỏi): độ bền</b> (slide 37). Step Law có đúng ngoài điều kiện đã khớp không?</p>
+<ul>
+  <li><b>MoE</b>: bản đồ loss của MoE với độ thưa khác nhau (tỉ lệ tham số kích hoạt \(N_a/N\) = 0,27 và 0,58). Ngôi sao Step Law vẫn gần dấu × tối ưu.</li>
+  <li><b>Bộ dữ liệu khác</b>: song ngữ, có trộn code, chủ yếu là code. Vẫn gần.</li>
+</ul>
+<p>Thầy để dấu hỏi vì "gần" ở đây vẫn được nhìn trong một khoảng quy mô hẹp. Nhưng đây là bằng chứng tốt rằng dạng hàm theo \(N\) và \(D\) không quá phụ thuộc vào chi tiết.</p>
+
+<h2 id="l11-opt-problems" data-short="So optimizer: những cái bẫy"><span>So optimizer theo quy mô: những cái bẫy</span><span class="slide-range">slide 38–41</span></h2>
+<div class="slides" data-s="38"></div>
+<p>Optimizer là phần cốt lõi của LLM (slide 38), và đang có nhiều lựa chọn mới. Hai hình đặt cạnh nhau:</p>
+<ul>
+  <li><b>NanoGPT speedrun</b> (trái): cuộc đua huấn luyện GPT-2 nhỏ nhanh nhất trên 8 GPU H100. Mỗi bước: Adam 139 ms, Muon 142 ms, Shampoo 154–179 ms, SOAP 301 ms. Muon đạt loss đích nhanh nhất theo thời gian thật: mỗi bước chỉ đắt hơn Adam một chút mà cần ít bước hơn hẳn.</li>
+  <li><b>Tốc độ theo cỡ mô hình</b> (phải, ở 8 lần mức Chinchilla): Muon và Soap nhanh hơn AdamW khoảng 1,4× ở 130M, nhưng chỉ còn khoảng 1,1× ở 1,2B. <mark>Lợi thế của optimizer mới giảm khi mô hình lớn hơn.</mark></li>
+</ul>
+
+<div class="slides" data-s="39"></div>
+<p><b>Vấn đề 1: siêu tham số của mốc so sánh thường chỉnh sai</b> (slide 39, từ bài "Fantastic Pretraining Optimizers and Where to Find Them", Wen, Hall, Ma, Liang ở Stanford):</p>
+<ul>
+  <li><b>Hình trái</b> (mô hình 130M): AdamW với learning rate \(6\times10^{-4}\) (một giá trị hay được chép từ các bài báo cũ) trông thua xa Mars và NAdamW. Nhưng chỉ cần chỉnh learning rate của AdamW lên \(8\times10^{-3}\) thì nó <b>nhanh gấp 2</b> và ngang các optimizer "mới". Nhiều tuyên bố "optimizer X nhanh hơn Adam 2 lần" thật ra là so với một Adam chỉnh chưa tới.</li>
+  <li><b>Hình phải</b>: weight decay tối ưu của AdamW khoảng 0,1, của Lion khoảng 0,6. Dùng chung một giá trị cho cả hai là thiệt cho một bên.</li>
+</ul>
+<p>Mỗi optimizer cần bộ siêu tham số riêng, và <i>rất có thể</i> mỗi optimizer có cách siêu tham số thay đổi theo quy mô riêng.</p>
+
+<div class="slides" data-s="40"></div>
+<p><b>Vấn đề 2: phụ thuộc quy mô khá mạnh</b> (slide 40). Hình trái như trên: tốc độ giảm theo cỡ mô hình. Hình phải (520M): các optimizer dựa trên ma trận (Muon, Soap, Kron, nét liền) luôn tốt hơn các optimizer dựa trên từng số (AdamW, Mars, NAdamW, nét đứt), nhưng khoảng cách loss chỉ cỡ 0,01–0,03.</p>
+<div class="note key"><p>Lời khuyên chung của thầy khi phát triển thuật toán: <b>luôn kiểm tra theo cả lượng tính toán lẫn tỉ lệ Chinchilla.</b> Hai thứ này thường là biến gây nhiễu lớn nhất. Một cải tiến thấy rõ ở mô hình nhỏ, huấn luyện ngắn có thể biến mất ở mô hình lớn hoặc khi huấn luyện lâu.</p></div>
+<p>Vì sao khoảng cách loss 0,01 lại có thể là chuyện lớn? Gần cuối quá trình huấn luyện, loss giảm rất chậm theo dữ liệu, nên một khoảng loss nhỏ có thể tương đương rất nhiều token. Ô dưới đây quy đổi.</p>
+
+<div class="widget" id="gapW">
+  <h4>Thử nghiệm: quy đổi khoảng cách loss thành tốc độ theo dữ liệu</h4>
+  <div class="l11-ctl" data-g="gap">
+    <span>Optimizer mới thấp hơn AdamW một khoảng Δ:</span>
+    <button class="l11-btn" data-v="0.005" aria-pressed="false">0,005</button>
+    <button class="l11-btn" data-v="0.01" aria-pressed="true">0,01</button>
+    <button class="l11-btn" data-v="0.02" aria-pressed="false">0,02</button>
+    <button class="l11-btn" data-v="0.05" aria-pressed="false">0,05</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="gapD">Đo ở D token: <span class="chip" id="gapDv"></span></label></p>
+  <input type="range" id="gapD" min="0" max="40" value="16">
+  <div class="l11-plot" id="gapP"></div>
+  <div class="l11-stats" id="gapS"></div>
+  <p class="l11-msg" id="gapM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('gapW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#gapD');
+  const B = 2085.43, be = 0.3658; // phần dữ liệu trong định luật Chinchilla (khớp lại của Besiroglu 2024)
+  let gap = 0.01;
+  const D_ = v => Math.pow(10, 9 + v / 10), Rr = D => B / Math.pow(D, be);
+  const sp = (D, g) => { const q = g / Rr(D); return q >= 1 ? Infinity : Math.pow(1 - q, -1 / be); };
+  function upd() {
+    const D = D_(+sl.value), s = sp(D, gap), R = Rr(D);
+    box.querySelector('#gapDv').textContent = P.big(D);
+    const xs = P.range(1e9, 1e13, 80, true);
+    const ser = [0.005, 0.01, 0.02, 0.05].map(g => ({
+      pts: xs.map(d => [d, Math.min(sp(d, g), 9)]), color: g === gap ? 'var(--accent)' : 'var(--muted)', width: g === gap ? 2.8 : 1.4, opacity: g === gap ? 1 : 0.5,
+      label: 'Δ = ' + P.nf(g, 3),
+      tip: p => `Δ = ${P.nf(g, 3)}, D = ${P.big(p[0])}<br>tốc độ ×${p[1] >= 9 ? '≥ 9' : P.nf(p[1], 2)}`
+    }));
+    P.plot(box.querySelector('#gapP'), {
+      aria: 'Tốc độ tương đương theo số token cho các khoảng cách loss',
+      x: { min: 1e9, max: 1e13, log: true, label: 'số token D tại lúc đo' },
+      y: { min: 1, max: 4, label: 'tốc độ theo dữ liệu (AdamW cần × token)', ticks: [1, 1.5, 2, 2.5, 3, 3.5, 4], fmt: v => '×' + P.nf(v, 1) },
+      ml: 60,
+      series: ser,
+      marks: isFinite(s) && s <= 4 ? [{ x: D, y: s, tip: `Bạn chọn: Δ = ${P.nf(gap, 3)} ở D = ${P.big(D)}<br>tốc độ <b>×${P.nf(s, 2)}</b>` }] : []
+    });
+    box.querySelector('#gapS').innerHTML = `
+      <div><b>${P.nf(R, 3)}</b><small>phần loss còn giảm được nhờ thêm dữ liệu, B ÷ D^β</small></div>
+      <div class="${isFinite(s) && s > 1.25 ? 'good' : ''}"><b>${isFinite(s) ? '× ' + P.nf(s, 2) : '∞'}</b><small>AdamW cần gấp chừng này token</small></div>
+      <div><b>${isFinite(s) ? P.big(D * (s - 1)) : '—'}</b><small>token AdamW phải đọc thêm</small></div>`;
+    box.querySelector('#gapM').innerHTML = (isFinite(s) ? `Cùng một khoảng cách loss Δ, đo càng muộn (D càng lớn) thì tương ứng với tốc độ càng lớn, vì phần loss còn giảm được (${P.nf(R, 3)}) càng nhỏ. ` : `Δ lớn hơn cả phần loss còn giảm được nhờ dữ liệu: AdamW với cùng cỡ mô hình không bao giờ đạt được, dù đọc bao nhiêu token. `) +
+      'Ngược lại, một optimizer nhanh 1,1× ở mô hình lớn huấn luyện lâu chỉ tạo ra khoảng cách loss rất nhỏ trên hình. Vì vậy Wen và cộng sự so bằng số token (slide 31) chứ không so loss thô. Công thức: tốc độ = (1 − Δ ÷ R)^(−1/β), với phần dữ liệu của định luật Chinchilla (khớp lại của Besiroglu 2024: B = 2085, β = 0,37), cỡ mô hình giữ cố định.';
+  }
+  box.querySelectorAll('[data-g="gap"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    gap = +b.dataset.v; box.querySelectorAll('[data-g="gap"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<div class="slides" data-s="41"></div>
+<p><b>Vấn đề 2,5: lập được scaling law không hề dễ</b> (slide 41, từ blog Delphi của William Held). Đôi khi một scaling law trông rất đẹp lại "nổ" khi kéo dài:</p>
+<ul>
+  <li>Hình trái: các parabol isoFLOP từ \(3\times10^{18}\) đến \(3\times10^{20}\) FLOP, đáy rõ ràng, trông hoàn hảo.</li>
+  <li>Hình phải: khớp đường thẳng qua các đáy rồi kiểm tra ở ngân sách lớn hơn. Ở \(10^{21}\) loss thật tệ hơn dự đoán 0,8%, ở \(10^{22}\) tệ hơn 2,5%, và ở \(10^{23}\) <b>lần chạy phân kỳ</b> (loss nổ tung).</li>
+</ul>
+<p>Họ sửa bằng cách tham số hoá và scale cẩn thận hơn, cộng đổi optimizer: "Cautious AdamC" (một biến thể của AdamW: chỉ áp dụng phần cập nhật cùng dấu với gradient hiện tại, và điều chỉnh weight decay theo lịch learning rate), cộng <b>scale learning rate theo căn bậc hai của batch size</b> (batch gấp \(k\) thì learning rate gấp \(\sqrt{k}\), một quy tắc kinh nghiệm hay dùng cho Adam). Bài học: scaling law chỉ đúng nếu cả công thức huấn luyện cũng "scale đúng". Một chỗ bất ổn nhỏ ở quy mô nhỏ có thể thành phân kỳ ở quy mô lớn.</p>
+
+<h2 id="l11-muon" data-short="Muon"><span>Muon: trực giao hoá bước cập nhật</span><span class="slide-range">slide 42–43</span></h2>
+<div class="slides" data-s="42"></div>
+<p>Vài slide về <b>Muon</b> (slide 42), optimizer đang được chú ý nhất. Thuật toán rất ngắn:</p>
+<ol>
+  <li>Tính gradient \(G_t\).</li>
+  <li>Cộng dồn momentum: \(B_t \leftarrow \mu B_{t-1} + G_t\).</li>
+  <li><b>Trực giao hoá</b>: \(O_t \leftarrow \text{NewtonSchulz5}(B_t)\).</li>
+  <li>Cập nhật: \(\theta_t \leftarrow \theta_{t-1} - \eta\, O_t\).</li>
+</ol>
+<p>Muon dành cho các tham số <b>dạng ma trận</b> (các lớp ẩn). Embedding, lớp đầu ra và các tham số một chiều (norm, bias) thường vẫn dùng AdamW.</p>
+<p>Bước 3 là điểm mới. Viết ma trận momentum bằng phân tích giá trị kỳ dị (SVD) \(B_t = U S V^\top\): \(U, V\) là các hướng, \(S\) là các hệ số kéo giãn theo từng hướng. Newton–Schulz biến nó (gần đúng) thành \(U V^\top\): <mark>giữ nguyên các hướng, đặt mọi hệ số kéo giãn về 1.</mark></p>
+<div class="note life"><p>Vì sao làm vậy có ích? Gradient của một ma trận thường bị vài hướng chiếm áp đảo (vài giá trị kỳ dị rất lớn, phần còn lại rất nhỏ). Đi theo gradient thô thì gần như chỉ học theo vài hướng đó, các hướng "hiếm" bị bỏ quên. Trực giao hoá giống như một huấn luyện viên bảo cả đội: <i>ai cũng chạy cùng một tốc độ</i>. Các hướng hiếm được đẩy lên ngang các hướng mạnh. Về mặt toán, \(UV^\top\) là hướng giảm nhanh nhất khi đo độ lớn bước bằng chuẩn phổ (độ kéo giãn lớn nhất), đúng loại chuẩn mà <a href="#l11-mup-what">Phần 5</a> sẽ dùng để dẫn ra muP.</p></div>
+<p>Tính SVD trên GPU thì chậm. Newton–Schulz chỉ dùng phép nhân ma trận, chạy tốt cả ở bf16. Cài đặt phổ biến (của Keller Jordan):</p>
+<pre class="l11-py"><code><span class="k">def</span> newton_schulz5(G, steps=<span class="n">5</span>):
+    a, b, c = <span class="n">3.4445</span>, <span class="n">-4.7750</span>, <span class="n">2.0315</span>
+    X = G / (G.norm() + <span class="n">1e-7</span>)        <span class="c"># chuẩn hoá: mọi giá trị kỳ dị ≤ 1</span>
+    <span class="k">if</span> X.shape[<span class="n">0</span>] &gt; X.shape[<span class="n">1</span>]: X = X.T   <span class="c"># làm việc với chiều nhỏ hơn</span>
+    <span class="k">for</span> _ <span class="k">in</span> range(steps):
+        A = X @ X.T
+        X = a * X + (b * A + c * A @ A) @ X
+    <span class="k">return</span> X                           <span class="c"># (chuyển vị lại nếu đã chuyển)</span></code></pre>
+<p>Vì sao vòng lặp này chỉ tác động lên giá trị kỳ dị? Nếu \(X = USV^\top\) thì \(XX^\top X = US^3V^\top\) và \((XX^\top)^2 X = US^5V^\top\). Vậy mỗi bước biến \(X\) thành \(U\,\varphi(S)\,V^\top\) với</p>
+<p>\[ \varphi(s) = a\,s + b\,s^3 + c\,s^5 . \]</p>
+<p>Các hướng \(U, V\) giữ nguyên, chỉ từng giá trị kỳ dị \(s\) bị biến đổi qua đa thức \(\varphi\). Ba hệ số được chọn để \(\varphi\) có độ dốc ở 0 lớn (\(a = 3{,}4445\)): giá trị kỳ dị nhỏ được kéo lên rất nhanh. Đổi lại, kết quả không về đúng 1 mà dao động trong khoảng 0,7–1,2, điều này không hại gì cho việc tối ưu.</p>
+
+<div class="widget" id="nsW">
+  <h4>Thử nghiệm: Newton–Schulz đẩy các giá trị kỳ dị về gần 1</h4>
+  <div class="l11-ctl" data-g="poly">
+    <span>Đa thức:</span>
+    <button class="l11-btn" data-v="q" aria-pressed="true">Bậc 5 của Muon (3,4445; −4,7750; 2,0315)</button>
+    <button class="l11-btn" data-v="c" aria-pressed="false">Bậc 3 cổ điển (1,5 s − 0,5 s³)</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="nsK">Số vòng lặp: <span class="chip" id="nsKv"></span></label></p>
+  <input type="range" id="nsK" min="0" max="10" value="5">
+  <div class="l11-plot" id="nsP"></div>
+  <div class="l11-legend"><span><i style="border-color:var(--muted)"></i>trước khi lặp (đường chéo)</span><span><i style="border-color:var(--accent)"></i>sau k vòng</span><span><i class="o" style="background:var(--num)"></i>40 giá trị kỳ dị của một "gradient" mẫu</span></div>
+  <div class="l11-stats" id="nsS"></div>
+  <p class="l11-msg" id="nsM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('nsW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#nsK');
+  let poly = 'q';
+  const F = { q: s => 3.4445 * s - 4.7750 * s * s * s + 2.0315 * Math.pow(s, 5), c: s => 1.5 * s - 0.5 * s * s * s };
+  const it = (s, k) => { for (let i = 0; i < k; i++) s = F[poly](s); return s; };
+  // phổ mẫu: vài hướng mạnh, đuôi dài các hướng yếu (sau khi chia cho chuẩn Frobenius)
+  const raw = Array.from({ length: 40 }, (_, i) => Math.pow(i + 1, -1.6));
+  const fro = Math.sqrt(raw.reduce((a, v) => a + v * v, 0));
+  const SPEC = raw.map(v => v / fro);
+  function upd() {
+    const k = +sl.value;
+    box.querySelector('#nsKv').textContent = k + (k === 5 ? ' (Muon dùng 5)' : '');
+    const xs = P.range(1e-3, 1, 120, true);
+    const out = SPEC.map(s => it(s, k));
+    P.plot(box.querySelector('#nsP'), {
+      aria: 'Giá trị kỳ dị sau các vòng Newton–Schulz',
+      x: { min: 1e-3, max: 1, log: true, label: 'giá trị kỳ dị ban đầu (sau chuẩn hoá)' },
+      y: { min: 0, max: 1.3, label: 'giá trị kỳ dị sau k vòng', ticks: [0, 0.25, 0.5, 0.75, 1, 1.25], fmt: v => P.nf(v, 2) },
+      hlines: [{ y: 1, label: 'mục tiêu = 1' }],
+      series: [
+        { pts: xs.map(s => [s, s]), color: 'var(--muted)', width: 1.4, dash: '4 4', tip: false },
+        { pts: xs.map(s => [s, it(s, k)]), color: 'var(--accent)', width: 2.6, tip: p => `ban đầu ${P.nf(p[0], 4)}<br>sau ${k} vòng: <b>${P.nf(p[1], 3)}</b>` },
+        { pts: SPEC.map((s, i) => [s, out[i]]), color: 'var(--num)', line: false, dots: 4, tip: p => `một hướng của gradient mẫu<br>${P.nf(p[0], 4)} → ${P.nf(p[1], 3)}` }
+      ]
+    });
+    const lo = Math.min(...out), hi = Math.max(...out), cond0 = SPEC[0] / SPEC[SPEC.length - 1], cond = hi / Math.max(lo, 1e-12);
+    box.querySelector('#nsS').innerHTML = `
+      <div><b>${P.nf(lo, 3)} … ${P.nf(hi, 3)}</b><small>khoảng giá trị kỳ dị sau ${k} vòng</small></div>
+      <div class="${cond < 3 ? 'good' : cond > 20 ? 'bad' : ''}"><b>${P.nf(cond, 1)}</b><small>hướng mạnh nhất ÷ yếu nhất (ban đầu ${P.nf(cond0, 0)})</small></div>
+      <div><b>${3 * k}</b><small>số phép nhân ma trận (mỗi vòng: X·Xᵀ, A·A, rồi ·X)</small></div>`;
+    box.querySelector('#nsM').innerHTML = poly === 'q'
+      ? 'Với đa thức bậc 5, giá trị nhỏ được nhân gần 3,4 lần mỗi vòng nên chỉ sau 5 vòng hầu hết các hướng đã lên vùng 0,7–1,2. Hướng mạnh nhất và yếu nhất giờ có độ lớn gần nhau: bước cập nhật đi đều theo mọi hướng. Thử tăng lên 8–10 vòng: kết quả không hội tụ về đúng 1 mà dao động quanh đó.'
+      : 'Đa thức bậc 3 cổ điển hội tụ chính xác về 1, nhưng chỉ nhân 1,5 lần mỗi vòng với giá trị nhỏ: sau 5 vòng, một giá trị 0,001 mới lên khoảng 0,0076. Phải lặp rất nhiều vòng mới đủ. Muon chấp nhận "gần 1" để đổi lấy tốc độ.';
+  }
+  box.querySelectorAll('[data-g="poly"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    poly = b.dataset.v; box.querySelectorAll('[data-g="poly"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<div class="slides" data-s="43"></div>
+<p>Muon có scale được không (slide 43)? Ba mảnh bằng chứng:</p>
+<ul>
+  <li><b>NanoGPT speedrun</b>: thắng rõ, nhưng mô hình <i>rất</i> nhỏ.</li>
+  <li><b>Nghiên cứu scaling</b> của Wen và cộng sự: lợi thế giảm từ khoảng 1,4× xuống 1,1× khi lên 1,2B.</li>
+  <li><b>Kimi K2</b>: mô hình MoE 1 nghìn tỉ tham số, huấn luyện bằng Muon (bản MuonClip, thêm cơ chế kẹp logit attention để tránh logit nổ, cùng họ với <a href="#l03-qknorm">QK-norm</a> ở Lecture 3) trên khoảng 15,5 nghìn tỉ token. Đường loss trơn tru, không có gai.</li>
+</ul>
+<p>Kết luận của thầy: <mark>lợi ích khi scale rất khó đo chính xác, nhưng rõ ràng Muon "chạy được" ở quy mô lớn.</mark></p>
+
+
+<div class="part" id="l11-part5" data-short="Phần 5 · muP chi tiết">Phần 5 · muP chi tiết: từ đâu ra, và đúng tới đâu<small>Hai điều kiện đơn giản về độ lớn của activation là đủ để dẫn ra toàn bộ quy tắc của muP.</small></div>
+
+<h2 id="l11-mup-claims" data-short="muP hứa hẹn gì"><span>muP hứa hẹn gì, và CerebrasGPT</span><span class="slide-range">slide 44–45</span></h2>
+<div class="slides" data-s="44"></div>
+<p>Nhắc lại lời hứa của muP (slide 44, hình từ bài Tensor Programs V của Yang và cộng sự). Mỗi đường là một độ rộng từ 128 đến 8 192:</p>
+<ul>
+  <li><b>Cách làm tiêu chuẩn</b> (trái): đáy (learning rate tốt nhất) trôi sang trái khi mô hình rộng hơn. Tệ hơn, ở một learning rate cố định, mô hình rộng hơn có khi lại <i>tệ hơn</i> mô hình hẹp.</li>
+  <li><b>muP</b> (phải): đáy đứng yên, và rộng hơn thì luôn tốt hơn.</li>
+</ul>
+<p>Bảng bên phải là quy tắc muP mà <a href="#l09-mup">Lecture 9</a> đã giới thiệu. Chỉnh siêu tham số một lần mà dùng được cho mọi quy mô thì rất đáng mơ ước. Câu hỏi của phần này: <b>nó hoạt động thế nào, và có thật sự đúng trong thực tế không?</b></p>
+
+<div class="slides" data-s="45"></div>
+<p>Một bằng chứng sớm: <b>CerebrasGPT</b> (slide 45), các mô hình 0,1B đến 13B huấn luyện theo công thức Chinchilla. Họ chỉnh siêu tham số trên một mô hình muP 40 triệu tham số, rồi chuyển thẳng lên tới 2,7B.</p>
+<ul>
+  <li>Hình trái: loss theo FLOP. Bản muP (cam) nằm sát và hơi dưới đường scaling law của bản thường (xanh).</li>
+  <li>Hình phải: phần trăm lệch khỏi scaling law. Bản thường nhảy lung tung từ −1% đến +1% (bản 6,7B lệch tới +1%). Bản muP nằm đều quanh −0,5%: vừa tốt hơn, vừa <b>dễ đoán hơn</b>.</li>
+</ul>
+<p>Phát hiện cốt lõi: <mark>muP làm việc scale ổn định hơn.</mark> Mô hình thường cũng có thể tốt như vậy, nhưng phải chỉnh lại siêu tham số ở mỗi cỡ, và chỉnh sót là lệch.</p>
+
+<h2 id="l11-mup-what" data-short="muP: hai điều kiện"><span>muP thật ra là gì? Hai điều kiện A1, A2</span><span class="slide-range">slide 46</span></h2>
+<div class="slides" data-s="46"></div>
+<p>Thầy dùng bài "A Spectral Condition for Feature Learning" (Yang, Simon, Bernstein), một bài viết rất dễ đọc mà thầy gọi vui là "muP cho người mới tập đi". Toàn bộ muP dựa trên hai khẳng định, xét theo độ rộng \(n_l\) của lớp \(l\):</p>
+<div class="note key">
+  <p><b>A1:</b> Lúc khởi tạo, mỗi activation có độ lớn \(\Theta(1)\).</p>
+  <p><b>A2:</b> Sau một bước gradient, <i>lượng thay đổi</i> của mỗi activation cũng có độ lớn \(\Theta(1)\).</p>
+</div>
+<p>Ký hiệu \(\Theta(1)\) nghĩa là "không lớn dần, cũng không nhỏ dần khi mô hình rộng ra": độ rộng 128 hay 8 192 thì con số vẫn cùng cỡ. Tương tự, \(\Theta(\sqrt{n})\) nghĩa là "lớn lên cùng nhịp với \(\sqrt{n}\)".</p>
+<p>Ghi chú ở cuối slide: nếu mỗi phần tử trong một vectơ dài \(n_l\) có độ lớn \(\Theta(1)\), thì độ dài (chuẩn \(\ell_2\)) của cả vectơ là \(\Theta(\sqrt{n_l})\). Ví dụ vectơ toàn số 1 dài \(n\) có độ dài \(\sqrt{n}\). Phần dẫn dưới đây làm việc với độ dài vectơ, nên mục tiêu được viết lại là \(\|h_l\|_2 = \Theta(\sqrt{n_l})\) và \(\|\Delta h_l\|_2 = \Theta(\sqrt{n_l})\).</p>
+<div class="note life"><p>Vì sao cần A2? Nếu lượng thay đổi <b>nhỏ dần</b> khi mô hình rộng ra, mô hình rất rộng gần như không học được đặc trưng mới: các lớp bên trong đứng yên, chỉ lớp cuối học (người ta gọi là chế độ "lười"). Nếu lượng thay đổi <b>lớn dần</b>, mô hình rộng sẽ nổ. "Maximal update" là bước cập nhật <i>lớn nhất có thể mà vẫn ổn định</i>, đúng ở mức \(\Theta(1)\). Giống chỉnh âm lượng: quá nhỏ thì không nghe thấy gì, quá lớn thì loa rè, và muP giữ núm ở cùng một vị trí dù loa to hay nhỏ.</p></div>
+
+<h2 id="l11-mup-a1" data-short="Dẫn A1: khởi tạo"><span>Dẫn điều kiện A1: chọn độ lệch chuẩn khởi tạo</span><span class="slide-range">slide 47</span></h2>
+<div class="slides" data-s="47"></div>
+<p>Xét một mạng tuyến tính sâu đơn giản (slide 47): \(h_l = W_l h_{l-1}\), với \(W_l\) là ma trận \(n_l \times n_{l-1}\), mỗi phần tử khởi tạo ngẫu nhiên theo \(N(0, \sigma^2)\).</p>
+<p>Công cụ chính là <dfn>chuẩn phổ</dfn> (<span class="en">spectral norm</span>) của ma trận, slide viết \(\|W\|_*\): <b>hệ số kéo giãn lớn nhất</b> mà ma trận có thể áp lên một vectơ, \(\|W\|_* = \max_x \|Wx\|_2 / \|x\|_2\). Từ định nghĩa có ngay \(\|W h\|_2 \le \|W\|_* \|h\|_2\).</p>
+<div class="note warn"><p>Ký hiệu: trong nhiều sách, \(\|\cdot\|_*\) là chuẩn hạt nhân (tổng các giá trị kỳ dị). Trong slide này nó là <b>chuẩn phổ</b> (giá trị kỳ dị lớn nhất). Tài liệu này giữ ký hiệu của slide.</p></div>
+<p>Lý thuyết ma trận ngẫu nhiên cho biết: ma trận Gauss lớn có chuẩn phổ xấp xỉ</p>
+<p>\[ \|W_l\|_* \to \sigma\left(\sqrt{n_{l-1}} + \sqrt{n_l}\right). \]</p>
+<p>Ta muốn \(\|h_l\|_2 \approx \|W_l\|_* \|h_{l-1}\|_2\) có độ lớn \(\sqrt{n_l}\), biết \(\|h_{l-1}\|_2 \approx \sqrt{n_{l-1}}\). Vậy cần \(\|W_l\|_* = \sqrt{n_l}/\sqrt{n_{l-1}}\), tức là chọn</p>
+<p>\[ \sigma = \frac{\sqrt{n_l}}{\sqrt{n_{l-1}}}\left(\sqrt{n_l} + \sqrt{n_{l-1}}\right)^{-1} = \Theta\!\left(\frac{1}{\sqrt{n_{l-1}}}\min\!\left(1, \sqrt{\frac{n_l}{n_{l-1}}}\right)\right). \]</p>
+<p>Đọc dạng \(\Theta\): nếu lớp <b>mở rộng hoặc giữ nguyên</b> (\(n_l \ge n_{l-1}\)) thì tổng trong ngoặc cỡ \(\sqrt{n_l}\), nên \(\sigma \approx 1/\sqrt{n_{l-1}}\), đúng khởi tạo quen thuộc "chia căn của fan-in". Nếu lớp <b>thu hẹp</b> (\(n_l &lt; n_{l-1}\)) thì \(\sigma\) nhỏ hơn thêm một hệ số \(\sqrt{n_l/n_{l-1}}\).</p>
+<p><b>Quy nạp</b> (khung xanh trong slide): giả sử \(\|h_{l-1}\|_2 = \Theta(\sqrt{n_{l-1}})\). Với \(\sigma\) trên, \(\|W_l\|_* \to \sqrt{n_l}/\sqrt{n_{l-1}}\), nên \(\|h_l\|_2 \approx \frac{\sqrt{n_l}}{\sqrt{n_{l-1}}} \cdot \sqrt{n_{l-1}} = \sqrt{n_l}\). A1 đúng ở mọi lớp.</p>
+<div class="note life"><p>Ghi chú cuối slide: đây là phép dẫn kiểu "trường hợp xấu nhất", dấu \(\approx\) thật ra là một cận trên. Ma trận chỉ kéo giãn nhiều nhất theo <i>một</i> hướng đặc biệt. Một vectơ ngẫu nhiên thường không nằm đúng hướng đó, nên bị kéo giãn ít hơn. Cách khởi tạo thông thường (\(1/\sqrt{n_{l-1}}\)) lo cho vectơ ngẫu nhiên; muP theo cách dẫn này lo cho vectơ nằm đúng hướng kéo giãn mạnh nhất. Vì sao lại lo cho trường hợp xấu nhất? Trong lúc huấn luyện, activation và trọng số <i>không còn</i> ngẫu nhiên với nhau: chúng học để thẳng hàng. Hai cách chỉ khác nhau khi lớp thu hẹp.</p></div>
+
+<h2 id="l11-mup-a2" data-short="Dẫn A2: learning rate"><span>Dẫn điều kiện A2: chọn learning rate</span><span class="slide-range">slide 48–49</span></h2>
+<div class="slides" data-s="48"></div>
+<p>Giờ đến bước cập nhật (slide 48). Với SGD trên một lớp tuyến tính, bước cập nhật là <b>tích ngoài hạng một</b> của "tín hiệu lỗi" và activation đầu vào:</p>
+<p>\[ \Delta W_l = -\eta_l\, \nabla_{h_l}\ell\; h_{l-1}^\top . \]</p>
+<p>(\(\nabla_{h_l}\ell\) là gradient của loss theo đầu ra của lớp, một vectơ dài \(n_l\).) Ma trận hạng một \(u v^\top\) chỉ có một hướng kéo giãn, chính là hướng \(v\). Ở đây \(v = h_{l-1}\): bước cập nhật <b>thẳng hàng</b> với đúng activation đi vào. Vì vậy dấu bằng xảy ra:</p>
+<p>\[ \|\Delta W_l\, h_{l-1}\|_2 = \|\Delta W_l\|_* \, \|h_{l-1}\|_2 . \]</p>
+<p>Đây là trường hợp xấu nhất ở mục trước, và nó <i>thật sự</i> xảy ra. Activation mới sau bước cập nhật là \((W_l + \Delta W_l)(h_{l-1} + \Delta h_{l-1})\), nên phần thay đổi là</p>
+<p>\[ \Delta h_l = W_l\, \Delta h_{l-1} + \Delta W_l \left(h_{l-1} + \Delta h_{l-1}\right). \]</p>
+<p>Giả sử các số hạng chính không triệt tiêu nhau, xét từng số hạng:</p>
+<ul>
+  <li>\(W_l \Delta h_{l-1} = \Theta(\sqrt{n_l})\): theo giả thiết quy nạp (\(\|\Delta h_{l-1}\|_2 = \Theta(\sqrt{n_{l-1}})\)) cộng lập luận của A1 (\(W_l\) biến độ dài \(\sqrt{n_{l-1}}\) thành \(\sqrt{n_l}\)).</li>
+  <li>\(\Delta W_l h_{l-1} = \|\Delta W_l\|_* \sqrt{n_{l-1}}\). Muốn nó là \(\Theta(\sqrt{n_l})\) thì phải có
+  \[ \|\Delta W_l\|_* = \Theta\!\left(\frac{\sqrt{n_l}}{\sqrt{n_{l-1}}}\right). \]</li>
+  <li>\(\Delta W_l \Delta h_{l-1} = O(\|\Delta W_l\|_* \sqrt{n_{l-1}})\): cùng cỡ với số hạng trên, không gây thêm rắc rối.</li>
+</ul>
+<div class="note key"><p><b>Điều kiện phổ:</b> cả trọng số lẫn bước cập nhật đều phải có chuẩn phổ cỡ \(\sqrt{n_l / n_{l-1}} = \sqrt{\text{fan-out}/\text{fan-in}}\). Đây là tên của bài báo: "spectral condition".</p></div>
+
+<div class="slides" data-s="49"></div>
+<p>Còn phải chọn learning rate để đạt \(\|\Delta W_l\|_* \sqrt{n_{l-1}} = \Theta(\sqrt{n_l})\) (slide 49). Thêm một giả thiết: <b>loss cũng thay đổi một lượng \(\Theta(1)\)</b> sau mỗi bước (không nổ, không đứng yên). Khai triển bậc nhất:</p>
+<p>\[ \Delta\ell \approx \langle \Delta W_l, \nabla_{W_l}\ell \rangle = \Theta\big(\|\Delta W_l\|_F \|\nabla_{W_l}\ell\|_F\big) = \Theta\big(\|\Delta W_l\|_* \|\nabla_{W_l}\ell\|_*\big). \]</p>
+<ul>
+  <li>Dấu bằng đầu: với SGD, \(\Delta W_l = -\eta \nabla_{W_l}\ell\), hai ma trận cùng hướng nên tích vô hướng bằng tích hai độ dài (chuẩn Frobenius \(\|\cdot\|_F\), tức căn tổng bình phương mọi phần tử).</li>
+  <li>Dấu bằng sau: với ma trận hạng một, chuẩn Frobenius bằng chuẩn phổ.</li>
+</ul>
+<p>Thay \(\Delta\ell = \Theta(1)\) và \(\|\Delta W_l\|_* = \Theta(\sqrt{n_l}/\sqrt{n_{l-1}})\), suy ra \(\|\nabla_{W_l}\ell\|_* = \Theta(\sqrt{n_{l-1}}/\sqrt{n_l})\). Vì \(\Delta W_l = -\eta_l \nabla_{W_l}\ell\):</p>
+<p>\[ \eta_l = \frac{\|\Delta W_l\|_*}{\|\nabla_{W_l}\ell\|_*} = \frac{\sqrt{n_l}/\sqrt{n_{l-1}}}{\sqrt{n_{l-1}}/\sqrt{n_l}} = \Theta\!\left(\frac{n_l}{n_{l-1}}\right). \]</p>
+<p><b>Với Adam</b> thì khác. Adam chia gradient cho căn của trung bình bình phương của chính nó, nên mỗi phần tử của bước cập nhật có độ lớn khoảng \(\eta\), gần như \(\eta \cdot \text{sign}(\text{gradient})\), bất kể gradient lớn hay nhỏ. Dấu của một ma trận hạng một \(u v^\top\) là \(\text{sign}(u)\,\text{sign}(v)^\top\), vẫn hạng một, với chuẩn phổ \(\eta \sqrt{n_l}\sqrt{n_{l-1}}\). Muốn nó bằng \(\sqrt{n_l}/\sqrt{n_{l-1}}\) thì cần \(\eta_l = \Theta(1/n_{l-1})\): <b>learning rate của Adam chia cho fan-in</b>. (Chú thích của slide về Adam bị cắt ở mép phải; phép dẫn trên cho cùng kết luận với slide tóm tắt kế tiếp.)</p>
+
+<h2 id="l11-mup-recap" data-short="muP so với SP"><span>Tóm tắt muP "cho người mới", so với cách làm tiêu chuẩn</span><span class="slide-range">slide 50</span></h2>
+<div class="slides" data-s="50"></div>
+<p>muP (bản đơn giản) chỉ là: <mark>điều khiển độ lớn của activation và của lượng thay đổi activation, thông qua \(W\) và \(\Delta W\).</mark> Slide 50 đặt hai cách tham số hoá cạnh nhau:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>muP</th><th>Tiêu chuẩn (SP)</th></tr>
+  <tr><td>Độ lệch chuẩn khởi tạo</td><td>\(\Theta\!\left(\frac{1}{\sqrt{n_{l-1}}}\min\!\left(1, \sqrt{\frac{n_l}{n_{l-1}}}\right)\right)\)</td><td>\(\frac{1}{\sqrt{n_{l-1}}}\)</td></tr>
+  <tr><td>Learning rate (SGD)</td><td>\(\frac{n_l}{n_{l-1}}\)</td><td>\(\Theta(1)\)</td></tr>
+  <tr><td>Learning rate (Adam)</td><td class="hi">\(\frac{1}{n_{l-1}}\)</td><td>\(\Theta(1)\)</td></tr>
+</table></div>
+<p>Hai khác biệt (dòng cuối slide):</p>
+<ul>
+  <li><b>Learning rate khi dùng Adam</b>: đây là khác biệt lớn nhất trong thực tế. Lớp ẩn \(n \times n\) phải dùng learning rate \(\propto 1/n\). Với SGD, lớp ẩn vuông có \(n_l/n_{l-1} = 1\), trùng với SP.</li>
+  <li><b>Khởi tạo khi fan-out nhỏ hơn fan-in</b>: điển hình là lớp đầu ra (\(n_l\) = cỡ từ vựng, cố định; \(n_{l-1} = d_{model}\) lớn dần). muP cho \(\sigma \propto \sqrt{V}/d_{model} \propto 1/d_{model}\), tức phương sai \(\propto 1/d_{model}^2\), nhỏ hơn hẳn SP.</li>
+</ul>
+
+<div class="widget" id="mupW">
+  <h4>Thử nghiệm: vì sao Adam cần learning rate chia cho độ rộng</h4>
+  <div class="l11-ctl" data-g="par">
+    <span>Cách tham số hoá:</span>
+    <button class="l11-btn" data-v="sp" aria-pressed="true">SP: learning rate cố định</button>
+    <button class="l11-btn" data-v="mup" aria-pressed="false">muP: learning rate ∝ 1/n</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="mupN">Độ rộng lớp ẩn n: <span class="chip" id="mupNv"></span></label></p>
+  <input type="range" id="mupN" min="0" max="6" value="3">
+  <div class="l11-plot" id="mupP"></div>
+  <div class="l11-legend"><span><i style="border-color:var(--muted)"></i>activation lúc khởi tạo (W·x)</span><span><i style="border-color:var(--accent)"></i>thay đổi sau 1 bước Adam (thẳng hàng với x)</span><span><i class="d" style="border-color:var(--num)"></i>nếu bước cập nhật có hướng ngẫu nhiên</span></div>
+  <div class="l11-stats" id="mupS"></div>
+  <p class="l11-msg" id="mupM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('mupW'); if (!box || !window.L11P) return;
+  const P = window.L11P, sl = box.querySelector('#mupN');
+  let par = 'sp';
+  const WS = [128, 256, 512, 1024, 2048, 4096, 8192], ETA0 = 1 / 128, ROWS = 48;
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(r) { let u = 0, v = 0; while (u === 0) u = r(); v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  // mô phỏng thật một lần cho mỗi độ rộng: đầu vào x có phần tử cỡ 1, ma trận khởi tạo N(0, 1/n)
+  const SIM = WS.map((n, wi) => {
+    const r = rng(1234 + wi), x = Array.from({ length: n }, () => gauss(r));
+    const sAbs = x.reduce((a, v) => a + Math.abs(v), 0);
+    let i2 = 0, rnd2 = 0;
+    for (let k = 0; k < ROWS; k++) {
+      let a = 0, b = 0;
+      for (let j = 0; j < n; j++) { a += gauss(r) / Math.sqrt(n) * x[j]; b += (r() < 0.5 ? -1 : 1) * x[j]; }
+      i2 += a * a; rnd2 += b * b;
+    }
+    return { n, init: Math.sqrt(i2 / ROWS), al: sAbs, rnd: Math.sqrt(rnd2 / ROWS) }; // al, rnd: chưa nhân learning rate
+  });
+  const eta = n => par === 'sp' ? ETA0 : ETA0 * 128 / n;
+  function upd() {
+    const i = +sl.value, s = SIM[i], n = s.n;
+    box.querySelector('#mupNv').textContent = P.nf(n, 0) + (i ? ' (gấp ' + (n / 128) + ' lần 128)' : ' (mô hình gốc)');
+    const pI = SIM.map(q => [q.n, q.init]), pA = SIM.map(q => [q.n, eta(q.n) * q.al]), pR = SIM.map(q => [q.n, eta(q.n) * q.rnd]);
+    P.plot(box.querySelector('#mupP'), {
+      aria: 'Độ lớn activation và lượng thay đổi sau một bước theo độ rộng',
+      x: { min: 100, max: 10000, log: true, label: 'độ rộng n', ticks: WS, fmt: v => v >= 1000 ? P.nf(v / 1024, 0) + 'k' : String(v) },
+      y: { min: 0.01, max: 100, log: true, label: 'độ lớn mỗi phần tử (RMS)' },
+      series: [
+        { pts: pI, color: 'var(--muted)', width: 2, dots: 4, tip: p => `n = ${p[0]}: activation khởi tạo ≈ <b>${P.nf(p[1], 2)}</b>` },
+        { pts: pA, color: 'var(--accent)', width: 2.6, dots: 4.5, tip: p => `n = ${p[0]}: thay đổi sau 1 bước ≈ <b>${P.nf(p[1], 2)}</b>` },
+        { pts: pR, color: 'var(--num)', width: 1.8, dash: '6 4', dots: 3.5, tip: p => `n = ${p[0]}: bước hướng ngẫu nhiên ≈ <b>${P.nf(p[1], 3)}</b>` }
+      ],
+      marks: [{ x: n, y: eta(n) * s.al, tip: `Độ rộng bạn chọn: thay đổi ≈ <b>${P.nf(eta(n) * s.al, 2)}</b> mỗi phần tử` }]
+    });
+    const d = eta(n) * s.al, ratio = d / s.init;
+    box.querySelector('#mupS').innerHTML = `
+      <div><b>${eta(n).toExponential(1).replace('.', ',')}</b><small>learning rate dùng cho lớp này</small></div>
+      <div><b>${P.nf(s.init, 2)}</b><small>activation lúc khởi tạo (mỗi phần tử)</small></div>
+      <div class="${ratio > 4 ? 'bad' : ratio < 1.5 ? 'good' : ''}"><b>${P.nf(d, 2)}</b><small>thay đổi sau một bước (mỗi phần tử)</small></div>
+      <div><b>× ${P.nf(ratio, 1)}</b><small>thay đổi ÷ activation</small></div>`;
+    box.querySelector('#mupM').innerHTML = (par === 'sp'
+      ? `Learning rate giữ nguyên nên lượng thay đổi tăng tỉ lệ thuận với n (độ dốc 1 trên log–log): ở n = ${P.nf(n, 0)} nó lớn gấp ${P.nf(n / 128, 0)} lần ở n = 128. Muốn mô hình rộng không nổ phải tự giảm learning rate, nên learning rate tốt nhất trôi sang trái như slide 44.`
+      : `Learning rate chia cho n nên lượng thay đổi đứng yên ở mọi độ rộng (đường xanh nằm ngang): đúng điều kiện A2. Learning rate tốt nhất của mô hình 128 dùng thẳng được cho mô hình ${P.nf(n, 0)}.`) +
+      ' Vì sao tăng theo n chứ không theo √n? Bước cập nhật của Adam có dấu thẳng hàng với đầu vào x, nên n số hạng cộng dồn cùng chiều. Activation lúc khởi tạo và một bước có hướng ngẫu nhiên (đường chấm) thì cộng n số hạng lệch chiều nhau, chỉ lớn cỡ √n lần mỗi số hạng. Các chấm là mô phỏng thật với 48 hàng của ma trận.';
+  }
+  box.querySelectorAll('[data-g="par"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    par = b.dataset.v; box.querySelectorAll('[data-g="par"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); upd();
+  }));
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<h2 id="l11-mup-transformer" data-short="muP cho Transformer"><span>muP cho Transformer: từng ma trận một</span><span class="slide-range">slide 51</span></h2>
+<div class="slides" data-s="51"></div>
+<p>Áp vào Transformer (slide 51, bảng từ bài "A Large-Scale Exploration of µ-Transfer" của Lucas Lingle). Ký hiệu: \(M\) là độ rộng \(d_{model}\), \(P\) là độ rộng của mô hình gốc dùng để chỉnh, \(\alpha\) là learning rate gốc, \(H\) số head, \(D\) kích thước mỗi head, \(F\) là \(d_{ff}\):</p>
+<div class="tbl"><table class="l11-cmp">
+  <tr><th>Ma trận</th><th>Phương sai khởi tạo</th><th>Learning rate Adam</th><th>Vì sao</th></tr>
+  <tr><td>\(W^E\) (embedding)</td><td>1</td><td>\(\alpha\)</td><td>Fan-in là từ vựng (cố định), nên \(1/n_{l-1}\) là hằng số</td></tr>
+  <tr><td>\(W^{AQ}, W^{AK}, W^{AV}\)</td><td>\(1/M\)</td><td>\(\alpha P/M\)</td><td>Lớp ẩn, fan-in \(M\)</td></tr>
+  <tr><td>\(W^{AO}\)</td><td>\(1/(HD)\), thường \(= 1/M\)</td><td>\(\alpha P/M\)</td><td>Fan-in là \(HD\)</td></tr>
+  <tr><td>\(W^{FI}\) (MLP vào)</td><td>\(1/M\)</td><td>\(\alpha P/M\)</td><td>Fan-in \(M\)</td></tr>
+  <tr><td>\(W^{FO}\) (MLP ra)</td><td>\(1/F\), tức \(0{,}25/M\) khi \(F = 4M\)</td><td>\(\alpha P/M\)</td><td>Fan-in \(F\)</td></tr>
+  <tr><td>\(W^U\) (lớp đầu ra)</td><td class="hi">\(1/M^2\)</td><td>\(\alpha P/M\)</td><td>Fan-out (từ vựng) nhỏ hơn fan-in: trường hợp "thu hẹp"</td></tr>
+</table></div>
+<p>Mọi dòng đều khớp với tóm tắt ở mục trước: phương sai \(1/\text{fan-in}\) (độ lệch chuẩn \(1/\sqrt{\text{fan-in}}\)), learning rate Adam \(\propto 1/\text{fan-in}\), riêng lớp đầu ra có phương sai \(1/M^2\). Các thao tác của MiniCPM ở <a href="#l11-minicpm-mup">Phần 1</a> chính là bảng này viết theo cách khác.</p>
+<p>Thêm một quy tắc cho attention: dùng hệ số \(1/D\) thay cho \(1/\sqrt{D}\) quen thuộc trong \(\text{softmax}(QK^\top/\sqrt{D})\). Lý do giống hệt chuyện "thẳng hàng": lúc khởi tạo, \(q\) và \(k\) ngẫu nhiên với nhau nên \(q \cdot k\) (tổng \(D\) số hạng) cỡ \(\sqrt{D}\). Sau khi huấn luyện, \(q\) và \(k\) học để tương quan, các số hạng cộng cùng chiều, nên \(q \cdot k\) cỡ \(D\). Chia cho \(D\) mới giữ được \(\Theta(1)\). Lingle ghi: với \(D\) cố định khi tăng \(M\), về lý thuyết hằng số nào cũng hợp lệ, nhưng trong thí nghiệm hệ số này ảnh hưởng lớn tới hiệu năng và khả năng chuyển.</p>
+
+<h2 id="l11-mup-replicate" data-short="muP đúng tới đâu"><span>Kiểm chứng muP: bền với gì, gãy ở đâu</span><span class="slide-range">slide 52–57</span></h2>
+<div class="slides" data-s="52"></div>
+<p><b>Câu hỏi 1: muP có đúng như quảng cáo không?</b> (slide 52) Lingle huấn luyện ba độ rộng 128, 512, 2 048 (mỗi mô hình rộng gấp 4, to gấp 16 lần mô hình trước) với 5 mức learning rate gốc. Ở bản muP gốc, learning rate tốt nhất là \(2^{-6}\) ở cả ba độ rộng (số in đậm). Thêm bias vào các phép chiếu cũng vẫn chuyển tốt. <mark>Learning rate tốt nhất của mô hình nhỏ dự đoán đúng learning rate tốt nhất của mô hình lớn.</mark></p>
+
+<div class="slides" data-s="53"></div>
+<p>Nhưng Transformer hiện đại có nhiều thành phần nằm ngoài lý thuyết của muP (slide 53): hàm kích hoạt SwiGLU và ReLU bình phương, batch lớn hoặc nhỏ, các biến thể khởi tạo (ví dụ khởi tạo attention bằng 0), hệ số gain của RMSNorm, optimizer lạ (Lion), các bộ điều chuẩn (regularizer). Cái nào làm gãy muP? Theo bài báo, phần lớn <b>không</b> làm gãy: kích hoạt, batch size, các biến thể khởi tạo đều vẫn chuyển được. Ba thứ sau thì có.</p>
+
+<div class="slides" data-s="54,55,56"></div>
+<ul>
+  <li><b>Gain có thể học của RMSNorm</b> (slide 54): cả gain dạng vectơ lẫn dạng một số đều làm learning rate tốt nhất không còn đứng yên. Tệ hơn, gain còn làm mô hình muP lớn nhất kém đi. Nhưng bỏ gain đi thì gần như không mất gì (<a href="#l03-rmsnorm">RMSNorm</a> vẫn chuẩn hoá được, chỉ không có hệ số học được).</li>
+  <li><b>Optimizer Lion</b> (slide 55): Lion chỉ dùng <i>dấu</i> của momentum. Quy tắc muP được dẫn cho Adam không tự động đúng cho Lion: learning rate tốt nhất trôi giữa các độ rộng.</li>
+  <li><b>Weight decay mạnh (0,1)</b> (slide 56): weight decay tách rời (decoupled, như AdamW) với hệ số 0,1. Thầy gọi đây có lẽ là thất bại đáng kể duy nhất của muP, vì weight decay 0,1 rất phổ biến (<a href="#l03-reg">Lecture 3</a>).</li>
+</ul>
+
+<div class="slides" data-s="57"></div>
+<p><b>Vậy muP có ích không?</b> (slide 57) Ít nhất ở một mức độ nào đó. Bảng trái là mô hình SP (tham số hoá tiêu chuẩn): learning rate tốt nhất trôi từ \(2^{-6}\) (rộng 128) sang \(2^{-8}\) (512) rồi \(2^{-10}\) (2 048), và ở mô hình 2 048 nhiều mức learning rate làm loss vọt lên trên 7. Bảng phải là thí nghiệm lớn của muP: từ 2 triệu tới <b>10 tỉ tham số</b> (rộng 8 192), learning rate tốt nhất vẫn là \(2^{-6}\). Bằng chứng hiện tại cho thấy muP dễ chỉnh hơn, vì SP kém ổn định hơn khá nhiều.</p>
+
+<div class="widget" id="transferW">
+  <h4>Thử nghiệm: learning rate tốt nhất có "chuyển" được qua các độ rộng không?</h4>
+  <div class="l11-ctl" data-g="abl">
+    <button class="l11-btn" data-v="mup" aria-pressed="true">muP gốc</button>
+    <button class="l11-btn" data-v="sp" aria-pressed="false">SP (tiêu chuẩn)</button>
+    <button class="l11-btn" data-v="bias" aria-pressed="false">+ bias</button>
+    <button class="l11-btn" data-v="gv" aria-pressed="false">+ gain RMSNorm (vectơ)</button>
+    <button class="l11-btn" data-v="gs" aria-pressed="false">+ gain RMSNorm (một số)</button>
+    <button class="l11-btn" data-v="lion" aria-pressed="false">Lion</button>
+    <button class="l11-btn" data-v="wd" aria-pressed="false">Weight decay 0,1</button>
+    <button class="l11-btn" data-v="big" aria-pressed="false">muP tới 10B</button>
+  </div>
+  <div class="l11-plot" id="transferP"></div>
+  <div class="l11-legend" id="transferL"></div>
+  <p class="l11-msg" id="transferM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('transferW'); if (!box || !window.L11P) return;
+  const P = window.L11P;
+  const G5 = [-10, -8, -6, -4, -2];
+  const T = {
+    mup: { g: G5, ok: true, r: { 128: [3.846, 3.743, 3.695, 3.884, 4.143], 512: [3.114, 2.993, 2.953, 3.221, 3.506], 2048: [2.711, 2.553, 2.511, 2.563, 3.244] }, m: 'Cả ba độ rộng có đáy ở cùng một learning rate gốc, 2⁻⁶ (slide 52).' },
+    sp: { g: G5, ok: false, r: { 128: [3.841, 3.757, 3.706, 3.879, 4.030], 512: [3.013, 2.967, 2.987, 3.383, 7.403], 2048: [2.738, 2.902, 7.247, 7.477, 7.314] }, m: 'Đáy trôi sang trái khi mô hình rộng ra: 2⁻⁶ → 2⁻⁸ → 2⁻¹⁰, và mô hình rộng nổ ở learning rate mà mô hình hẹp vẫn chạy tốt (slide 57).' },
+    bias: { g: G5, ok: true, r: { 128: [3.838, 3.735, 3.705, 3.911, 4.269], 512: [3.108, 2.986, 2.947, 2.970, 3.557], 2048: [2.710, 2.552, 2.529, 2.672, 3.418] }, m: 'Thêm bias vào các phép chiếu: đáy vẫn ở 2⁻⁶ (slide 52).' },
+    gv: { g: G5, ok: false, r: { 128: [3.842, 3.744, 3.689, 3.670, 3.681], 512: [3.101, 2.992, 2.951, 2.950, 3.412], 2048: [2.692, 2.553, 2.609, 2.605, 3.169] }, m: 'Gain dạng vectơ: đáy nhảy từ 2⁻⁴ (rộng 128, 512) sang 2⁻⁸ (rộng 2 048). Chú ý đáy ở 128 và 512 rất phẳng (chênh 0,001), nhưng ở 2 048 thì không (slide 54).' },
+    gs: { g: G5, ok: false, r: { 128: [3.843, 3.749, 3.692, 3.670, 4.471], 512: [3.106, 3.000, 2.961, 2.959, 3.515], 2048: [2.704, 2.570, 2.525, 2.542, 3.334] }, m: 'Gain dạng một số: đáy từ 2⁻⁴ sang 2⁻⁶ ở mô hình rộng nhất (slide 54).' },
+    lion: { g: G5, ok: false, as: true, r: { 128: [3.708, 3.736, 4.057, 4.344, 10.380], 512: [2.952, 2.947, 3.416, 3.961, 10.285], 2048: [2.519, 2.511, 3.151, 10.377, 10.377] }, m: 'Lion: đáy từ mức thấp nhất (rộng 128) sang mức thứ hai (512, 2 048), và learning rate lớn làm loss nổ lên trên 10 (slide 55).' },
+    wd: { g: G5, ok: false, as: true, r: { 128: [3.760, 3.679, 3.694, 3.741, 4.011], 512: [3.057, 2.963, 2.957, 3.139, 3.373], 2048: [2.686, 2.535, 2.502, 3.123, 6.594] }, m: 'Weight decay tách rời 0,1: đáy từ mức thứ hai (rộng 128) sang mức thứ ba (512, 2 048) (slide 56).' },
+    big: { g: [-8, -6, -4], ok: true, r: { 128: [3.791, 3.766, 3.814], 512: [3.016, 2.983, 3.004], 2048: [2.513, 2.459, 2.466], 8192: [2.238, 2.167, 2.169] }, m: 'Thí nghiệm lớn: từ 2 triệu (rộng 128) đến 10 tỉ tham số (rộng 8 192), đáy vẫn ở 2⁻⁶ (slide 57). Ở 10B, 2⁻⁴ chỉ kém 0,002.' }
+  };
+  const COL = { 128: 'color-mix(in oklab, var(--accent) 45%, var(--surface))', 512: 'color-mix(in oklab, var(--accent) 72%, var(--surface))', 2048: 'var(--accent)', 8192: 'var(--ink)' };
+  const YMAX = 4.5, sup = e => '2' + P.pow(e).slice(2);
+  function show(k) {
+    const t = T[k], ws = Object.keys(t.r);
+    const series = [], marks = [];
+    ws.forEach(w => {
+      const v = t.r[w], bi = v.indexOf(Math.min(...v));
+      series.push({ pts: v.map((y, i) => [t.g[i], Math.min(y, YMAX), y]), color: COL[w], width: 2.4, dots: 4, label: 'rộng ' + w, labelAt: 'start', anchor: 'end', ldx: -9, ldy: 4,
+        tip: p => `rộng ${w}, learning rate ${sup(p[0])}<br>loss <b>${P.nf(p[2], 3)}</b>${p[2] > YMAX ? ' (ngoài khung)' : ''}` });
+      marks.push({ x: t.g[bi], y: v[bi], color: COL[w], r: 7.5, tip: `rộng ${w}: tốt nhất ở ${sup(t.g[bi])}, loss <b>${P.nf(v[bi], 3)}</b>` });
+    });
+    P.plot(box.querySelector('#transferP'), {
+      aria: 'Loss theo learning rate cho các độ rộng',
+      x: { min: t.g[0] - 1.7, max: t.g[t.g.length - 1] + 0.5, label: 'learning rate (gốc) — thang log₂', ticks: t.g, fmt: sup },
+      y: { min: 2, max: YMAX, label: 'loss kiểm tra', ticks: [2, 2.5, 3, 3.5, 4, 4.5], fmt: v => P.nf(v, 1) },
+      series, marks
+    });
+    box.querySelector('#transferL').innerHTML = ws.map(w => `<span><i style="border-color:${COL[w]}"></i>rộng ${w}</span>`).join('') + '<span><i class="o" style="background:var(--muted)"></i>chấm lớn: learning rate tốt nhất</span>';
+    box.querySelector('#transferM').innerHTML = `<span class="l11-verdict ${t.ok ? 'ok' : 'no'}">${t.ok ? '✓ chuyển được' : '✗ không chuyển được'}</span> ${t.m}` +
+      (t.as ? ' (Slide không in tiêu đề cột cho bảng này; ở đây giả sử cùng lưới 2⁻¹⁰ … 2⁻² như các bảng khác trong cùng bài báo.)' : '') + ' Điểm vượt quá 4,5 được vẽ ở mép trên; rê chuột để xem số thật.';
+  }
+  box.querySelectorAll('[data-g="abl"] .l11-btn').forEach(b => b.addEventListener('click', () => {
+    box.querySelectorAll('[data-g="abl"] .l11-btn').forEach(x => x.setAttribute('aria-pressed', x === b)); show(b.dataset.v);
+  }));
+  show('mup');
+})();
+</script>
+<div class="note warn"><p>Đọc bảng của Lingle cần nhớ hai điều. Loss ở các mức learning rate gần đáy thường chỉ chênh nhau vài phần nghìn, nhỏ hơn cả độ nhiễu giữa hai lần chạy, nên "đáy nhảy một cột" đôi khi là nhiễu. Và đây là một bài báo, một kiến trúc, một bộ dữ liệu: kết luận "weight decay mạnh làm gãy muP" có thể phụ thuộc vào cách cài đặt weight decay.</p></div>
+
+
+<h2 id="l11-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 58</span></h2>
+<div class="slides" data-s="58"></div>
+<p>Slide cuối tóm lại ba khó khăn khi scale "ngoài đời" và ba hướng giải:</p>
+<div class="tbl"><table>
+  <tr><th>Khó khăn</th><th>Hướng giải</th></tr>
+  <tr><td>Chọn siêu tham số kiến trúc (độ rộng, độ sâu…)</td><td>Giả sử chúng ổn định theo quy mô, hoặc dùng muP</td></tr>
+  <tr><td>Chọn siêu tham số của optimizer (learning rate, batch)</td><td>Tìm learning rate và batch tối ưu ở quy mô nhỏ, rồi giữ cố định (muP) hoặc khớp scaling law để dự đoán (DeepSeek, Step Law)</td></tr>
+  <tr><td>Tính toán cần cho đợt quét lớn của Chinchilla</td><td>Dùng lịch learning rate khác (kiểu WSD, nhiều bậc)</td></tr>
+</table></div>
+<div class="note key">
+  <ul>
+    <li><b>MiniCPM</b>: muP giữ learning rate tối ưu ở 0,01 cho mọi cỡ; batch tối ưu tăng theo luật luỹ thừa khi loss giảm (\(\propto L^{-6{,}24}\)); WSD làm phân tích Chinchilla rẻ; khớp chung ra khoảng 96 token mỗi tham số.</li>
+    <li><b>DeepSeek</b>: không muP; \(\eta_{opt} \propto C^{-0{,}125}\), \(B_{opt} \propto C^{0{,}327}\); lịch nhiều bậc 80/10/10; isoFLOP với \(M\) (FLOP mỗi token, có tính attention); dự đoán đúng loss của 7B và 67B.</li>
+    <li><b>Mô hình gần đây</b> (Qwen, Kimi K2, Hunyuan, Llama 3, MiniMax): vẫn isoFLOP và scaling law cho siêu tham số, nhưng công bố ít chi tiết. Scaling law còn dùng để chọn độ thưa MoE, kiến trúc attention, và dự đoán cả độ chính xác trên tác vụ thật.</li>
+    <li><b>Step Law</b>: loss theo learning rate và batch là hàm lồi; batch tối ưu chủ yếu phụ thuộc \(D\); learning rate giảm theo \(N\), tăng theo \(D\).</li>
+    <li><b>So optimizer</b>: chỉnh mốc so sánh cho đúng (AdamW chỉnh tốt nhanh gấp 2 AdamW chỉnh tồi), đo bằng token chứ không bằng loss thô, và luôn kiểm tra theo quy mô và tỉ lệ Chinchilla: lợi thế thường giảm khi mô hình lớn.</li>
+    <li><b>Muon</b>: trực giao hoá momentum bằng Newton–Schulz (chỉ phép nhân ma trận), đẩy mọi giá trị kỳ dị về gần 1; đã chạy được ở quy mô nghìn tỉ tham số (Kimi K2).</li>
+    <li><b>muP</b> = hai điều kiện: activation \(\Theta(1)\) lúc khởi tạo (A1) và lượng thay đổi \(\Theta(1)\) sau một bước (A2). Suy ra: khởi tạo \(\propto 1/\sqrt{\text{fan-in}}\) (nhỏ hơn khi lớp thu hẹp), learning rate Adam \(\propto 1/\text{fan-in}\). Chìa khoá là bước cập nhật thẳng hàng với đầu vào nên cộng dồn theo \(n\) chứ không theo \(\sqrt{n}\).</li>
+    <li><b>muP bền</b> với kích hoạt, batch, biến thể khởi tạo, bias; <b>gãy</b> với gain RMSNorm học được, Lion, weight decay mạnh. Nhìn chung vẫn dễ chỉnh hơn SP.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao không thể lấy các điểm dữ liệu cho scaling law bằng cách dừng sớm một lần chạy dài dùng lịch cosine? WSD thay đổi điều gì?</summary>
+    <div><p>Lịch cosine chỉ chạm đáy learning rate ở đúng bước cuối đã lên lịch. Dừng giữa chừng thì learning rate còn cao, mô hình chưa "lắng xuống", loss tệ hơn một lần chạy ngắn được lên lịch vừa khít. Nên mỗi lượng dữ liệu cần một lần chạy riêng. Với WSD, giai đoạn stable không phụ thuộc vào điểm kết thúc: lấy checkpoint ở bất kỳ đâu rồi chạy thêm đoạn decay ngắn (khoảng 10%) là có một điểm dữ liệu "như được lên lịch đúng".</p></div></details>
+  <details><summary>2. Cần các điểm dữ liệu ở 10N, 20N, …, 60N token. Lịch cosine tốn tổng cộng bao nhiêu token? WSD với decay 10% tốn bao nhiêu?</summary>
+    <div><p>Cosine: \(10 + 20 + \dots + 60 = 210N\). WSD: giai đoạn stable chạy tới \(0{,}9 \times 60N = 54N\), cộng sáu đoạn decay \(0{,}1 \times 210N = 21N\), tổng \(75N\). Rẻ hơn khoảng 2,8 lần, và khoảng cách tăng lên khi cần nhiều điểm hơn.</p></div></details>
+  <details><summary>3. MiniCPM-2.4B có \(d_m = 2304\), \(d_{base} = 256\), learning rate gốc 0,01, <code>init_std</code> 0,1. Learning rate và độ lệch chuẩn khởi tạo của các ma trận ẩn là bao nhiêu?</summary>
+    <div><p>\(r = 2304/256 = 9\). Learning rate \(0{,}01/9 \approx 0{,}0011\). Độ lệch chuẩn \(0{,}1/\sqrt{9} \approx 0{,}033\). Logits nhân \(1/9\). Các tham số không phải ma trận (norm, bias) vẫn dùng 0,01 và khởi tạo 0,1.</p></div></details>
+  <details><summary>4. Theo đường khớp của MiniCPM (\(\text{BS} \approx 1{,}2\times10^9 / L^{6{,}24}\)), batch tối ưu ở loss 3,0 và 2,5 là bao nhiêu? Có nên dùng thẳng con số này cho mô hình của bạn không?</summary>
+    <div><p>\(3^{6{,}24} \approx 950\) nên batch khoảng \(1{,}3\times10^6\) token. \(2{,}5^{6{,}24} \approx 304\) nên khoảng \(3{,}9\times10^6\) token. Không nên dùng thẳng: loss phụ thuộc dữ liệu và tokenizer, nên hằng số không mang sang được. Thứ mang sang được là cách làm (đo batch tối ưu ở mô hình nhỏ rồi khớp theo loss) và hình dạng (batch tăng nhanh khi loss giảm).</p></div></details>
+  <details><summary>5. MiniCPM khớp được \(\alpha = \beta = 0{,}30\). Điều đó nói gì về tỉ lệ \(D_{opt}/N_{opt}\) khi tăng ngân sách? Ở điểm tối ưu, phần lỗi do mô hình và phần lỗi do dữ liệu so với nhau thế nào?</summary>
+    <div><p>\(\eta = (\beta - \alpha)/(\alpha + \beta) = 0\), nên tỉ lệ không đổi ở mọi ngân sách (khoảng 96 token mỗi tham số). Điều kiện tối ưu khi \(\alpha = \beta\) là \(C_N N^{-\alpha} = C_D D^{-\beta}\): hai phần lỗi bằng nhau. Nếu một phần lớn hơn, chuyển bớt ngân sách sang phía đó sẽ giảm tổng loss.</p></div></details>
+  <details><summary>6. Theo công thức của DeepSeek, khi ngân sách tính toán tăng 100 lần, batch size và learning rate tối ưu thay đổi bao nhiêu?</summary>
+    <div><p>Batch nhân \(100^{0{,}3271} \approx 4{,}5\). Learning rate nhân \(100^{-0{,}125} \approx 0{,}56\). Batch lớn lên khá nhanh, learning rate giảm chậm.</p></div></details>
+  <details><summary>7. Vì sao DeepSeek đo cỡ mô hình bằng \(M\) (FLOP mỗi token không tính embedding) thay cho \(6N\)?</summary>
+    <div><p>\(6N\) chỉ đếm các phép nhân với trọng số, bỏ qua phần tính attention (\(QK^\top\), nhân với \(V\)) vốn không có tham số nhưng tốn FLOP tỉ lệ với độ dài chuỗi. Ở mô hình nhỏ, \(d_{model}\) nhỏ so với độ dài chuỗi nên phần này chiếm tỉ trọng lớn, và dùng \(6N\) sẽ làm lệch đáng kể ước lượng tính toán, kéo theo lệch độ dốc khi khớp.</p></div></details>
+  <details><summary>8. Theo Step Law, giữ nguyên số token \(D\) và tăng gấp đôi cỡ mô hình \(N\) thì learning rate và batch size tối ưu thay đổi thế nào? DeepSeek thì sao?</summary>
+    <div><p>Step Law: learning rate nhân \(2^{-0{,}713} \approx 0{,}61\); batch không đổi (chỉ phụ thuộc \(D\)). DeepSeek chỉ nhìn \(C = 6ND\), tăng gấp đôi: learning rate nhân \(2^{-0{,}125} \approx 0{,}92\), batch nhân \(2^{0{,}327} \approx 1{,}25\). Hai luật cho hướng điều chỉnh khác nhau khá nhiều.</p></div></details>
+  <details><summary>9. Một bài báo nói optimizer mới nhanh gấp 2 AdamW trên mô hình 130M, với AdamW dùng learning rate \(6\times10^{-4}\). Bạn nên kiểm tra hai điều gì trước khi tin?</summary>
+    <div><p>(1) Mốc so sánh đã được chỉnh chưa: slide 39 cho thấy chỉ chỉnh learning rate của AdamW lên \(8\times10^{-3}\) đã nhanh gấp 2. (2) Lợi thế còn không ở mô hình lớn hơn và ở các tỉ lệ Chinchilla khác: lợi thế của Muon, Soap giảm từ khoảng 1,4× ở 130M xuống 1,1× ở 1,2B. Nên đo tốc độ theo số token AdamW cần để đạt cùng loss.</p></div></details>
+  <details><summary>10. Vì sao vòng lặp Newton–Schulz chỉ thay đổi giá trị kỳ dị mà giữ nguyên các hướng? Vì sao Muon dùng đa thức bậc 5 với \(a = 3{,}4445\) thay vì đa thức bậc 3 cổ điển?</summary>
+    <div><p>Với \(X = USV^\top\), mọi biểu thức dạng \((XX^\top)^k X\) đều bằng \(U S^{2k+1} V^\top\), nên mỗi vòng biến \(X\) thành \(U\varphi(S)V^\top\). Đa thức bậc 3 \(1{,}5s - 0{,}5s^3\) hội tụ đúng về 1 nhưng chỉ nhân giá trị nhỏ với 1,5 mỗi vòng, cần rất nhiều vòng. Đa thức bậc 5 của Muon nhân khoảng 3,4 lần mỗi vòng nên 5 vòng là đủ đưa hầu hết giá trị lên vùng 0,7–1,2; không về đúng 1 nhưng đủ tốt cho tối ưu.</p></div></details>
+  <details><summary>11. Với Adam, vì sao learning rate của một lớp ẩn rộng \(n\) phải tỉ lệ với \(1/n\)?</summary>
+    <div><p>Bước cập nhật của Adam có mỗi phần tử cỡ \(\eta\), với dấu bằng dấu của tích ngoài (tín hiệu lỗi × đầu vào). Nhân với chính đầu vào đó, \(n\) số hạng cộng dồn <i>cùng chiều</i>, nên mỗi đầu ra thay đổi cỡ \(\eta n\). Muốn thay đổi giữ \(\Theta(1)\) (điều kiện A2) thì \(\eta \propto 1/n\). Nếu bước cập nhật có hướng ngẫu nhiên, các số hạng lệch chiều nhau và chỉ cỡ \(\eta\sqrt{n}\): chính sự thẳng hàng làm khác biệt.</p></div></details>
+  <details><summary>12. Trong nghiên cứu của Lingle, những thành phần nào làm learning rate tốt nhất không còn chuyển được qua các độ rộng? Nếu muốn dùng muP, bạn xử lý thế nào?</summary>
+    <div><p>Gain có thể học của RMSNorm (dạng vectơ hay một số), optimizer Lion, và weight decay tách rời mạnh (0,1). Cách xử lý: bỏ gain của RMSNorm (gần như không mất hiệu năng); dùng Adam(W) thay vì Lion, hoặc tự dẫn lại quy tắc cho optimizer đó; cẩn thận với weight decay, kiểm tra lại việc chuyển learning rate ở vài độ rộng trước khi tin.</p></div></details>
+  <details><summary>13. Lớp đầu ra (biến \(d_{model}\) thành từ vựng \(V\)) được muP khởi tạo khác SP thế nào? Vì sao?</summary>
+    <div><p>Đây là lớp thu hẹp: fan-out \(V\) cố định, fan-in \(d_{model}\) lớn dần. muP cho độ lệch chuẩn \(\Theta(\frac{1}{\sqrt{d}}\sqrt{V/d}) \propto 1/d\), tức phương sai \(\propto 1/d^2\) (dòng \(W^U\) trong bảng của Lingle), trong khi SP dùng phương sai \(1/d\). Lý do: muP lo cho trường hợp activation thẳng hàng với hướng kéo giãn mạnh nhất, điều xảy ra trong lúc huấn luyện.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>muP (µP)</td><td>Cách khởi tạo và nhân learning rate theo độ rộng để siêu tham số tối ưu không trôi khi scale</td></tr>
+  <tr><td>SP (standard parametrization)</td><td>Cách tiêu chuẩn: khởi tạo \(1/\sqrt{\text{fan-in}}\), learning rate như nhau mọi độ rộng</td></tr>
+  <tr><td>µTransfer</td><td>Chỉnh siêu tham số trên mô hình muP nhỏ rồi dùng thẳng cho mô hình lớn</td></tr>
+  <tr><td>Fan-in / fan-out</td><td>Số chiều đầu vào / đầu ra của một lớp (\(n_{l-1}\) / \(n_l\))</td></tr>
+  <tr><td>\(\Theta(1)\)</td><td>Không lớn dần, không nhỏ dần khi mô hình rộng ra</td></tr>
+  <tr><td>Điều kiện A1, A2</td><td>Activation lúc khởi tạo, và lượng thay đổi sau một bước, đều \(\Theta(1)\)</td></tr>
+  <tr><td>Chuẩn phổ (spectral norm)</td><td>Hệ số kéo giãn lớn nhất của một ma trận, bằng giá trị kỳ dị lớn nhất</td></tr>
+  <tr><td>Chuẩn Frobenius</td><td>Căn tổng bình phương mọi phần tử của ma trận</td></tr>
+  <tr><td>Điều kiện phổ</td><td>Trọng số và bước cập nhật đều có chuẩn phổ cỡ \(\sqrt{\text{fan-out}/\text{fan-in}}\)</td></tr>
+  <tr><td>Hệ số residual \(1/\sqrt{L}\)</td><td>Thu nhỏ phần cộng thêm ở mỗi lớp để tổng không lớn dần theo độ sâu</td></tr>
+  <tr><td>Lịch cosine</td><td>Learning rate giảm theo nửa chu kỳ cosine, chạm đáy ở bước cuối đã định</td></tr>
+  <tr><td>WSD</td><td>Warmup–Stable–Decay: tăng nhanh, giữ phẳng, giảm nhanh ở khoảng 10% cuối</td></tr>
+  <tr><td>Lịch nhiều bậc</td><td>Learning rate giảm theo bậc thang (DeepSeek: 100% → 31,6% → 10% ở 80% và 90% số token)</td></tr>
+  <tr><td>Bits-per-byte</td><td>Số bit trung bình để mã hoá mỗi byte văn bản; so được giữa các tokenizer</td></tr>
+  <tr><td>\(M\) (FLOP mỗi token)</td><td>Cách DeepSeek đo cỡ mô hình: FLOP không tính embedding, có tính attention</td></tr>
+  <tr><td>Near-optimal</td><td>Cấu hình có loss không quá một ngưỡng nhỏ (DeepSeek: 0,25%) so với tốt nhất</td></tr>
+  <tr><td>Tỉ lệ token/tham số</td><td>\(D/N\) tối ưu: Chinchilla khoảng 20, Llama 3 khoảng 39, MiniCPM và Hunyuan khoảng 96</td></tr>
+  <tr><td>Tỉ lệ Chinchilla</td><td>Số token chia cho mức tối ưu của Chinchilla (khoảng 20N)</td></tr>
+  <tr><td>Độ thưa (sparsity) MoE</td><td>Tổng số expert ÷ số expert kích hoạt mỗi token (Kimi K2: 384 ÷ 8 = 48)</td></tr>
+  <tr><td>Tham số kích hoạt</td><td>Số tham số thật sự tham gia tính toán cho mỗi token trong MoE</td></tr>
+  <tr><td>Step Law</td><td>Luật của StepFun: \(\eta = 1{,}79 N^{-0{,}713} D^{0{,}307}\), \(B = 0{,}58 D^{0{,}571}\)</td></tr>
+  <tr><td>Tốc độ theo dữ liệu</td><td>Số token AdamW cần ÷ số token optimizer mới cần, để đạt cùng loss</td></tr>
+  <tr><td>Muon</td><td>Optimizer cho tham số ma trận: momentum rồi trực giao hoá bằng Newton–Schulz</td></tr>
+  <tr><td>Newton–Schulz</td><td>Vòng lặp chỉ dùng nhân ma trận, đẩy mọi giá trị kỳ dị về gần 1 (\(USV^\top \to UV^\top\))</td></tr>
+  <tr><td>Giá trị kỳ dị (SVD)</td><td>Các hệ số kéo giãn theo từng hướng trong phân tích \(W = USV^\top\)</td></tr>
+  <tr><td>Lion</td><td>Optimizer chỉ dùng dấu của momentum; không chuyển được learning rate theo muP</td></tr>
+  <tr><td>Decoupled weight decay</td><td>Weight decay áp trực tiếp lên trọng số, tách khỏi gradient (như AdamW)</td></tr>
+  <tr><td>Scale LR theo căn batch</td><td>Batch gấp \(k\) thì learning rate gấp \(\sqrt{k}\), quy tắc kinh nghiệm cho Adam</td></tr>
+</table></div>

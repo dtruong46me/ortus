@@ -74,6 +74,15 @@
       "unit": "page",
       "file": "lectures/l10.html",
       "imgDir": "img/l10"
+    },
+    {
+      "id": "l11",
+      "num": 11,
+      "title": "Scaling – case study and details",
+      "titleVi": "Scaling trong thực tế: công thức, optimizer & muP",
+      "slides": 58,
+      "file": "lectures/l11.html",
+      "imgDir": "img/l11"
     }
   ]
 }
