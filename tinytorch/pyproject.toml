@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tinytorch"
-version = "0.3.0"
+version = "0.4.0"
 description = "Framework deep learning nhỏ tự xây từ đầu (học theo khóa TinyTorch)"
 requires-python = ">=3.9"
 dependencies = ["numpy"]
