@@ -1,0 +1,1486 @@
+<style>
+  .l10-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l10-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l10-btn.ghost { font-weight: 600; }
+  .l10-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
+  .l10-ctl > span { font-size: 13px; color: var(--muted); margin-right: 2px; }
+  .l10-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l10-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l10-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l10-stats small { color: var(--muted); font-size: 12.5px; }
+  .l10-stats .bad b { color: var(--warn); }
+  .l10-stats .good b { color: var(--life); }
+  .l10-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .l10-legend i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: 3px; margin-right: 6px; }
+  .l10-legend i.d { border-top-style: dashed; }
+  .l10-legend i.o { width: 9px; height: 9px; border: 0; border-radius: 50%; vertical-align: 0; }
+  .l10-msg { margin: 10px 0 0; }
+  .l10-plot { position: relative; margin: 12px 0 4px; touch-action: pan-y; }
+  .l10-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .l10-plot svg text { font: 11.5px var(--f-display); fill: var(--muted); }
+  .l10-plot svg .lab { font-weight: 600; font-size: 12px; }
+  .l10-plot svg .g { stroke: var(--line); stroke-width: 1; }
+  .l10-plot svg .ax { stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  .l10-plot svg .ln { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  .l10-plot svg .dot { stroke: var(--surface); stroke-width: 2; }
+  .l10-plot svg .dl { fill: var(--ink); font-weight: 600; font-size: 11.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+  .l10-plot svg .vl { stroke: var(--muted); stroke-dasharray: 3 4; stroke-width: 1.2; }
+  .l10-plot svg .hv { fill: none; stroke: var(--ink); stroke-width: 2; }
+  .l10-plot .tip { font-family: var(--f-display); position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; line-height: 1.45; box-shadow: 0 4px 14px rgba(0,0,0,.14); white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); display: none; z-index: 3; }
+  .l10-plot .tip b { font-variant-numeric: tabular-nums; }
+  .l10-ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 10px 0; }
+  .l10-ladder > div { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg); }
+  .l10-ladder h5 { margin: 0 0 4px; font: 700 13.5px var(--f-display); }
+  .l10-ladder p { margin: 0; font-size: 14px; }
+  .l10-fig { margin: 18px 0 22px; }
+  .l10-fig img { display: block; width: 100%; height: auto; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; box-sizing: border-box; }
+  .l10-fig.md img { max-width: 600px; }
+  .l10-fig.sm img { max-width: 440px; }
+  .l10-fig figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  .l10-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; align-items: start; }
+  .l10-duo figure { margin: 0; }
+  .l10-duo img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-sizing: border-box; }
+  .l10-duo figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  pre.l10-py { line-height: 1.5; }
+  pre.l10-py code { font-size: 13.5px; line-height: inherit; }
+  pre.l10-py .k { color: var(--accent); font-weight: 600; }
+  pre.l10-py .c { color: var(--muted); font-style: italic; }
+  pre.l10-py .n { color: var(--num); }
+  .l10-cmp td, .l10-cmp th { font-variant-numeric: tabular-nums; }
+  .l10-cmp td.bad { color: var(--warn); font-weight: 700; }
+  .l10-cmp td.good { color: var(--life); font-weight: 700; }
+  .l10-cmp td b { color: var(--accent); }
+  .l10-bits { display: flex; flex-direction: column; gap: 7px; margin: 16px 0 6px; font-family: var(--f-display); }
+  .l10-bits > div { display: grid; grid-template-columns: 92px 1fr 64px; gap: 10px; align-items: center; font-size: 13px; }
+  .l10-bits > div > b { font-size: 13.5px; }
+  .l10-bits > div > small { color: var(--muted); text-align: right; }
+  .l10-bits .row-b { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 2px; }
+  .l10-bits .row-b i { height: 16px; border-radius: 2px; }
+  .l10-bits i.s { background: var(--warn); } .l10-bits i.e { background: var(--accent); } .l10-bits i.m { background: color-mix(in oklab, var(--accent) 50%, var(--surface)); } .l10-bits i.n { background: var(--life); }
+  .l10-hbars { display: flex; flex-direction: column; gap: 7px; margin: 12px 0 4px; }
+  .l10-hbar { display: grid; grid-template-columns: 210px 1fr 112px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l10-hbar .track { height: 16px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l10-hbar .fill { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; }
+  .l10-hbar.base .fill { background: var(--muted); }
+  .l10-hbar.best .fill { background: var(--life); }
+  .l10-hbar b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .l10-sched { overflow-x: auto; margin: 10px 0 4px; }
+  .l10-sched h5 { margin: 12px 0 6px; font: 700 12.5px var(--f-display); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .l10-sched .g { display: grid; gap: 2px; min-width: 0; }
+  .l10-sched .g i { height: 22px; border-radius: 4px; background: var(--code-bg); font: 600 10.5px var(--f-mono); color: #fff; display: flex; align-items: center; justify-content: center; font-style: normal; overflow: hidden; }
+  .l10-sched .g i.lab { background: none; color: var(--muted); font-family: var(--f-display); justify-content: flex-start; }
+  .l10-mem { display: flex; height: 26px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); margin: 6px 0 2px; }
+  .l10-mem i { display: block; height: 100%; }
+  .l10-mem .u { background: var(--accent); } .l10-mem .r { background: var(--warn); opacity: .75; } .l10-mem .f { background: var(--code-bg); }
+  .l10-memlab { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; font-size: 13px; margin-top: 10px; }
+  .l10-memlab > span { color: var(--muted); }
+  .l10-legend i.sq { width: 11px; height: 11px; border: 0; border-radius: 3px; vertical-align: -1px; }
+  .l10-steps { counter-reset: st; list-style: none; padding-left: 0 !important; }
+  .l10-steps > li { counter-increment: st; position: relative; padding-left: 34px; }
+  .l10-steps > li::before { content: counter(st); position: absolute; left: 0; top: 1px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 700 12.5px/22px var(--f-display); text-align: center; }
+  @media (max-width: 640px) {
+    .l10-btn { font-size: 13px; padding: 5px 10px; }
+    .l10-stats b { font-size: 17px; }
+    .l10-duo { grid-template-columns: minmax(0, 1fr); }
+    .l10-hbar { grid-template-columns: 118px 1fr 84px; font-size: 12px; }
+    .l10-bits > div { grid-template-columns: 70px 1fr 46px; font-size: 12px; }
+    .l10-memlab { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+
+<script>
+/* Bộ vẽ biểu đồ nhỏ dùng chung cho các ô thử nghiệm của Lecture 10 */
+(function () {
+  if (window.L10P) return;
+  const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  const pow = e => '10' + String(e).replace(/./g, c => SUP[c] || c);
+  const nice = x => { const e = Math.pow(10, Math.floor(Math.log10(x))), m = x / e; return (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * e; };
+  const nf = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k == null ? 2 : k });
+  // số lớn: 3,2 tỉ · 1,4 nghìn tỉ · 2,3·10²⁵
+  const big = x => {
+    if (!isFinite(x)) return '∞';
+    if (x >= 1e15) { const e = Math.floor(Math.log10(x)); return nf(x / Math.pow(10, e), 1) + '·' + pow(e); }
+    if (x >= 1e12) return nf(x / 1e12, x < 1e13 ? 1 : 0) + ' nghìn tỉ';
+    if (x >= 1e9) return nf(x / 1e9, x < 1e10 ? 1 : 0) + ' tỉ';
+    if (x >= 1e6) return nf(x / 1e6, x < 1e7 ? 1 : 0) + ' triệu';
+    if (x >= 1e4) return nf(x / 1e3, 0) + ' nghìn';
+    return nf(x, x < 10 ? 2 : 0);
+  };
+  const sci = x => { const e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e); return (Math.abs(m - 1) < 0.05 ? '' : nf(m, 1) + '·') + pow(e); };
+  function mk(ax, a, b) {
+    const f = ax.log ? Math.log10 : v => v, lo = f(ax.min), hi = f(ax.max);
+    return v => a + (f(v) - lo) / (hi - lo) * (b - a);
+  }
+  function ticks(ax) {
+    if (ax.ticks) return ax.ticks;
+    const t = [];
+    if (ax.log) {
+      const s = ax.every || 1;
+      for (let e = Math.ceil(Math.log10(ax.min) - 1e-9); e <= Math.floor(Math.log10(ax.max) + 1e-9); e += s) t.push(Math.pow(10, e));
+      return t;
+    }
+    const st = nice((ax.max - ax.min) / (ax.n || 5));
+    for (let v = Math.ceil(ax.min / st - 1e-9) * st; v <= ax.max + st * 1e-6; v += st) t.push(+v.toPrecision(10));
+    return t;
+  }
+  const tfmt = (ax, v) => ax.fmt ? ax.fmt(v) : ax.log ? pow(Math.round(Math.log10(v))) : nf(v, 3);
+  let uid = 0;
+  function draw(host) {
+    const o = host._o; if (!o) return;
+    const W = Math.max(280, Math.round(host.clientWidth || 600)), narrow = W < 520;
+    const H = o.H || (narrow ? 236 : 280);
+    const m = { l: o.ml || (narrow ? 46 : 56), r: o.mr || 18, t: 14, b: 44 };
+    const X = mk(o.x, m.l, W - m.r), Y = mk(o.y, H - m.b, m.t);
+    const id = host._id || (host._id = 'l10c' + (++uid));
+    const ok = p => isFinite(p[0]) && isFinite(p[1]) && (!o.x.log || p[0] > 0) && (!o.y.log || p[1] > 0);
+    let h = `<defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t - 6}" width="${W - m.l - m.r + 6}" height="${H - m.t - m.b + 6}"/></clipPath></defs>`;
+    ticks(o.x).forEach(v => { const x = X(v).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="g"/><text x="${x}" y="${H - m.b + 16}" text-anchor="middle">${tfmt(o.x, v)}</text>`; });
+    ticks(o.y).forEach(v => { const y = Y(v).toFixed(1); h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="g"/><text x="${m.l - 6}" y="${(+y + 4).toFixed(1)}" text-anchor="end">${tfmt(o.y, v)}</text>`; });
+    h += `<line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" class="ax"/><line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" class="ax"/>`;
+    h += `<text x="${(m.l + W - m.r) / 2}" y="${H - 6}" text-anchor="middle" class="lab">${o.x.label || ''}</text>`;
+    h += `<text transform="translate(12 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle" class="lab">${o.y.label || ''}</text>`;
+    h += `<g clip-path="url(#${id})">`;
+    (o.vlines || []).forEach(v => { const x = X(v.x).toFixed(1); h += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H - m.b}" class="vl"/>`; if (v.label) h += `<text x="${+x + 4}" y="${m.t + 12}" class="dl" style="font-weight:500">${v.label}</text>`; });
+    (o.hlines || []).forEach(v => { const y = Y(v.y).toFixed(1); h += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="vl"/>`; if (v.label) h += `<text x="${W - m.r - 4}" y="${+y - 5}" text-anchor="end" class="dl" style="font-weight:500">${v.label}</text>`; });
+    const hits = [];
+    (o.series || []).forEach(s => {
+      const pts = s.pts.filter(ok);
+      if (!pts.length) return;
+      if (s.line !== false) {
+        const d = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+        h += `<path d="${d}" class="ln" style="stroke:${s.color};stroke-width:${s.width || 2}${s.dash ? ';stroke-dasharray:' + s.dash : ''}${s.opacity != null ? ';opacity:' + s.opacity : ''}"/>`;
+      }
+      if (s.dots) pts.forEach(p => { h += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="${s.dots === true ? 4.5 : s.dots}" class="dot" style="fill:${s.color}"/>`; });
+      if (s.tip !== false) pts.forEach(p => hits.push({ x: X(p[0]), y: Y(p[1]), t: (s.tip || o.tip)(p, s) }));
+    });
+    (o.marks || []).forEach(k => {
+      if (!ok([k.x, k.y])) return;
+      const x = X(k.x), y = Y(k.y);
+      h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${k.r || 6.5}" class="dot" style="fill:${k.color || 'var(--accent)'};stroke-width:2.5"/>`;
+      if (k.tip) hits.push({ x, y, t: k.tip, pri: 1 });
+    });
+    h += `</g>`;
+    // nhãn trực tiếp (ngoài vùng cắt để không bị cụt)
+    (o.series || []).forEach(s => {
+      if (!s.label) return;
+      const pts = s.pts.filter(ok).filter(p => p[1] >= Math.min(o.y.min, o.y.max) && p[1] <= Math.max(o.y.min, o.y.max) && p[0] >= o.x.min && p[0] <= o.x.max);
+      if (!pts.length) return;
+      const p = s.labelAt === 'min' ? pts.reduce((a, q) => q[1] < a[1] ? q : a) : s.labelAt === 'start' ? pts[0] : s.labelAt === 'mid' ? pts[Math.floor(pts.length / 2)] : pts[pts.length - 1];
+      let x = X(p[0]) + (s.ldx || 0), y = Y(p[1]) + (s.ldy || -8);
+      const anc = s.anchor || (x > W - 90 ? 'end' : 'start');
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anc}" class="dl">${s.label}</text>`;
+    });
+    (o.marks || []).forEach(k => {
+      if (!k.label || !ok([k.x, k.y])) return;
+      const x = X(k.x) + (k.dx != null ? k.dx : 10), y = Y(k.y) + (k.dy != null ? k.dy : -10);
+      h += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${k.anchor || 'start'}" class="dl">${k.label}</text>`;
+    });
+    h += `<circle class="hv" r="7" cx="-99" cy="-99"/>`;
+    host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${o.aria || ''}">${h}</svg><div class="tip"></div>`;
+    const svg = host.firstChild, tip = host.lastChild, ring = svg.querySelector('.hv');
+    function move(e) {
+      const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width, sy = (e.clientY - r.top) * H / r.height;
+      let best = null, bd = 1e9;
+      hits.forEach(p => { const d = Math.hypot(p.x - sx, p.y - sy) - (p.pri ? 8 : 0); if (d < bd) { bd = d; best = p; } });
+      if (!best || bd > 36) { hide(); return; }
+      ring.setAttribute('cx', best.x.toFixed(1)); ring.setAttribute('cy', best.y.toFixed(1));
+      tip.innerHTML = best.t; tip.style.display = 'block';
+      const k = r.width / W, tw = tip.offsetWidth;
+      const left = Math.min(Math.max(best.x * k, tw / 2 + 2), r.width - tw / 2 - 2);
+      tip.style.left = left + 'px'; tip.style.top = (best.y * k) + 'px';
+    }
+    function hide() { tip.style.display = 'none'; ring.setAttribute('cx', -99); ring.setAttribute('cy', -99); }
+    svg.addEventListener('pointermove', move);
+    svg.addEventListener('pointerdown', move);
+    svg.addEventListener('pointerleave', hide);
+  }
+  window.L10P = {
+    pow, nf, big, sci,
+    plot(host, o) {
+      host._o = o;
+      if (!host._ro && window.ResizeObserver) {
+        let w = host.clientWidth;
+        host._ro = new ResizeObserver(() => { if (Math.abs(host.clientWidth - w) > 1) { w = host.clientWidth; draw(host); } });
+        host._ro.observe(host);
+      }
+      draw(host);
+    },
+    range(lo, hi, n, log) { const a = []; for (let i = 0; i <= n; i++) { const t = i / n; a.push(log ? Math.pow(10, Math.log10(lo) + t * (Math.log10(hi) - Math.log10(lo))) : lo + t * (hi - lo)); } return a; }
+  };
+})();
+</script>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 10 · 16 trace pages</span>
+  <h1>Inference: vì sao sinh văn bản chậm, và các cách làm nó nhanh, rẻ hơn</h1>
+  <p class="sub">Từ Lecture 5 đến Lecture 9, ta lo cho việc <b>huấn luyện</b>. Lecture này lo cho việc <b>dùng</b> mô hình: đưa vào một prompt, nhận lại câu trả lời. Huấn luyện chỉ làm một lần, còn suy luận lặp lại hàng nghìn tỉ lần mỗi ngày. Bài trả lời ba câu hỏi: vì sao sinh văn bản lại bị nghẽn ở bộ nhớ chứ không phải ở tính toán, có những cách nào để giảm gánh nặng đó (có mất độ chính xác hoặc không), và làm sao phục vụ hàng nghìn người dùng cùng lúc.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l10-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">trang 1–2</span></h2>
+<div class="slides" data-s="1,2"></div>
+<p>Giống Lecture 6 và 7, đây là một <b>trace</b>: bản in của file <code>lecture_10.py</code>. Chữ thường là lời giảng, chữ đơn cách là code. Ảnh nhỏ ở đầu mỗi mục là trang gốc tương ứng, bấm vào để xem cả trang.</p>
+<p><dfn>Inference</dfn> (suy luận) nghĩa là: cho một mô hình đã huấn luyện xong và một <b>prompt</b>, sinh ra <b>câu trả lời</b>. Hàm <code>main()</code> chia bài làm bốn phần:</p>
+<ol>
+  <li><b>Hiểu khối lượng công việc</b> (trang 2–8). Inference dùng ở đâu, đo "nhanh" bằng gì, và vì sao sinh token lại bị giới hạn bởi băng thông bộ nhớ.</li>
+  <li><b>Đi đường tắt, chấp nhận mất một chút</b> (lossy, trang 8–13). Thu nhỏ KV cache (GQA, MLA, CLA, attention cục bộ), giảm số bit (quantization), và cắt bớt mô hình (pruning).</li>
+  <li><b>Đi đường tắt nhưng kiểm tra lại</b> (lossless, trang 13–14). Speculative sampling: một mô hình nhỏ đoán trước, mô hình lớn kiểm tra. Kết quả đúng y như mô hình lớn tự sinh.</li>
+  <li><b>Xử lý tải động</b> (trang 14–16). Người dùng đến và đi bất cứ lúc nào, câu dài câu ngắn khác nhau. Continuous batching và PagedAttention giải quyết chuyện này.</li>
+</ol>
+
+<div class="note life">
+  <p>Tiếp tục hình ảnh <b>nhà máy</b> của Lecture 5–7. Nhà máy (GPU) có dây chuyền rất nhanh (tensor core) nhưng kho hàng (HBM) ở xa, xe chở hàng (băng thông bộ nhớ) chậm hơn nhiều.</p>
+  <ul>
+    <li><b>Huấn luyện</b> giống làm một đơn hàng lớn biết trước: chở nguyên liệu một lần, làm hàng nghìn sản phẩm cùng lúc. Dây chuyền luôn bận.</li>
+    <li><b>Sinh văn bản</b> giống một quán ăn nấu theo yêu cầu. Muốn ra <b>một</b> token, quán phải chở <b>toàn bộ</b> công thức (tham số) và sổ ghi chép của khách (KV cache) từ kho ra bếp. Nấu thì nhanh, chở thì lâu. Bếp phần lớn thời gian ngồi chờ xe.</li>
+    <li>Gần như mọi kỹ thuật trong bài này là một trong hai cách: <b>chở ít hơn</b> (KV cache nhỏ, ít bit) hoặc <b>mỗi chuyến nấu được nhiều hơn</b> (batching, speculative sampling).</li>
+  </ul>
+</div>
+
+<p>Thầy tóm tắt cả bài ở cuối trang 2. Đọc trước để biết mình đang đi đâu:</p>
+<div class="note key">
+  <ul>
+    <li>Inference rất quan trọng: dùng thật, đánh giá mô hình, và học tăng cường (RL) đều cần nó.</li>
+    <li>Nó khác huấn luyện: bị <b>giới hạn bởi bộ nhớ</b> (memory-bound) và tải <b>thay đổi liên tục</b> (dynamic).</li>
+    <li>Kỹ thuật: kiến trúc mới, quantization, pruning/distillation, speculative sampling.</li>
+    <li>Mượn ý tưởng từ ngành hệ thống: thực thi phỏng đoán (speculative execution), phân trang bộ nhớ (paging).</li>
+    <li>Kiến trúc mới còn rất nhiều tiềm năng cải thiện.</li>
+  </ul>
+</div>
+
+
+<!-- ============================================================ -->
+<div class="part" id="l10-part1" data-short="Phần 1 · Hiểu khối lượng công việc">Phần 1 · Hiểu khối lượng công việc của inference<small>Đo "nhanh" bằng gì, đếm FLOP và byte, và vì sao sinh token gần như luôn bị nghẽn ở băng thông bộ nhớ.</small></div>
+
+<h2 id="l10-landscape" data-short="Inference ở khắp nơi"><span>Inference ở khắp nơi, và ta đo "nhanh" thế nào</span><span class="slide-range">trang 2</span></h2>
+<div class="slides" data-s="2"></div>
+<p>Inference xuất hiện ở ba chỗ:</p>
+<ul>
+  <li><b>Dùng thật</b>: chatbot, gợi ý code, agent, xử lý dữ liệu hàng loạt.</li>
+  <li><b>Đánh giá mô hình</b>: chạy mô hình trên các bộ benchmark, ví dụ kiểm tra khả năng làm theo chỉ dẫn.</li>
+  <li><b>Học tăng cường</b>: sinh rất nhiều câu trả lời, chấm điểm, rồi cập nhật mô hình. Phần sinh thường chiếm phần lớn thời gian.</li>
+</ul>
+
+<h3>Vì sao hiệu quả lại quan trọng</h3>
+<p>Huấn luyện là chi phí <b>một lần</b>. Inference thì <b>lặp lại mãi</b>. Thầy đưa hai con số để so:</p>
+<ul>
+  <li>OpenAI xử lý khoảng <b>8,6 nghìn tỉ token mỗi ngày</b>.</li>
+  <li>DeepSeek v4 được huấn luyện trên khoảng <b>32 nghìn tỉ token</b>.</li>
+</ul>
+<div class="note num"><p>\(32 / 8{,}6 \approx 3{,}7\). Tức là chưa đến bốn ngày, OpenAI đã xử lý lượng token bằng <b>toàn bộ</b> dữ liệu huấn luyện của một mô hình hàng đầu. Một năm là gấp khoảng 100 lần. Chia ra mỗi giây: \(8{,}6\times10^{12} / 86\,400 \approx 10^{8}\), tức khoảng 100 triệu token mỗi giây.</p></div>
+<p>Thêm vài nhận xét:</p>
+<ul>
+  <li>Với <b>chatbot</b>, phần lớn token là để người đọc. Con người đọc chậm, nên tốc độ chỉ cần "đủ nhanh hơn người đọc".</li>
+  <li>Với <b>agent</b>, mô hình tự suy nghĩ, gọi công cụ, suy nghĩ tiếp, rồi mới trả kết quả. Số token sinh ra có thể tăng không giới hạn, và không ai ngồi đọc chúng. Lúc này tốc độ ảnh hưởng trực tiếp tới thời gian hoàn thành việc.</li>
+  <li><b>Token sinh ra = tính toán bỏ ra.</b> Muốn mô hình "nghĩ" nhiều hơn thì phải trả nhiều hơn.</li>
+</ul>
+<p>Ai làm inference? Các công ty phục vụ mô hình đóng (OpenAI, Anthropic, Google…) và các công ty phục vụ mô hình mở (Together, Fireworks, Baseten, DeepInfra, Groq, Cerebras…). Bộ phần mềm mã nguồn mở phổ biến:</p>
+<div class="tbl"><table>
+  <tr><th>Gói</th><th>Đặc điểm</th></tr>
+  <tr><td>vLLM</td><td>Từ Berkeley. Đưa ra PagedAttention (<a href="#l10-paged">xem cuối bài</a>). Phổ biến, là lựa chọn mặc định tốt.</td></tr>
+  <tr><td>SGLang</td><td>Từ Berkeley. Đưa ra RadixAttention (dùng lại KV cache của phần prompt chung giữa nhiều yêu cầu). Mạnh với tải kiểu agent.</td></tr>
+  <tr><td>TensorRT-LLM</td><td>Của NVIDIA, tối ưu rất sâu cho GPU NVIDIA.</td></tr>
+  <tr><td>llama.cpp</td><td>Chỉ dùng C++, chạy được trên CPU, dùng để chạy mô hình trên máy cá nhân.</td></tr>
+</table></div>
+
+<h3>"Nhanh" nghĩa là gì: ba thước đo</h3>
+<div class="tbl"><table>
+  <tr><th>Thước đo</th><th>Định nghĩa</th><th>Ai quan tâm</th></tr>
+  <tr><td><b>TTFT</b> (time-to-first-token)</td><td>Người dùng chờ bao lâu thì thấy token đầu tiên</td><td>Ứng dụng tương tác (chat)</td></tr>
+  <tr><td><b>Latency</b> (giây/token)</td><td>Với <b>một</b> yêu cầu, mỗi token mới mất bao lâu</td><td>Ứng dụng tương tác</td></tr>
+  <tr><td><b>Throughput</b> (token/giây)</td><td>Tổng số token sinh ra mỗi giây, cộng trên <b>mọi</b> yêu cầu đang chạy</td><td>Xử lý hàng loạt, và túi tiền của nhà cung cấp</td></tr>
+</table></div>
+<div class="note life"><p>Ở nhà hàng: <b>TTFT</b> là thời gian từ lúc gọi món đến lúc món đầu tiên ra. <b>Latency</b> là mỗi món tiếp theo của bàn bạn cách nhau bao lâu. <b>Throughput</b> là cả nhà hàng ra được bao nhiêu món mỗi giờ. Nhà hàng có thể phục vụ nhiều bàn hơn (throughput cao) bằng cách gom món, nhưng mỗi bàn sẽ phải chờ lâu hơn một chút (latency kém). Ta sẽ thấy đúng đánh đổi này ở <a href="#l10-latency">mục latency và throughput</a>.</p></div>
+
+<h3>Cái gì quyết định hiệu quả?</h3>
+<ul>
+  <li><b>Huấn luyện</b> (có giám sát): ta thấy trước <b>mọi</b> token của câu, nên xử lý cả câu song song được. Phép tính chính là nhân ma trận lớn, GPU được dùng hết.</li>
+  <li><b>Inference</b>: phải sinh <b>lần lượt</b>. Token thứ 5 phụ thuộc token thứ 4, nên không song song theo chiều sinh được. Rất khó dùng hết sức tính toán của GPU.</li>
+</ul>
+
+
+<h2 id="l10-notation" data-short="Nhắc lại Transformer"><span>Nhắc lại Transformer, với cách ghi chiều của tensor</span><span class="slide-range">trang 2–3</span></h2>
+<div class="slides" data-s="2,3"></div>
+<p>Để đếm FLOP và byte, thầy dùng cách ghi của <a href="https://jax-ml.github.io/scaling-book/transformers/" target="_blank" rel="noopener">Scaling book</a> (giống einops): mỗi chữ cái là một chiều của tensor, và cũng là độ dài của chiều đó. Ví dụ <code>BTD</code> là tensor cỡ \(B \times T \times D\).</p>
+<p>Khi nhân hai tensor, mỗi chiều thuộc một trong ba loại:</p>
+<ul>
+  <li><b>Chiều co</b> (tô đỏ trong hình): có ở cả hai toán hạng và <b>biến mất</b> khỏi kết quả, vì bị cộng dồn. Ví dụ \(BTD \times DH \to BTH\): chiều \(D\) bị co.</li>
+  <li><b>Chiều thường</b> (đen): chỉ có ở một toán hạng và <b>giữ lại</b> trong kết quả.</li>
+  <li><b>Chiều batch</b> (xanh): có ở cả hai toán hạng và <b>giữ lại</b>. Ví dụ \(BD \times BD \to B\): \(D\) bị co, còn \(B\) là batch, tức tích vô hướng của từng cặp vector.</li>
+</ul>
+<figure class="l10-fig md"><img src="img/l10/f-transformer.png" width="1400" height="1326" alt="Sơ đồ một khối Transformer viết theo chiều tensor: attention gồm các phép nhân với W_Q, W_K, W_V, reshape, softmax, nhân với V, nhân với W_O; MLP gồm hai phép chiếu lên W_in1, W_in2, gelu, nhân từng phần tử và phép chiếu xuống W_out; kèm bảng ký hiệu chiều" loading="lazy"><figcaption>Một khối Transformer viết theo chiều tensor. Bảng bên phải là các ký hiệu dùng suốt bài.</figcaption></figure>
+<div class="tbl"><table>
+  <tr><th>Ký hiệu</th><th>Ý nghĩa</th><th>Ký hiệu</th><th>Ý nghĩa</th></tr>
+  <tr><td>B</td><td>batch (số chuỗi xử lý cùng lúc)</td><td>D</td><td>d_model, chiều embedding</td></tr>
+  <tr><td>L</td><td>số layer</td><td>F</td><td>chiều ẩn của MLP</td></tr>
+  <tr><td>T</td><td>độ dài chuỗi phía query (token đang xử lý)</td><td>H</td><td>chiều của mỗi head</td></tr>
+  <tr><td>S</td><td>độ dài chuỗi phía key/value (token đã có)</td><td>N</td><td>số query head</td></tr>
+  <tr><td>V</td><td>cỡ từ vựng</td><td>K</td><td>số key/value head</td></tr>
+  <tr><td></td><td></td><td>G</td><td>số query head dùng chung một KV head, \(G = N/K\)</td></tr>
+</table></div>
+<p>Các quy ước hay gặp:</p>
+<ul>
+  <li>\(F = 4D\): MLP chiếu lên gấp 4 lần chiều mô hình (<a href="#l03-dff">xem Lecture 3</a>).</li>
+  <li>\(D = NH\): chiều mô hình chia đều cho \(N\) head (<a href="#l03-heads">xem Lecture 3</a>).</li>
+  <li>\(N = KG\): với GQA, \(N\) query head chia thành \(K\) nhóm, mỗi nhóm \(G\) head dùng chung một key/value.</li>
+  <li>\(S = T\) khi huấn luyện: ta dùng \(S\) token đầu vào để dự đoán \(T\) token đầu ra, và hai số này bằng nhau.</li>
+</ul>
+<div class="note key"><p>Khi suy luận, \(S\) và \(T\) <b>tách nhau ra</b>. \(S\) là số token đã có trong ngữ cảnh (đã nằm trong KV cache), \(T\) là số token mới đang được xử lý ở bước này. Lúc đọc prompt thì \(T = S\). Lúc sinh từng token thì \(T = 1\). Sự khác biệt giữa hai trường hợp này là chìa khoá của cả Phần 1.</p></div>
+
+
+<h2 id="l10-intensity" data-short="Arithmetic intensity"><span>Arithmetic intensity: bao nhiêu phép tính cho mỗi byte</span><span class="slide-range">trang 3–4</span></h2>
+<div class="slides" data-s="3,4"></div>
+<p>Nhắc lại khái niệm từ Lecture 5 (<a href="#l05-roofline">mô hình roofline</a>). Xét phép nhân \(X\) (cỡ \(B \times D\)) với \(W\) (cỡ \(D \times F\)). Hình dung \(B\) là batch, \(D\) là chiều mô hình, \(F\) là chiều chiếu lên trong MLP. Đếm FLOP và số byte đọc/ghi HBM, mỗi số bf16 tốn 2 byte:</p>
+<pre class="l10-py"><code>flops = <span class="n">0</span>
+bytes_transferred = <span class="n">0</span>
+<span class="c"># 1. Đọc X (B x D) từ HBM</span>
+bytes_transferred += <span class="n">2</span>*B*D
+<span class="c"># 2. Đọc W (D x F) từ HBM</span>
+bytes_transferred += <span class="n">2</span>*D*F
+<span class="c"># 3. Tính Y = X @ W: mỗi phần tử của Y cần D phép nhân và D phép cộng</span>
+flops += <span class="n">2</span>*B*D*F
+<span class="c"># 4. Ghi Y (B x F) về HBM</span>
+bytes_transferred += <span class="n">2</span>*B*F</code></pre>
+<p><dfn>Arithmetic intensity</dfn> là số FLOP làm được cho mỗi byte chuyển đi. Càng cao càng tốt:</p>
+<div class="mathbox">\[\text{intensity} = \frac{2BDF}{2BD + 2DF + 2BF} = \frac{BDF}{BD + DF + BF}.\]</div>
+<p>Chia cả tử và mẫu cho \(DF\): mẫu thành \(B/F + 1 + B/D\). Khi batch nhỏ hơn nhiều so với \(D\) và \(F\) (thường gặp: \(B\) vài chục, \(D, F\) vài nghìn), hai số hạng \(B/F\) và \(B/D\) gần bằng 0, nên</p>
+<div class="mathbox">\[\text{intensity} \approx B.\]</div>
+<p>Trong code, thầy dùng <code>sympy</code> để rút gọn: thay \(D = cB\), \(F = cB\) rồi cho \(c \to \infty\). Kết quả đúng là <code>intensity == B</code>.</p>
+
+<h3>So với phần cứng</h3>
+<p>H100 làm được \(989 \times 10^{12}\) FLOP/s (bf16, dense) và đọc HBM với tốc độ \(3{,}35 \times 10^{12}\) byte/s. Tỉ số:</p>
+<div class="mathbox">\[\text{accelerator intensity} = \frac{989 \times 10^{12}}{3{,}35 \times 10^{12}} \approx 295 \text{ FLOP/byte}.\]</div>
+<ul>
+  <li>Nếu intensity của phép tính <b>lớn hơn</b> 295: <dfn>compute-bound</dfn> (tốt). GPU tính hết công suất, bộ nhớ theo kịp.</li>
+  <li>Nếu <b>nhỏ hơn</b> 295: <dfn>memory-bound</dfn> (không tốt). Tensor core ngồi chờ dữ liệu.</li>
+  <li>Kết luận cho phép nhân này: <mark>compute-bound khi và chỉ khi \(B > 295\)</mark>.</li>
+</ul>
+<p>Trường hợp cực đoan: \(B = 1\), tức nhân <b>ma trận với vector</b>. Intensity bằng 1. Ta đọc cả ma trận \(D \times F\) (tức \(2DF\) byte) chỉ để làm \(2DF\) FLOP. GPU chỉ dùng được khoảng \(1/295\), tức chưa đến 0,4% sức tính. Thầy nhấn mạnh: <b>đây gần như chính là điều xảy ra khi sinh văn bản</b>.</p>
+<div class="note life"><p>Intensity là "mỗi chuyến xe chở nguyên liệu, bếp nấu được bao nhiêu món". Một chuyến chở cả kho công thức (\(W\)) ra bếp. Nếu chỉ có một khách (\(B = 1\)) thì nấu một món rồi chờ chuyến sau. Nếu có 300 khách cùng gọi thì một chuyến đủ nấu 300 món, bếp mới bận rộn đúng mức.</p></div>
+
+
+<h2 id="l10-kvcache" data-short="KV cache, prefill và generation"><span>KV cache: prefill và generation</span><span class="slide-range">trang 4–5</span></h2>
+<div class="slides" data-s="4,5"></div>
+<p>Thầy dùng hình minh hoạ từ <a href="https://jax-ml.github.io/scaling-book/inference/" target="_blank" rel="noopener">chương inference của Scaling book</a>.</p>
+<figure class="l10-fig"><img src="img/l10/f-naive.png" width="1400" height="601" alt="Sinh văn bản ngây thơ: đưa 'never gonna give you' vào Transformer, lấy logit cuối, lấy mẫu được 'up,'; nối vào rồi đưa cả chuỗi vào lại để sinh 'never', rồi lại cả chuỗi để sinh 'gonna'" loading="lazy"><figcaption>Cách ngây thơ: mỗi token mới lại đưa <b>toàn bộ</b> lịch sử vào Transformer, chỉ dùng logit ở vị trí cuối.</figcaption></figure>
+<p><b>Cách ngây thơ</b>: muốn sinh mỗi token, đưa toàn bộ chuỗi hiện có vào Transformer, lấy phân phối ở vị trí cuối, lấy mẫu một token, nối vào, lặp lại.</p>
+<p>Độ phức tạp: một lượt forward trên chuỗi dài \(t\) tốn cỡ \(t^2\) (phần attention, mỗi token nhìn mọi token trước nó). Sinh \(T\) token là \(1^2 + 2^2 + \dots + T^2\), tức cỡ \(T^3\) FLOP. Quá đắt.</p>
+<p><b>Quan sát</b>: phần lớn công việc bị lặp lại giữa các bước. Nhờ <b>causal mask</b>, token thứ \(i\) chỉ nhìn các token \(\le i\), nên khi thêm token mới vào cuối, key và value của các token cũ <b>không hề thay đổi</b>. Tính lại chúng là phí.</p>
+<p><b>Giải pháp</b>: lưu key và value của mọi token đã xử lý vào HBM. Đó là <dfn>KV cache</dfn>. Mỗi bước chỉ cần tính key, value cho token mới, nối vào cache, rồi cho query của token mới nhìn cả cache. Tổng chi phí giảm từ cỡ \(T^3\) xuống cỡ \(T^2\). (Xem thêm <a href="#l03-kvcache">Lecture 3</a>.)</p>
+<figure class="l10-fig"><img src="img/l10/f-kvcache.png" width="1400" height="704" alt="Sinh với KV cache: khung Prefill (đỏ) đưa cả prompt vào Transformer, khởi tạo KV cache và ra logit; các khung Generate (xanh) chỉ đưa token mới vào cùng KV cache, thêm KV mới vào cache và ra logit cho token kế tiếp. Prefill ghi là compute bound, các bước Generate ghi là memory bandwidth bound" loading="lazy"><figcaption>Với KV cache: <b>prefill</b> (đỏ) xử lý cả prompt một lần, compute-bound. Mỗi bước <b>generate</b> (xanh) chỉ xử lý một token mới, memory-bound.</figcaption></figure>
+<p>Inference vì vậy có hai giai đoạn rất khác nhau:</p>
+<ol>
+  <li><dfn>Prefill</dfn>: nhận prompt, mã hoá thành vector và điền KV cache. Mọi token của prompt đã biết trước, nên xử lý song song được, <b>giống huấn luyện</b>.</li>
+  <li><dfn>Generation</dfn> (còn gọi decode): sinh từng token của câu trả lời. <b>Tuần tự</b>, mỗi bước một token.</li>
+</ol>
+<p>KV cache lưu gì? Với mỗi chuỗi (\(B\)), mỗi token (\(S\)), mỗi layer (\(L\)), mỗi KV head (\(K\)): một vector \(H\) chiều cho key và một cho value. Ở bf16, kích thước là</p>
+<div class="mathbox">\[\text{KV cache} = \underbrace{2}_{K,\,V} \times B \times S \times L \times K \times H \times \underbrace{2}_{\text{byte}} .\]</div>
+<div class="note num"><p>Llama 2 13B có \(L = 40\), \(K = 40\), \(H = 128\). Mỗi token tốn \(2 \times 40 \times 40 \times 128 \times 2 = 819\,200\) byte, tức khoảng <b>0,8 MB cho mỗi token</b>. Một chuỗi 1024 token tốn 0,84 GB. Chỉ cần khoảng 31 chuỗi như vậy là KV cache đã to bằng chính mô hình (26 GB). Vì vậy phần lớn kỹ thuật ở Phần 2 nhắm vào việc thu nhỏ KV cache.</p></div>
+
+
+<h2 id="l10-mlp-attn" data-short="Intensity của MLP và attention"><span>Intensity của MLP và attention khi suy luận</span><span class="slide-range">trang 5–6</span></h2>
+<div class="slides" data-s="5,6"></div>
+<p>Giờ đếm FLOP và byte cho hai loại layer, với \(S\) là số token đang làm điều kiện và \(T\) là số token đang xử lý. Sau đó thay \(T = S\) cho prefill và \(T = 1\) cho generation.</p>
+
+<h3>MLP (chỉ tính các phép nhân ma trận)</h3>
+<p>MLP có cổng (SwiGLU, <a href="#l03-glu">xem Lecture 3</a>) dùng ba ma trận: \(W_{up}\), \(W_{gate}\) cỡ \(D \times F\) và \(W_{down}\) cỡ \(F \times D\). Các bước:</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Bước</th><th>Byte đọc/ghi</th><th>FLOP</th></tr>
+  <tr><td>Đọc \(X\) (\(B \times T \times D\))</td><td>\(2BTD\)</td><td></td></tr>
+  <tr><td>Đọc \(W_{up}, W_{gate}, W_{down}\)</td><td>\(3 \times 2DF\)</td><td></td></tr>
+  <tr><td>\(U = X W_{up}\), ghi \(U\)</td><td>\(2BTF\)</td><td>\(2BTDF\)</td></tr>
+  <tr><td>\(G = X W_{gate}\), ghi \(G\)</td><td>\(2BTF\)</td><td>\(2BTDF\)</td></tr>
+  <tr><td>\(Y = (\text{GeLU}(G) \odot U)\, W_{down}\), ghi \(Y\)</td><td>\(2BTD\)</td><td>\(2BTDF\)</td></tr>
+  <tr><td><b>Tổng</b></td><td>\(4BTD + 4BTF + 6DF\)</td><td>\(6BTDF\)</td></tr>
+</table></div>
+<p>Cũng giả sử \(BT\) nhỏ hơn nhiều so với \(D\) và \(F\), ta được</p>
+<div class="mathbox">\[\text{intensity}_{\text{MLP}} \approx BT.\]</div>
+<p>Hai giai đoạn:</p>
+<ol>
+  <li><b>Prefill</b>: dễ đạt compute-bound, chỉ cần \(BT\) đủ lớn (batch lớn hoặc prompt dài). Một prompt 1000 token đã đủ vượt 295.</li>
+  <li><b>Generation</b>: có hai vấn đề.
+    <ul>
+      <li>Mỗi bước chỉ sinh một token: \(T = 1\), nên intensity chỉ còn \(B\).</li>
+      <li>\(B\) là số yêu cầu đang chạy <b>cùng lúc</b>. Với ứng dụng tương tác, số này phụ thuộc người dùng, không đoán trước được.</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>Attention (dùng FlashAttention)</h3>
+<p>Với FlashAttention (<a href="#l05-flash-intro">xem Lecture 5</a>), ma trận điểm \(T \times S\) không bao giờ được ghi ra HBM. Chỉ còn đọc \(Q, K, V\) và ghi kết quả:</p>
+<pre class="l10-py"><code><span class="c"># 1. Đọc Q (B x T x D), K (B x S x D), V (B x S x D) từ HBM</span>
+bytes_transferred += <span class="n">2</span>*B*T*D + <span class="n">2</span>*B*S*D + <span class="n">2</span>*B*S*D
+<span class="c"># 2. A = Q @ K^T</span>
+flops += <span class="n">2</span>*B*S*T*D
+<span class="c"># 3. Y = softmax(A) @ V</span>
+flops += <span class="n">2</span>*B*S*T*D
+<span class="c"># 4. Ghi Y (B x T x D) về HBM</span>
+bytes_transferred += <span class="n">2</span>*B*T*D</code></pre>
+<p>Tổng: \(4BSTD\) FLOP và \(4BSD + 4BTD\) byte. Rút gọn:</p>
+<div class="mathbox">\[\text{intensity}_{\text{attn}} = \frac{4BSTD}{4BSD + 4BTD} = \frac{ST}{S + T}.\]</div>
+<ol>
+  <li><b>Prefill</b> (\(T = S\)): intensity \(= S/2\). Tốt.</li>
+  <li><b>Generation</b> (\(T = 1\)): intensity \(= S/(S+1) < 1\). Tệ!</li>
+</ol>
+<p>Điểm quan trọng: <mark>intensity của attention không phụ thuộc \(B\), nên batching không giúp gì</mark>. Vì sao?</p>
+<ul>
+  <li>Ở MLP, mọi chuỗi trong batch dùng <b>chung</b> một bộ trọng số \(W_{up}, W_{gate}, W_{down}\). Đọc một lần, dùng cho cả batch.</li>
+  <li>Ở attention, mỗi chuỗi có KV cache <b>riêng</b>. \(Q, K, V\) đều tỉ lệ với \(B\). Batch to bao nhiêu thì đọc nhiều bấy nhiêu.</li>
+</ul>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th></th><th>Prefill</th><th>Generation</th></tr>
+  <tr><td>MLP</td><td class="good">\(BS\)</td><td>\(B\) (cần nhiều yêu cầu cùng lúc)</td></tr>
+  <tr><td>Attention</td><td class="good">\(S/2\)</td><td class="bad">\(&lt; 1\) (không cải thiện được bằng batch)</td></tr>
+</table></div>
+<div class="note key"><p><b>Prefill là compute-bound, generation là memory-bound.</b> Ở generation, MLP còn cứu được bằng cách gom nhiều yêu cầu, còn attention thì không: mỗi bước, mỗi chuỗi phải đọc lại toàn bộ KV cache của nó chỉ để làm khoảng 1 FLOP mỗi byte.</p></div>
+<div class="note warn"><p>Công thức \(S/(S+1)\) giả sử mỗi query head có KV head riêng (MHA, \(K = N\)). Với GQA (<a href="#l10-gqa">Phần 2</a>), mỗi KV head được \(G\) query head dùng chung, nên lượng KV phải đọc giảm \(G\) lần còn FLOP giữ nguyên. Tính lại thì intensity lúc sinh là \(SG/(S + G) \approx G\). Đây là lý do sâu xa khiến GQA và MQA tăng tốc giai đoạn sinh: không chỉ cache nhỏ hơn, mà mỗi byte đọc vào còn được dùng nhiều lần hơn. Trace không nói điều này, mình thêm vào để nối với Phần 2.</p></div>
+
+<div class="widget" id="roofW">
+  <h4>Thử nghiệm: đặt MLP và attention lên roofline của H100</h4>
+  <div class="l10-ctl" data-g="phase">
+    <span>Giai đoạn:</span>
+    <button class="l10-btn" data-v="pre" aria-pressed="false">Prefill (T = S)</button>
+    <button class="l10-btn" data-v="gen" aria-pressed="true">Generation (T = 1)</button>
+  </div>
+  <div class="l10-ctl" data-g="g">
+    <span>Query head mỗi KV head (G):</span>
+    <button class="l10-btn" data-v="1" aria-pressed="true">1 (MHA)</button>
+    <button class="l10-btn" data-v="5" aria-pressed="false">5</button>
+    <button class="l10-btn" data-v="8" aria-pressed="false">8</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="roofB">Batch B (số yêu cầu cùng lúc): <span class="chip" id="roofBv"></span></label></p>
+  <input type="range" id="roofB" min="0" max="100" value="0">
+  <p style="margin:10px 0 4px"><label for="roofS">Độ dài ngữ cảnh S: <span class="chip" id="roofSv"></span></label></p>
+  <input type="range" id="roofS" min="0" max="80" value="30">
+  <div class="l10-plot" id="roofP"></div>
+  <div class="l10-legend"><span><i style="border-color:var(--muted)"></i>trần của H100: min(989 TFLOP/s, 3,35 TB/s × intensity)</span><span><i class="o" style="background:var(--accent)"></i>MLP</span><span><i class="o" style="background:var(--num)"></i>attention</span></div>
+  <div class="l10-stats" id="roofS2"></div>
+  <p class="l10-msg" id="roofM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('roofW'); if (!box || !window.L10P) return;
+  const P = window.L10P, st = { phase: 'gen', g: 1 };
+  const D = 5120, F = 13824, PEAK = 989, BW = 3.35, RIDGE = PEAK / BW;
+  const sB = box.querySelector('#roofB'), sS = box.querySelector('#roofS');
+  const Bv = v => Math.max(1, Math.round(Math.pow(2, v / 10)));        // 1 → 1024
+  const Sv = v => Math.round(128 * Math.pow(2, v / 10));               // 128 → 32 768
+  const perf = I => Math.min(PEAK, BW * I);
+  box.querySelectorAll('.l10-ctl').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.l10-btn'); if (!b) return;
+    g.querySelectorAll('.l10-btn').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st[g.dataset.g] = g.dataset.g === 'g' ? +b.dataset.v : b.dataset.v; upd();
+  }));
+  function upd() {
+    const B = Bv(+sB.value), S = Sv(+sS.value), T = st.phase === 'pre' ? S : 1, G = st.g;
+    box.querySelector('#roofBv').textContent = B;
+    box.querySelector('#roofSv').textContent = P.nf(S, 0) + ' token';
+    const Im = 6 * B * T * D * F / (4 * B * T * D + 4 * B * T * F + 6 * D * F);
+    const Ia = S * T * G / (S + G * T);
+    const xs = P.range(0.1, 1e5, 160, true);
+    P.plot(box.querySelector('#roofP'), {
+      aria: 'Roofline của H100 với điểm MLP và attention',
+      x: { min: 0.1, max: 1e5, log: true, label: 'arithmetic intensity (FLOP / byte)' },
+      y: { min: 0.3, max: 2000, log: true, label: 'TFLOP/s đạt được', ticks: [1, 10, 100, 1000], fmt: v => P.nf(v, 0) },
+      vlines: [{ x: RIDGE, label: '295' }],
+      series: [{ pts: xs.map(x => [x, perf(x)]), color: 'var(--muted)', width: 2.5, tip: p => `intensity ${P.nf(p[0], p[0] < 10 ? 1 : 0)}<br>trần: <b>${P.nf(p[1], 0)}</b> TFLOP/s` }],
+      marks: [
+        { x: Im, y: perf(Im), color: 'var(--accent)', label: 'MLP', dx: -10, dy: -12, anchor: 'end', tip: `MLP: intensity <b>${P.nf(Im, Im < 10 ? 2 : 0)}</b><br>${P.nf(perf(Im), 0)} TFLOP/s (${P.nf(100 * perf(Im) / PEAK, 1)}% đỉnh)` },
+        { x: Ia, y: perf(Ia), color: 'var(--num)', label: 'attention', dx: 10, dy: 16, tip: `Attention: intensity <b>${P.nf(Ia, Ia < 10 ? 2 : 0)}</b><br>${P.nf(perf(Ia), 0)} TFLOP/s (${P.nf(100 * perf(Ia) / PEAK, 1)}% đỉnh)` }
+      ]
+    });
+    const cls = I => I >= RIDGE ? 'good' : I < 30 ? 'bad' : '';
+    box.querySelector('#roofS2').innerHTML = `
+      <div class="${cls(Im)}"><b>${P.nf(Im, Im < 10 ? 2 : 0)}</b><small>intensity MLP · ${Im >= RIDGE ? 'compute-bound' : 'memory-bound'}</small></div>
+      <div class="${cls(Ia)}"><b>${P.nf(Ia, Ia < 10 ? 2 : 0)}</b><small>intensity attention · ${Ia >= RIDGE ? 'compute-bound' : 'memory-bound'}</small></div>
+      <div><b>${P.nf(100 * perf(Im) / PEAK, Im < 30 ? 1 : 0)}% · ${P.nf(100 * perf(Ia) / PEAK, Ia < 30 ? 1 : 0)}%</b><small>phần trăm sức tính dùng được (MLP · attention)</small></div>`;
+    let m;
+    if (st.phase === 'pre') m = `Prefill với ${P.nf(S, 0)} token: cả MLP và attention đều có nhiều phép tính cho mỗi byte. ` + (Ia >= RIDGE ? 'Attention đã vượt ngưỡng 295, compute-bound.' : 'Prompt còn ngắn nên attention chưa tới ngưỡng 295, nhưng tăng S lên là tới.');
+    else if (G === 1) m = `Generation: MLP có intensity xấp xỉ B = ${B}` + (B < RIDGE ? ', vẫn dưới 295. Tăng batch là cách duy nhất để kéo nó lên.' : ', đã vượt 295.') + ` Attention kẹt ở dưới 1 dù B hay S lớn cỡ nào: mỗi chuỗi phải đọc KV cache riêng của nó.`;
+    else m = `Với G = ${G}, mỗi KV head được ${G} query head dùng chung, nên attention lúc sinh có intensity khoảng ${G} thay vì dưới 1. Vẫn memory-bound, nhưng mỗi byte đọc vào làm được gấp ${G} lần việc.`;
+    box.querySelector('#roofM').textContent = m;
+  }
+  sB.addEventListener('input', upd); sS.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+
+<h2 id="l10-latency" data-short="Latency và throughput"><span>Latency và throughput: tính cho Llama 2 13B trên H100</span><span class="slide-range">trang 6–8</span></h2>
+<div class="slides" data-s="6,7,8"></div>
+<p>Đã biết generation là memory-bound. Giờ tính latency và throughput <b>lý tưởng</b> theo lý thuyết. Giả định: tính toán và truyền dữ liệu chồng lên nhau hoàn hảo, bỏ qua mọi chi phí phụ. Thầy viết hàm <code>compute_transformer_performance_stats</code>:</p>
+<pre class="l10-py"><code><span class="c"># Số tham số</span>
+num_params = <span class="n">2</span>*V*D + D*F*<span class="n">3</span>*L + (<span class="n">2</span>*D*N*H + <span class="n">2</span>*D*K*H)*L
+<span class="c"># Bộ nhớ cho tham số (bf16)</span>
+parameter_size = <span class="n">2</span>*num_params
+<span class="c"># KV cache mỗi chuỗi: S token, K head, H chiều, L layer; x2 cho key+value, x2 cho bf16</span>
+kv_cache_size_per_seq = S * (K*H) * L * <span class="n">2</span> * <span class="n">2</span>
+<span class="c"># Tổng bộ nhớ</span>
+memory = B * kv_cache_size_per_seq + parameter_size
+<span class="c"># Latency: mỗi bước phải đọc toàn bộ tham số và KV cache</span>
+latency = memory / memory_bandwidth
+<span class="c"># Throughput: mỗi bước sinh B token song song</span>
+throughput = B / latency</code></pre>
+<p>Đọc công thức số tham số:</p>
+<ul>
+  <li>\(2VD\): bảng embedding ở đầu và ma trận chiếu ra từ vựng ở cuối.</li>
+  <li>\(3DF\) mỗi layer: ba ma trận của MLP có cổng.</li>
+  <li>\(2DNH\) mỗi layer: \(W_Q\) và \(W_O\). \(2DKH\) mỗi layer: \(W_K\) và \(W_V\). Giảm \(K\) (GQA) thì phần này nhỏ đi.</li>
+</ul>
+<p>Mô hình latency rất đơn giản: <b>mỗi bước sinh, phải đọc hết tham số và KV cache từ HBM một lần</b>. Đọc xong thì ra được \(B\) token (mỗi chuỗi một token). Cấu hình Llama 2 13B: \(S = 1024\), \(D = 5120\), \(F = 13\,824\), \(N = K = 40\), \(H = 128\), \(L = 40\), \(V = 32\,000\), băng thông 3,35 TB/s. Kết quả (mình tính lại từ code):</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Batch B</th><th>Bộ nhớ (tham số + KV)</th><th>Latency</th><th>Throughput</th><th>Nhận xét</th></tr>
+  <tr><td>1</td><td>26,0 + 0,8 = 26,9 GB</td><td class="good">8,0 ms/token</td><td>125 token/s</td><td>Gần như chỉ đọc tham số</td></tr>
+  <tr><td>64</td><td>26,0 + 53,7 = 79,7 GB</td><td>23,8 ms/token</td><td>2 690 token/s</td><td>Latency kém hơn, throughput tốt hơn 21 lần</td></tr>
+  <tr><td>256</td><td>26,0 + 214,7 = 240,8 GB</td><td class="bad">71,9 ms/token</td><td>3 560 token/s</td><td class="bad">Không vừa 80 GB của H100!</td></tr>
+</table></div>
+<p>Tăng batch có hai tác dụng ngược nhau:</p>
+<ul>
+  <li><b>Latency tệ đi</b> vì KV cache tăng tỉ lệ với \(B\), phải đọc nhiều hơn mỗi bước.</li>
+  <li><b>Throughput tốt lên</b> vì chi phí đọc tham số được chia cho nhiều chuỗi hơn.</li>
+</ul>
+<p>Nhưng lợi ích giảm dần: từ 64 lên 256, throughput chỉ tăng 1,3 lần, vì lúc này KV cache đã lấn át tham số. Và tới một lúc thì không vừa bộ nhớ nữa.</p>
+<div class="note key"><p><b>Đánh đổi giữa latency và throughput</b>: batch nhỏ cho latency tốt nhưng throughput kém; batch lớn cho throughput tốt nhưng latency kém. Nhà cung cấp muốn throughput cao (rẻ hơn mỗi token), người dùng muốn latency thấp.</p></div>
+<p>Vài cách song song hoá:</p>
+<ul>
+  <li><b>Dễ</b>: chạy \(M\) bản sao mô hình trên \(M\) GPU. Latency giữ nguyên, throughput tăng \(M\) lần.</li>
+  <li><b>Khó hơn</b>: chia mô hình và KV cache ra nhiều GPU (<a href="#l08-tp">tensor parallel, Lecture 8</a>). Mỗi GPU đọc ít hơn nên latency giảm, đổi lại phải giao tiếp.</li>
+</ul>
+<p>Còn TTFT? TTFT gần như chỉ phụ thuộc thời gian <b>prefill</b>. Nên dùng batch nhỏ ở prefill để token đầu ra nhanh, và batch lớn ở generation để tăng throughput.</p>
+
+<div class="widget" id="latW">
+  <h4>Thử nghiệm: đường đánh đổi latency – throughput</h4>
+  <div class="l10-ctl" data-g="k">
+    <span>KV head K:</span>
+    <button class="l10-btn" data-v="40" aria-pressed="true">40 (MHA)</button>
+    <button class="l10-btn" data-v="8" aria-pressed="false">8 (GQA)</button>
+    <button class="l10-btn" data-v="1" aria-pressed="false">1 (MQA)</button>
+  </div>
+  <div class="l10-ctl" data-g="w">
+    <span>Trọng số:</span>
+    <button class="l10-btn" data-v="2" aria-pressed="true">bf16</button>
+    <button class="l10-btn" data-v="1" aria-pressed="false">int8</button>
+    <button class="l10-btn" data-v="0.5" aria-pressed="false">int4</button>
+  </div>
+  <div class="l10-ctl" data-g="s">
+    <span>Ngữ cảnh S:</span>
+    <button class="l10-btn" data-v="1024" aria-pressed="true">1 024</button>
+    <button class="l10-btn" data-v="4096" aria-pressed="false">4 096</button>
+    <button class="l10-btn" data-v="16384" aria-pressed="false">16 384</button>
+  </div>
+  <p style="margin:12px 0 4px"><label for="latB">Batch B: <span class="chip" id="latBv"></span></label></p>
+  <input type="range" id="latB" min="0" max="100" value="60">
+  <div class="l10-plot" id="latP"></div>
+  <div class="l10-legend"><span><i style="border-color:var(--accent)"></i>vừa 80 GB</span><span><i class="d" style="border-color:var(--warn)"></i>vượt 80 GB (không chạy được trên một H100)</span><span><i style="border-color:color-mix(in oklab, var(--muted) 55%, var(--surface))"></i>cấu hình gốc của trace (MHA, bf16, S = 1024)</span></div>
+  <div class="l10-stats" id="latS"></div>
+  <p class="l10-msg" id="latM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('latW'); if (!box || !window.L10P) return;
+  const P = window.L10P, st = { k: 40, w: 2, s: 1024 }, sl = box.querySelector('#latB');
+  const V = 32000, D = 5120, F = 13824, N = 40, H = 128, L = 40, BW = 3.35e12, PEAK = 989e12, HBM = 80e9;
+  const Bv = v => Math.max(1, Math.round(Math.pow(2, v / 10)));   // 1 → 1024
+  function calc(B, K, w, S) {
+    const n = 2 * V * D + 3 * D * F * L + (2 * D * N * H + 2 * D * K * H) * L;
+    const kv = S * K * H * L * 2 * 2, mem = B * kv + w * n;
+    const tm = mem / BW, tc = (2 * n * B + 4 * B * S * D * L) / PEAK, lat = Math.max(tm, tc);
+    return { n, kv, mem, lat, thr: B / lat, tm, tc };
+  }
+  box.querySelectorAll('.l10-ctl').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.l10-btn'); if (!b) return;
+    g.querySelectorAll('.l10-btn').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st[g.dataset.g] = +b.dataset.v; upd();
+  }));
+  const tipOf = (r, B) => `B = <b>${B}</b><br>latency ${P.nf(r.lat * 1e3, 1)} ms/token<br>throughput ${P.nf(r.thr, 0)} token/s<br>bộ nhớ ${P.nf(r.mem / 1e9, 1)} GB`;
+  function upd() {
+    const B = Bv(+sl.value), r = calc(B, st.k, st.w, st.s);
+    box.querySelector('#latBv').textContent = B;
+    const Bs = []; for (let v = 0; v <= 100; v += 2) { const b = Bv(v); if (!Bs.includes(b)) Bs.push(b); }
+    const pts = Bs.map(b => { const q = calc(b, st.k, st.w, st.s); return [q.lat * 1e3, q.thr, b, q]; });
+    const fit = pts.filter(p => p[3].mem <= HBM), over = pts.filter(p => p[3].mem > HBM);
+    if (fit.length && over.length) over.unshift(fit[fit.length - 1]);
+    const base = Bs.map(b => { const q = calc(b, 40, 2, 1024); return [q.lat * 1e3, q.thr, b, q]; });
+    const same = st.k === 40 && st.w === 2 && st.s === 1024;
+    const series = [];
+    if (!same) series.push({ pts: base, color: 'color-mix(in oklab, var(--muted) 55%, var(--surface))', width: 2, tip: p => 'Cấu hình gốc<br>' + tipOf(p[3], p[2]) });
+    series.push({ pts: over, color: 'var(--warn)', width: 2, dash: '5 5', tip: p => tipOf(p[3], p[2]) + '<br><b>không vừa 80 GB</b>' });
+    series.push({ pts: fit, color: 'var(--accent)', width: 2.5, tip: p => tipOf(p[3], p[2]) });
+    const marks = [1, 64, 256].map(b => { const q = calc(b, st.k, st.w, st.s); return { x: q.lat * 1e3, y: q.thr, r: 4, color: 'var(--muted)', label: 'B=' + b, dx: 8, dy: 14, tip: tipOf(q, b) }; });
+    marks.push({ x: r.lat * 1e3, y: r.thr, color: r.mem > HBM ? 'var(--warn)' : 'var(--accent)', tip: 'Bạn chọn<br>' + tipOf(r, B) });
+    P.plot(box.querySelector('#latP'), {
+      aria: 'Throughput theo latency khi tăng batch',
+      x: { min: 1, max: 1000, log: true, label: 'latency (ms / token), càng trái càng tốt', ticks: [1, 3, 10, 30, 100, 300, 1000], fmt: v => P.nf(v, 0) },
+      y: { min: 10, max: 1e5, log: true, label: 'throughput (token/s)', ticks: [10, 100, 1000, 1e4, 1e5], fmt: v => P.nf(v, 0) },
+      ml: 66,
+      series, marks
+    });
+    const tooBig = r.mem > HBM;
+    box.querySelector('#latS').innerHTML = `
+      <div class="${tooBig ? 'bad' : ''}"><b>${P.nf(r.mem / 1e9, 1)} GB</b><small>bộ nhớ: tham số ${P.nf(st.w * r.n / 1e9, 1)} + KV ${P.nf(B * r.kv / 1e9, 1)}</small></div>
+      <div><b>${P.nf(r.lat * 1e3, 1)} ms</b><small>latency mỗi token (${r.tc > r.tm ? 'compute-bound' : 'memory-bound'})</small></div>
+      <div><b>${P.nf(r.thr, 0)}</b><small>throughput (token/s)</small></div>
+      <div><b>${P.nf(Math.floor(Math.max(0, HBM - st.w * r.n) / r.kv), 0)}</b><small>batch lớn nhất vừa 80 GB</small></div>`;
+    const kvShare = B * r.kv / r.mem;
+    let m = `Ở B = ${B}, KV cache chiếm ${P.nf(100 * kvShare, 0)}% lượng phải đọc mỗi bước. `;
+    m += kvShare < 0.3 ? 'Phần lớn thời gian là đọc tham số: tăng batch gần như "miễn phí" về latency.' : kvShare < 0.7 ? 'KV cache và tham số ngang nhau.' : 'KV cache lấn át: tăng batch nữa chỉ làm latency tăng gần tỉ lệ, throughput gần như đứng yên.';
+    if (tooBig) m += ' Cấu hình này không vừa một H100.';
+    if (st.k !== 40) m += ` Với K = ${st.k}, KV cache nhỏ hơn ${40 / st.k} lần nên đường cong dịch lên trên và sang trái.`;
+    if (r.tc > r.tm) m += ' Ở đây thời gian tính đã vượt thời gian đọc: bắt đầu compute-bound.';
+    box.querySelector('#latM').textContent = m;
+  }
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<p>Latency trong ô trên lấy giá trị lớn hơn giữa thời gian đọc bộ nhớ và thời gian tính. Trace chỉ dùng thời gian đọc. Với các cấu hình của trace, thời gian tính nhỏ hơn rất nhiều (ví dụ 7 ms so với 72 ms ở B = 256), nên kết quả như nhau. Ô thử nghiệm cũng giả sử KV cache luôn đầy \(S\) token, và bỏ qua activation, chi phí kernel và giao tiếp. Đây là giới hạn trên lý tưởng, máy thật sẽ chậm hơn.</p>
+
+
+<!-- ============================================================ -->
+<div class="part" id="l10-part2" data-short="Phần 2 · Đường tắt có mất mát">Phần 2 · Đi đường tắt, chấp nhận mất một chút<small>Bộ nhớ là nút thắt, nên thu nhỏ thứ phải đọc: KV cache nhỏ hơn, ít bit hơn, mô hình gọn hơn. Mục tiêu là giảm thật nhiều mà không mất nhiều độ chính xác.</small></div>
+
+<h2 id="l10-gqa" data-short="GQA: chia sẻ KV giữa các head"><span>Grouped-query attention: chia sẻ KV giữa các head</span><span class="slide-range">trang 8–9</span></h2>
+<div class="slides" data-s="8,9"></div>
+<p>Nhắc lại: bộ nhớ là nút thắt của inference. Vậy hãy thu nhỏ KV cache, miễn đừng mất quá nhiều độ chính xác. Cách đầu tiên là <dfn>GQA</dfn> (grouped-query attention, Ainslie và cộng sự 2023). Xem thêm <a href="#l03-mqa">Lecture 3</a>.</p>
+<figure class="l10-fig"><img src="img/l10/f-gqa.png" width="1258" height="498" alt="Ba sơ đồ: multi-head có 8 query, 8 key, 8 value; grouped-query có 8 query nhưng chỉ 4 key và 4 value, mỗi cặp dùng cho 2 query; multi-query có 8 query dùng chung 1 key và 1 value" loading="lazy"><figcaption>Multi-head (trái): mỗi query head có key và value riêng. Grouped-query (giữa): mỗi nhóm query head dùng chung một cặp key/value. Multi-query (phải): tất cả dùng chung một cặp.</figcaption></figure>
+<p>Ý tưởng: vẫn có \(N\) query head, nhưng chỉ có \(K\) key head và value head. Mỗi KV head phục vụ \(N/K\) query head.</p>
+<ul>
+  <li><b>MHA</b> (multi-head attention): \(K = N\). Đây là Transformer gốc.</li>
+  <li><b>MQA</b> (multi-query attention): \(K = 1\). Mọi head dùng chung một cặp key/value.</li>
+  <li><b>GQA</b>: \(K\) ở giữa, ví dụ \(N = 64\), \(K = 8\).</li>
+</ul>
+<figure class="l10-fig sm"><img src="img/l10/f-gqa-time.png" width="789" height="490" alt="Thời gian mỗi mẫu theo số nhóm GQA từ 1 đến 64: MHA là đường ngang khoảng 2,5 giây, MQA là đường ngang khoảng 0,5 giây, GQA gần bằng MQA tới 8 nhóm rồi tăng dần, tới 64 nhóm thì bằng MHA" loading="lazy"><figcaption>Thời gian mỗi mẫu (T5-XXL, 64 head). Tới khoảng 8 nhóm, GQA nhanh gần bằng MQA. Với 64 nhóm, GQA chính là MHA.</figcaption></figure>
+<p>Vì sao nhanh hơn? GQA làm KV cache nhỏ đi \(N/K\) lần. Mà ta đang memory-bound, nên bớt byte phải đọc là nhanh lên. Thầy chạy lại hàm tính toán với Llama 2 13B:</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Cấu hình</th><th>Bộ nhớ</th><th>Latency</th><th>Throughput</th></tr>
+  <tr><td>MHA, \(K = 40\), \(B = 64\)</td><td>79,7 GB (sát 80 GB)</td><td>23,8 ms</td><td>2 690 token/s</td></tr>
+  <tr><td>GQA, \(K = 8\), \(B = 64\)</td><td class="good">33,4 GB</td><td class="good">10,0 ms</td><td class="good">6 420 token/s</td></tr>
+  <tr><td>GQA, \(K = 8\), \(B = 256\)</td><td>65,6 GB (vẫn vừa)</td><td>19,6 ms</td><td class="good">13 070 token/s</td></tr>
+</table></div>
+<p>Với GQA, KV cache mỗi chuỗi giảm từ 0,84 GB xuống 0,17 GB, nên batch 256 giờ đã vừa bộ nhớ và throughput gần gấp 5 lần cấu hình MHA ban đầu.</p>
+<div class="note warn">
+  <ul>
+    <li>Trace ghi kết quả của GQA với \(B = 64\) là "worse latency, but better throughput". So với \(B = 1\) (8,0 ms) thì đúng là latency kém hơn chút. Nhưng so với MHA cùng \(B = 64\) thì GQA tốt hơn <b>cả hai</b>: latency từ 23,8 xuống 10,0 ms, throughput tăng 2,4 lần.</li>
+    <li>Trong phép tính này, giảm \(K\) cũng làm số tham số giảm (13,0 tỉ còn 11,3 tỉ) vì \(W_K, W_V\) nhỏ đi. Mô hình GQA thật thường bù lại bằng cách làm MLP to hơn, nên số tham số gần như giữ nguyên.</li>
+  </ul>
+</div>
+<p>Còn độ chính xác? Bài báo GQA lấy một checkpoint MHA (T5-XXL), gộp các KV head trong cùng nhóm bằng cách lấy trung bình, rồi huấn luyện thêm một chút (khoảng 5% lượng tính toán ban đầu, gọi là <i>uptraining</i>):</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Mô hình</th><th>Thời gian (s)</th><th>Điểm trung bình</th><th>CNN</th><th>arXiv</th><th>PubMed</th><th>MediaSum</th><th>MultiNews</th><th>WMT</th><th>TriviaQA</th></tr>
+  <tr><td>MHA-Large</td><td>0,37</td><td>46,0</td><td>42,9</td><td>44,6</td><td>46,2</td><td>35,5</td><td>46,6</td><td>27,7</td><td>78,2</td></tr>
+  <tr><td>MHA-XXL</td><td class="bad">1,51</td><td><b>47,2</b></td><td>43,8</td><td>45,6</td><td>47,5</td><td>36,4</td><td>46,9</td><td>28,4</td><td>81,9</td></tr>
+  <tr><td>MQA-XXL</td><td class="good">0,24</td><td>46,6</td><td>43,0</td><td>45,0</td><td>46,9</td><td>36,1</td><td>46,5</td><td>28,5</td><td>81,3</td></tr>
+  <tr><td>GQA-8-XXL</td><td class="good">0,28</td><td><b>47,1</b></td><td>43,5</td><td>45,4</td><td>47,7</td><td>36,3</td><td>47,2</td><td>28,4</td><td>81,6</td></tr>
+</table></div>
+<p>GQA-8 gần như giữ nguyên chất lượng của MHA-XXL (47,1 so với 47,2) mà nhanh hơn khoảng 5 lần, và nhanh gần bằng MQA. Ngày nay gần như mọi mô hình mở đều dùng GQA.</p>
+
+
+<h2 id="l10-mla" data-short="MLA: nén KV xuống ít chiều"><span>Multi-head latent attention: nén KV xuống ít chiều</span><span class="slide-range">trang 9</span></h2>
+<div class="slides" data-s="9"></div>
+<p><dfn>MLA</dfn> (DeepSeek-AI 2024, trong DeepSeek-V2) đi theo hướng khác: không bớt head, mà <b>nén</b> key và value thành một vector ngắn. Xem thêm <a href="#l04-mla">Lecture 4</a>.</p>
+<figure class="l10-fig"><img src="img/l10/f-mla.png" width="1400" height="397" alt="Bốn sơ đồ: MHA, GQA, MQA cache trực tiếp các key và value (gạch chéo); MLA chỉ cache một vector latent đã nén (gạch chéo), từ đó chiếu ngược ra key và value cho mọi head" loading="lazy"><figcaption>Phần gạch chéo là thứ được cache. MLA chỉ cache một vector "latent" đã nén, rồi chiếu ra key và value khi cần.</figcaption></figure>
+<ul>
+  <li><b>Attention thường</b>: KV cache chứa \(K = W_K h\) và \(V = W_V h\), mỗi cái \(N \cdot H\) chiều (\(h\) là trạng thái ẩn của token).</li>
+  <li><b>MLA</b>: chỉ lưu \(c = W_c h\), một vector \(C\) chiều. Khi cần thì chiếu lên: \(K = W_K c\), \(V = W_V c\).</li>
+  <li><b>DeepSeek-V2</b>: \(N \cdot H = 16\,384\), còn \(C = 512\).</li>
+  <li><b>Vướng mắc với RoPE</b>: MLA không tương thích với RoPE, nên phải thêm 64 chiều riêng cho RoPE. Tổng là \(512 + 64 = 576\) chiều mỗi token mỗi layer.</li>
+</ul>
+<div class="note num"><p>MHA cache \(2 \times 16\,384 = 32\,768\) số mỗi token mỗi layer (key và value). MLA cache 576 số. Nhỏ hơn khoảng <b>57 lần</b>. Lợi ích về latency và throughput suy ra y như với GQA.</p></div>
+<div class="note key"><p><b>Vì sao RoPE gây vướng?</b> Mẹo của MLA là không bao giờ phải tạo ra \(K\) đầy đủ: điểm attention \(q^\top K = q^\top W_K c = (W_K^\top q)^\top c\), nên có thể gộp \(W_K\) vào phía query và nhân thẳng với \(c\). RoPE chèn một phép xoay phụ thuộc vị trí <b>vào giữa</b> \(q\) và \(K\), nên \(W_K\) không gộp sang phía query được nữa. Giải pháp: giữ \(c\) không có RoPE, và thêm một key nhỏ 64 chiều có RoPE, dùng chung cho mọi head.</p></div>
+<p>Kiểm tra độ chính xác. Trước hết, ở mô hình dense 7B, MHA tốt hơn GQA và MQA, dù đắt hơn (bảng 8 của DeepSeek-V2):</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Benchmark</th><th>Shot</th><th>Dense 7B, MQA</th><th>Dense 7B, GQA (8 nhóm)</th><th>Dense 7B, MHA</th></tr>
+  <tr><td>Số tham số</td><td></td><td>7,1 tỉ</td><td>6,9 tỉ</td><td>6,9 tỉ</td></tr>
+  <tr><td>BBH (EM)</td><td>3</td><td>33,2</td><td>35,6</td><td><b>37,0</b></td></tr>
+  <tr><td>MMLU</td><td>5</td><td>37,9</td><td>41,2</td><td><b>45,2</b></td></tr>
+  <tr><td>C-Eval</td><td>5</td><td>30,0</td><td>37,7</td><td><b>42,9</b></td></tr>
+  <tr><td>CMMLU</td><td>5</td><td>34,6</td><td>38,4</td><td><b>43,5</b></td></tr>
+</table></div>
+<p>Thứ hai, MLA còn <b>tốt hơn MHA một chút</b>, mà KV cache nhỏ hơn nhiều (bảng 9):</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Benchmark</th><th>Shot</th><th>MoE nhỏ, MHA</th><th>MoE nhỏ, MLA</th><th>MoE lớn, MHA</th><th>MoE lớn, MLA</th></tr>
+  <tr><td>Tham số kích hoạt</td><td></td><td>2,5 tỉ</td><td>2,4 tỉ</td><td>25,0 tỉ</td><td>21,5 tỉ</td></tr>
+  <tr><td>Tổng tham số</td><td></td><td>15,8 tỉ</td><td>15,7 tỉ</td><td>250,8 tỉ</td><td>247,4 tỉ</td></tr>
+  <tr><td>KV cache mỗi token (số phần tử)</td><td></td><td>110,6 nghìn</td><td class="good">15,6 nghìn</td><td>860,2 nghìn</td><td class="good">34,6 nghìn</td></tr>
+  <tr><td>BBH (EM)</td><td>3</td><td>37,9</td><td><b>39,0</b></td><td>46,6</td><td><b>50,7</b></td></tr>
+  <tr><td>MMLU</td><td>5</td><td>48,7</td><td><b>50,0</b></td><td>57,5</td><td><b>59,0</b></td></tr>
+  <tr><td>C-Eval</td><td>5</td><td><b>51,6</b></td><td>50,9</td><td>57,9</td><td><b>59,2</b></td></tr>
+  <tr><td>CMMLU</td><td>5</td><td>52,3</td><td><b>53,4</b></td><td>60,7</td><td><b>62,5</b></td></tr>
+</table></div>
+<p>Ở mô hình lớn, KV cache của MLA nhỏ hơn MHA khoảng 25 lần mà điểm còn cao hơn ở cả bốn benchmark.</p>
+
+
+<h2 id="l10-cla" data-short="CLA: chia sẻ KV giữa các layer"><span>Cross-layer attention: chia sẻ KV giữa các layer</span><span class="slide-range">trang 10</span></h2>
+<div class="slides" data-s="10"></div>
+<p>GQA chia sẻ KV giữa các <b>head</b>. <dfn>CLA</dfn> (cross-layer attention, Brandon và cộng sự 2024) chia sẻ KV giữa các <b>layer</b>: vài layer liền nhau dùng chung một bộ key/value. Với CLA2, cứ hai layer chung một bộ, KV cache giảm một nửa.</p>
+<div class="l10-duo">
+  <figure><img src="img/l10/f-cla.png" width="795" height="820" alt="Hai cột: Transformer thường có khối K, V Proj ở mỗi layer; Transformer với cross-layer attention chỉ có K, V Proj ở layer dưới, layer trên lấy key và value từ layer dưới" loading="lazy"><figcaption>Trái: mỗi layer tự tính K, V. Phải: layer trên dùng lại K, V của layer dưới.</figcaption></figure>
+  <figure><img src="img/l10/f-cla-pareto.png" width="1119" height="838" alt="Biểu đồ perplexity theo số byte KV cache mỗi token cho các mô hình 1 tỉ tham số: các điểm đỏ có CLA2 nằm thấp hơn hoặc bên trái các điểm xanh không có CLA ở cùng mức bộ nhớ" loading="lazy"><figcaption>Mô hình 1 tỉ tham số. Đỏ: có CLA2. Xanh: không. Càng thấp và càng trái càng tốt.</figcaption></figure>
+</div>
+<p>Thực nghiệm cho thấy CLA cải thiện <b>đường biên Pareto</b> giữa độ chính xác và kích thước KV cache. Đọc biểu đồ: ở cùng khoảng \(5\times10^3\) byte mỗi token, H128-MQA-CLA2 đạt perplexity khoảng 13,6, còn H64-MQA (không CLA) chỉ khoảng 13,8. ("H128" là chiều mỗi head bằng 128.) Tức là, cùng một ngân sách bộ nhớ, thà dùng head to hơn rồi chia sẻ giữa các layer còn hơn là thu nhỏ head.</p>
+
+
+<h2 id="l10-local" data-short="Attention cục bộ"><span>Attention cục bộ (cửa sổ trượt)</span><span class="slide-range">trang 10–11</span></h2>
+<div class="slides" data-s="10,11"></div>
+<figure class="l10-fig"><img src="img/l10/f-swa.png" width="1400" height="317" alt="Bốn ma trận attention: (a) toàn bộ n bình phương, (b) cửa sổ trượt chỉ tô một dải quanh đường chéo, (c) cửa sổ trượt giãn cách tô dải có lỗ, (d) toàn cục cộng cửa sổ trượt có thêm vài hàng và cột tô kín" loading="lazy"><figcaption>(a) attention đầy đủ, (b) cửa sổ trượt, (c) cửa sổ giãn cách, (d) vài token toàn cục cộng cửa sổ trượt. Hình từ Longformer (Beltagy 2020).</figcaption></figure>
+<p>Ý tưởng (Beltagy 2020, Child 2019, Jiang 2023 với Mistral 7B): mỗi token chỉ nhìn \(W\) token gần nhất. Ngữ cảnh gần thường quan trọng nhất cho việc dự đoán. Xem thêm <a href="#l03-swa">Lecture 3</a>.</p>
+<ul>
+  <li><b>Ngữ cảnh hiệu dụng tăng tuyến tính theo số layer.</b> Layer 1 nhìn \(W\) token. Layer 2 nhìn \(W\) token, mà mỗi token đó đã "tóm tắt" \(W\) token trước nó, nên thông tin đi được khoảng \(2W\). Sau \(L\) layer là khoảng \(L \cdot W\).</li>
+  <li><b>KV cache không phụ thuộc độ dài chuỗi!</b> Chỉ cần giữ \(W\) token gần nhất, token cũ hơn bỏ đi.</li>
+  <li><b>Vấn đề</b>: vẫn có thể giảm độ chính xác, nhất là khi cần tìm lại một chi tiết ở rất xa.</li>
+  <li><b>Giải pháp</b>: xen kẽ layer cục bộ với layer toàn cục (layer lai). Ví dụ vài layer cửa sổ trượt rồi một layer nhìn toàn bộ. Xem <a href="#l03-interleave">Lecture 3</a>.</li>
+</ul>
+
+
+<h2 id="l10-dsv4" data-short="Attention của DeepSeek v4"><span>Attention của DeepSeek v4, và tổng kết các cách thu nhỏ KV cache</span><span class="slide-range">trang 11</span></h2>
+<div class="slides" data-s="11"></div>
+<p>DeepSeek v4 hỗ trợ ngữ cảnh 1 triệu token. Kiến trúc attention của nó ghép nhiều ý tưởng ở trên lại với nhau:</p>
+<figure class="l10-fig"><img src="img/l10/f-dsv4.png" width="1400" height="706" alt="Sơ đồ attention của DeepSeek v4: trạng thái ẩn của các token KV đi qua token-level compressor thành các KV entry nén; một Lightning Indexer gồm compressor riêng tạo indexer key nén, cùng indexer query qua multi-query attention ra index score; top-k selector chọn các KV entry nén; ghép với KV entry của cửa sổ trượt; cuối cùng là shared key-value multi-query attention với query" loading="lazy"><figcaption>Attention của DeepSeek v4: nén theo token, chọn top-k bằng "lightning indexer", ghép với cửa sổ trượt, rồi chạy multi-query attention.</figcaption></figure>
+<ul>
+  <li><b>Compressed Sparse Attention (CSA)</b>: nén mỗi \(m\) token thành 1. Giống MLA nhưng nén theo <b>chiều token</b> thay vì chiều đặc trưng.</li>
+  <li><b>DeepSeek Sparse Attention (DSA)</b>: một bộ chỉ mục nhẹ ("lightning indexer") chấm điểm các khối đã nén, rồi chỉ chọn <b>top-k</b> khối để attention. Xem <a href="#l04-dsa">Lecture 4</a>.</li>
+  <li><b>Heavily Compressed Attention (HCA)</b>: nén mạnh hơn nữa.</li>
+</ul>
+<p>Đọc hình: các khối đã chọn được ghép với KV của <b>cửa sổ trượt</b> (vài token gần nhất, không nén), rồi đưa vào một <b>multi-query attention</b> với key/value dùng chung cho mọi head. Tức là nó dùng cùng lúc: nén, chọn thưa, cửa sổ cục bộ và chia sẻ giữa các head.</p>
+<div class="note key">
+  <p><b>Tóm tắt các cách thu nhỏ KV cache</b> (trang 11):</p>
+  <ul>
+    <li>Mục tiêu: giảm kích thước KV cache (vì inference memory-bound) mà không làm giảm độ chính xác.</li>
+    <li>KV cache ít chiều hơn: GQA (ít head), MLA (nén chiều), CLA (chung giữa các layer).</li>
+    <li>Attention cục bộ ở một số layer: cắt ngắn KV cache.</li>
+    <li>Các hướng khác: linear attention và mô hình không gian trạng thái (Mamba 2, Gated DeltaNet, <a href="#l04-linear">xem Lecture 4</a>), mô hình diffusion.</li>
+  </ul>
+</div>
+
+<div class="widget" id="kvW">
+  <h4>Thử nghiệm: KV cache của một chuỗi theo từng kiến trúc</h4>
+  <p style="margin:0 0 4px">Khung mô hình như Llama 2 13B (40 layer, 40 query head, head dim 128, bf16). Chỉ đổi phần attention.</p>
+  <p style="margin:12px 0 4px"><label for="kvS">Độ dài chuỗi: <span class="chip" id="kvSv"></span></label></p>
+  <input type="range" id="kvS" min="0" max="100" value="30">
+  <div class="l10-hbars" id="kvBars"></div>
+  <div class="l10-stats" id="kvSt"></div>
+  <p class="l10-msg" id="kvM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('kvW'); if (!box || !window.L10P) return;
+  const P = window.L10P, sl = box.querySelector('#kvS');
+  const L = 40, H = 128, PARAMS = 26.03e9, HBM = 80e9, W = 4096;
+  const Sv = v => Math.round(1024 * Math.pow(2, v / 10));   // 1k → 1M
+  // phần tử mỗi token mỗi layer (đầy đủ), và số token thực sự giữ lại
+  const V = [
+    { n: 'MHA (K = 40)', e: 2 * 40 * H, keep: S => S * L, base: true },
+    { n: 'GQA (K = 8)', e: 2 * 8 * H, keep: S => S * L },
+    { n: 'MQA (K = 1)', e: 2 * 1 * H, keep: S => S * L },
+    { n: 'MLA (512 + 64)', e: 576, keep: S => S * L },
+    { n: 'GQA-8 + CLA2', e: 2 * 8 * H, keep: S => S * L / 2 },
+    { n: 'GQA-8, cửa sổ 4096', e: 2 * 8 * H, keep: S => Math.min(S, W) * L },
+    { n: 'GQA-8, lai 1 toàn cục : 3 cục bộ', e: 2 * 8 * H, keep: S => S * L / 4 + Math.min(S, W) * L * 3 / 4 }
+  ];
+  const gb = x => x >= 1e9 ? P.nf(x / 1e9, x < 1e10 ? 2 : 1) + ' GB' : P.nf(x / 1e6, x < 1e7 ? 1 : 0) + ' MB';
+  function upd() {
+    const S = Sv(+sl.value);
+    box.querySelector('#kvSv').textContent = P.nf(S, 0) + ' token';
+    const rows = V.map(v => ({ ...v, b: v.e * v.keep(S) * 2 }));
+    const max = rows[0].b, lo = Math.log10(max) - 3.2;
+    const best = Math.min(...rows.map(r => r.b));
+    box.querySelector('#kvBars').innerHTML = rows.map(r => {
+      const w = Math.max(0.5, 100 * (Math.log10(r.b) - lo) / (Math.log10(max) - lo));
+      return `<div class="l10-hbar${r.base ? ' base' : r.b === best ? ' best' : ''}"><span>${r.n}</span><span class="track"><span class="fill" style="display:block;width:${w.toFixed(1)}%"></span></span><b>${gb(r.b)}</b></div>`;
+    }).join('');
+    const free = HBM - PARAMS;
+    const fit = r => Math.floor(free / r.b);
+    box.querySelector('#kvSt').innerHTML = `
+      <div><b>${P.nf(fit(rows[0]), 0)}</b><small>chuỗi vừa 54 GB còn trống (MHA)</small></div>
+      <div><b>${P.nf(fit(rows[1]), 0)}</b><small>chuỗi vừa (GQA-8)</small></div>
+      <div class="good"><b>${P.nf(fit(rows[3]), 0)}</b><small>chuỗi vừa (MLA)</small></div>`;
+    let m = `Thanh vẽ theo thang log (mỗi vạch kém nhau nhiều lần). Ở ${P.nf(S, 0)} token, MHA cần ${gb(rows[0].b)} cho một chuỗi. `;
+    m += S > W ? `Chuỗi dài hơn cửa sổ ${P.nf(W, 0)} nên bản cửa sổ trượt dừng lại ở ${gb(rows[5].b)}, không lớn thêm nữa; bản lai vẫn lớn dần nhưng chậm hơn 4 lần.` : `Chuỗi còn ngắn hơn cửa sổ ${P.nf(W, 0)}, nên cửa sổ trượt chưa giúp gì. Kéo lên quá 4 096 để thấy khác biệt.`;
+    if (fit(rows[0]) < 1) m += ' MHA thậm chí không chứa nổi một chuỗi trên một H100.';
+    box.querySelector('#kvM').textContent = m;
+  }
+  sl.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<p>Ô trên áp các cách vào cùng một khung mô hình để so sánh, không phải mô hình thật nào cũng được cấu hình như vậy. Số 512 + 64 của MLA là lựa chọn của DeepSeek-V2.</p>
+
+
+<h2 id="l10-quant" data-short="Quantization: ít bit hơn"><span>Quantization: dùng ít bit hơn</span><span class="slide-range">trang 11–12</span></h2>
+<div class="slides" data-s="11,12"></div>
+<p>Ý tưởng chính: giảm độ chính xác của các con số. Ít byte hơn thì đọc nhanh hơn, mà inference memory-bound nên latency và throughput đều tốt lên. Tất nhiên phải lo về độ chính xác. Xem thêm <a href="#l05-lowprec">Lecture 5</a>.</p>
+<h3>Cơ chế</h3>
+<pre class="l10-py"><code>x = <span class="n">5.2342</span>
+scale = <span class="n">0.1</span>
+zero_point = <span class="n">4</span>
+x_quant = round(x / scale) + zero_point    <span class="c"># Lượng tử hoá: = round(52.342) + 4 = 56</span>
+x_approx = (x_quant - zero_point) * scale  <span class="c"># Giải lượng tử: = (56 - 4) * 0.1 = 5.2</span></code></pre>
+<ul>
+  <li><b>scale</b>: khoảng cách giữa hai mức liền nhau trên lưới số nguyên. Ở đây mỗi bậc là 0,1.</li>
+  <li><b>zero_point</b>: số nguyên ứng với giá trị thực 0. Nó cho phép lưới lệch sang một phía (ví dụ khi giá trị toàn dương).</li>
+  <li>Ta lưu số nguyên 56 (một byte) thay vì 5,2342 (bốn byte). Sai số là 0,0342, không vượt quá nửa bước lưới.</li>
+</ul>
+<p>Thường chọn scale theo dữ liệu. Cách đơn giản nhất là <b>absmax</b>: \(\text{scale} = \max|x| / (2^{b-1} - 1)\) với \(b\) bit, zero_point = 0, để giá trị lớn nhất vừa khít mức cao nhất.</p>
+<h3>So sánh các định dạng số</h3>
+<div class="l10-bits" aria-label="Bố cục bit của các định dạng số">
+  <div><b>FP32</b><span class="row-b"><i class="s"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i></span><small>4 byte</small></div>
+  <div><b>BF16</b><span class="row-b"><i class="s"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i></span><small>2 byte</small></div>
+  <div><b>FP16</b><span class="row-b"><i class="s"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i><i class="m"></i></span><small>2 byte</small></div>
+  <div><b>FP8 E4M3</b><span class="row-b"><i class="s"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i class="m"></i><i class="m"></i><i class="m"></i></span><small>1 byte</small></div>
+  <div><b>INT8</b><span class="row-b"><i class="s"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i><i class="n"></i></span><small>1 byte</small></div>
+  <div><b>INT4</b><span class="row-b"><i class="s"></i><i class="n"></i><i class="n"></i><i class="n"></i></span><small>½ byte</small></div>
+</div>
+<div class="l10-legend"><span><i class="sq" style="background:var(--warn)"></i>dấu</span><span><i class="sq" style="background:var(--accent)"></i>số mũ (quyết định dải giá trị)</span><span><i class="sq" style="background:color-mix(in oklab, var(--accent) 50%, var(--surface))"></i>phần định trị (quyết định độ mịn)</span><span><i class="sq" style="background:var(--life)"></i>số nguyên (bù hai)</span></div>
+<p>Hình gốc của trace có FP32, FP16, FP8, INT8. Mình vẽ lại và thêm BF16, INT4 vì bài có nhắc tới. Ghi chú của thầy:</p>
+<ul>
+  <li><b>fp32</b> (4 byte): cần cho tham số và trạng thái optimizer khi huấn luyện.</li>
+  <li><b>bf16</b> (2 byte): mặc định cho inference.</li>
+  <li><b>fp8</b> (1 byte), dạng e4m3 trên H100: huấn luyện được nếu bạn dám (Peng và cộng sự 2023).</li>
+  <li><b>int8</b> (1 byte), từ −128 đến 127: kém chính xác hơn nhưng rẻ hơn fp8, chỉ dùng cho inference (Baalen và cộng sự 2023).</li>
+  <li><b>int4</b> (½ byte), từ −8 đến 7: rẻ hơn nữa, kém chính xác hơn nữa.</li>
+</ul>
+<div class="note warn"><p>Trace ghi dải của fp8 e4m3 trên H100 là [−240, 240]. Với định dạng E4M3 mà H100 dùng (chuẩn OCP, mã <code>float8_e4m3fn</code> trong PyTorch), giá trị lớn nhất là <b>448</b>. Con số 240 thuộc biến thể <code>e4m3fnuz</code>, dùng trên một số phần cứng khác như GPU AMD MI300.</p></div>
+
+<h3>Hai cách tiếp cận</h3>
+<p><b>Quantization-aware training (QAT)</b>:</p>
+<ul>
+  <li>Khi huấn luyện, ở lượt forward ta lượng tử hoá rồi giải lượng tử ngay, để mô phỏng sai số lượng tử.</li>
+  <li>Ưu: trọng số học được cách sống chung với lượng tử hoá.</li>
+  <li>Nhược: cần huấn luyện quy mô lớn, rất đắt.</li>
+</ul>
+<p><b>Post-training quantization (PTQ)</b>:</p>
+<ul>
+  <li>Làm sau khi huấn luyện xong, rẻ hơn nhiều.</li>
+  <li>Chạy mô hình trên một ít dữ liệu mẫu để chọn scale và zero point cho từng layer hoặc từng tensor.</li>
+  <li><b>GPTQ</b> (Frantar 2022): lượng tử hoá từng cột một. Sau mỗi cột, dùng thông tin bậc hai (Hessian) để chỉnh các trọng số <b>chưa</b> lượng tử hoá, bù lại sai số vừa gây ra.</li>
+</ul>
+
+<div class="widget" id="quantW">
+  <h4>Thử nghiệm: lượng tử hoá 32 trọng số</h4>
+  <div class="l10-ctl" data-g="bits">
+    <span>Số bit:</span>
+    <button class="l10-btn" data-v="8" aria-pressed="false">8</button>
+    <button class="l10-btn" data-v="4" aria-pressed="true">4</button>
+    <button class="l10-btn" data-v="3" aria-pressed="false">3</button>
+  </div>
+  <div class="l10-ctl" data-g="out">
+    <span>Một giá trị ngoại lai:</span>
+    <button class="l10-btn" data-v="0" aria-pressed="true">Không</button>
+    <button class="l10-btn" data-v="1" aria-pressed="false">Có (= 8)</button>
+  </div>
+  <div class="l10-ctl" data-g="gran">
+    <span>Scale:</span>
+    <button class="l10-btn" data-v="t" aria-pressed="true">Một scale cho cả tensor</button>
+    <button class="l10-btn" data-v="g" aria-pressed="false">Mỗi nhóm 8 số một scale</button>
+  </div>
+  <div class="l10-plot" id="quantP"></div>
+  <div class="l10-legend"><span><i class="o" style="background:var(--muted)"></i>giá trị gốc</span><span><i class="o" style="background:var(--accent)"></i>sau lượng tử hoá rồi giải lượng tử</span><span><i style="border-color:color-mix(in oklab, var(--accent) 30%, var(--surface))"></i>các mức của lưới</span></div>
+  <div class="l10-stats" id="quantS"></div>
+  <p class="l10-msg" id="quantM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('quantW'); if (!box || !window.L10P) return;
+  const P = window.L10P, st = { bits: 4, out: 0, gran: 't' };
+  // 32 trọng số cố định (phân phối chuẩn, sinh từ hạt giống cố định)
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const W0 = []; for (let i = 0; i < 32; i++) { const u = rnd() || 1e-9, v = rnd(); W0.push(+(Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)).toFixed(3)); }
+  const OUT = 13;
+  box.querySelectorAll('.l10-ctl').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.l10-btn'); if (!b) return;
+    g.querySelectorAll('.l10-btn').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st[g.dataset.g] = g.dataset.g === 'gran' ? b.dataset.v : +b.dataset.v; upd();
+  }));
+  function upd() {
+    const w = W0.slice(); if (st.out) w[OUT] = 8;
+    const qmax = Math.pow(2, st.bits - 1) - 1, gs = st.gran === 'g' ? 8 : 32;
+    const q = [], scales = [];
+    for (let g0 = 0; g0 < 32; g0 += gs) {
+      const grp = w.slice(g0, g0 + gs), s = Math.max(...grp.map(Math.abs)) / qmax;
+      scales.push(s);
+      grp.forEach(x => q.push(Math.max(-qmax - 1, Math.min(qmax, Math.round(x / s))) * s));
+    }
+    const series = [];
+    // các mức lưới (vẽ khi không quá dày)
+    scales.forEach((s, gi) => {
+      if (qmax > 8) return;
+      const x0 = gi * gs - 0.4, x1 = gi * gs + gs - 0.6;
+      for (let k = -qmax - 1; k <= qmax; k++) { const y = k * s; if (y >= -3.2 && y <= 9) series.push({ pts: [[x0, y], [x1, y]], color: 'color-mix(in oklab, var(--accent) 30%, var(--surface))', width: 1, tip: false }); }
+    });
+    series.push({ pts: w.map((y, i) => [i, y]), line: false, dots: 4, color: 'var(--muted)', tip: p => `trọng số #${p[0] + 1}<br>gốc: <b>${P.nf(p[1], 3)}</b><br>lượng tử: ${P.nf(q[p[0]], 3)}` });
+    series.push({ pts: q.map((y, i) => [i, y]), line: false, dots: 3.2, color: 'var(--accent)', tip: p => `trọng số #${p[0] + 1}<br>lượng tử: <b>${P.nf(p[1], 3)}</b><br>gốc: ${P.nf(w[p[0]], 3)}` });
+    P.plot(box.querySelector('#quantP'), {
+      aria: 'Trọng số gốc và sau lượng tử hoá',
+      x: { min: -1, max: 32, label: 'chỉ số trọng số', ticks: [0, 8, 16, 24, 31], fmt: v => '#' + (v + 1) },
+      y: { min: -3.2, max: st.out ? 9 : 3.2, label: 'giá trị', n: 6 },
+      vlines: st.gran === 'g' ? [7.5, 15.5, 23.5].map(x => ({ x })) : [],
+      series
+    });
+    const idx = w.map((_, i) => i).filter(i => !(st.out && i === OUT));
+    const rmse = Math.sqrt(idx.reduce((a, i) => a + (w[i] - q[i]) ** 2, 0) / idx.length);
+    const zeros = idx.filter(i => q[i] === 0).length;
+    const overhead = st.gran === 'g' ? 16 / 8 : 16 / 32;
+    box.querySelector('#quantS').innerHTML = `
+      <div class="${rmse > 0.25 ? 'bad' : rmse < 0.08 ? 'good' : ''}"><b>${P.nf(rmse, 3)}</b><small>sai số trung bình (RMSE) của các số bình thường</small></div>
+      <div class="${zeros > 8 ? 'bad' : ''}"><b>${zeros} / ${idx.length}</b><small>số bình thường bị làm tròn về 0</small></div>
+      <div><b>${P.nf(st.bits + overhead, 2)} bit</b><small>mỗi trọng số, tính cả scale fp16</small></div>
+      <div><b>${P.nf(16 / (st.bits + overhead), 1)}×</b><small>nhỏ hơn bf16</small></div>`;
+    let m;
+    if (st.out && st.gran === 't') m = `Một giá trị 8 kéo scale lên gấp nhiều lần, nên lưới thưa ra và ${zeros} số bình thường bị làm tròn về 0. Đây là lý do outlier là kẻ thù số một của lượng tử hoá.`;
+    else if (st.out) m = 'Chia nhóm: outlier chỉ làm hỏng scale của nhóm chứa nó (nhóm thứ hai). Ba nhóm còn lại vẫn có lưới mịn. Cái giá là phải lưu thêm một scale cho mỗi nhóm.';
+    else m = `Không có outlier, ${st.bits} bit cho sai số ${rmse < 0.08 ? 'nhỏ' : 'đáng kể'}. ` + (st.bits <= 4 ? 'Mỗi bậc giảm một bit, số mức lưới giảm một nửa và sai số tăng khoảng gấp đôi.' : '256 mức đủ mịn để sai số gần như không đáng kể.');
+    m += ' Nhóm 8 số ở đây chỉ để dễ nhìn. Thực tế thường dùng nhóm 64–128 số, nên chi phí lưu scale chỉ khoảng 0,1–0,25 bit mỗi trọng số.';
+    box.querySelector('#quantM').textContent = m;
+  }
+  upd();
+})();
+</script>
+
+
+<h2 id="l10-awq" data-short="AWQ: bảo vệ trọng số quan trọng"><span>Activation-aware quantization (AWQ): bảo vệ những trọng số quan trọng</span><span class="slide-range">trang 12</span></h2>
+<div class="slides" data-s="12"></div>
+<p><dfn>AWQ</dfn> (Lin và cộng sự 2023) dựa trên một quan sát:</p>
+<ul>
+  <li>Một số kênh của <b>activation</b> có giá trị rất lớn.</li>
+  <li>Các trọng số nhân với những kênh đó quan trọng hơn: sai số của chúng bị phóng đại theo activation.</li>
+  <li>Vậy hãy dành nhiều độ chính xác hơn cho những trọng số đó.</li>
+  <li>Cụ thể: dựa vào activation, chọn ra khoảng 0,1–1% trọng số "quan trọng" để giữ độ chính xác cao.</li>
+  <li>Kết quả: fp16 xuống int3 giảm bộ nhớ khoảng 4 lần và tăng tốc 3,2 lần.</li>
+</ul>
+<figure class="l10-fig"><img src="img/l10/f-awq.png" width="1400" height="346" alt="Ba hình: (a) lượng tử hoá làm tròn thẳng sang INT3, perplexity 43,2; (b) dựa vào activation chọn ra các trọng số quan trọng và giữ chúng ở FP16, perplexity 13,0 nhưng phần cứng chạy kém hiệu quả; (c) nhân các trọng số quan trọng với hệ số alpha trước khi lượng tử hoá, perplexity 13,0" loading="lazy"><figcaption>(a) Làm tròn thẳng sang INT3: perplexity 43,2. (b) Giữ 1% trọng số quan trọng ở FP16: 13,0, nhưng trộn hai định dạng thì phần cứng chạy kém. (c) Phóng to các trọng số quan trọng trước khi lượng tử hoá: cũng 13,0, mà tất cả vẫn là INT3.</figcaption></figure>
+<p>Đọc hình từ trái qua phải:</p>
+<ol>
+  <li><b>(a) Làm tròn thẳng</b> (round-to-nearest) sang INT3: perplexity vọt lên 43,2. Mô hình gần như hỏng.</li>
+  <li><b>(b) Giữ 1% trọng số quan trọng ở FP16</b>: perplexity về 13,0. Nhưng một ma trận trộn INT3 và FP16 thì kernel rất khó chạy nhanh.</li>
+  <li><b>(c) Mẹo của AWQ</b>: nhân cột trọng số quan trọng với một hệ số \(s > 1\) trước khi lượng tử hoá, và chia activation tương ứng cho \(s\). Kết quả phép nhân không đổi, vì \(W x = (W\,\text{diag}(s))\,(\text{diag}(s)^{-1} x)\). Nhưng trọng số được phóng to nên sai số làm tròn của nó, tính theo tỉ lệ, nhỏ đi khoảng \(s\) lần. Perplexity vẫn là 13,0, và mọi thứ vẫn là INT3.</li>
+</ol>
+<div class="note warn"><p>Từ fp16 (16 bit) xuống int3 thì bộ nhớ giảm khoảng 5,3 lần chứ không phải 4. Con số "4 lần, nhanh 3,2 lần" khớp với <b>int4</b>, thiết lập chính của AWQ khi đo tốc độ. Hình (a)–(c) dùng INT3 để thấy rõ khác biệt về perplexity.</p></div>
+
+
+<h2 id="l10-pruning" data-short="Pruning và distillation"><span>Cắt tỉa mô hình (pruning) rồi chưng cất (distillation)</span><span class="slide-range">trang 12–13 và trang 1</span></h2>
+<div class="slides" data-s="12,13"></div>
+<p>Ý tưởng chính: cắt bỏ một phần của mô hình đắt tiền để nó rẻ hơn… rồi sửa lại cho nó chạy tốt. Thầy dẫn bài của NVIDIA (Muralidharan và cộng sự 2024, mô hình Minitron):</p>
+<figure class="l10-fig"><img src="img/l10/f-minitron.png" width="1400" height="600" alt="Quy trình năm bước: 1 mô hình LLM đã huấn luyện; 2 ước lượng độ quan trọng của từng embedding channel, head và kênh MLP; 3 xếp hạng; 4 cắt bỏ phần ít quan trọng; 5 chưng cất; mũi tên lặp lại" loading="lazy"><figcaption>Quy trình của Minitron: đo độ quan trọng, xếp hạng, cắt bớt, chưng cất, và có thể lặp lại.</figcaption></figure>
+<p>Thuật toán:</p>
+<ol class="l10-steps">
+  <li>Tìm các thành phần quan trọng (layer, head, chiều ẩn) bằng một tập dữ liệu hiệu chỉnh nhỏ (1024 mẫu). Ví dụ đo độ lớn activation của từng head, từng kênh.</li>
+  <li>Bỏ các thành phần ít quan trọng để được một mô hình nhỏ hơn.</li>
+  <li>Chưng cất mô hình gốc vào mô hình đã cắt: huấn luyện mô hình nhỏ bắt chước phân phối đầu ra của mô hình gốc.</li>
+</ol>
+<figure class="l10-fig sm"><img src="img/l10/f-minitron-res.png" width="944" height="762" alt="Biểu đồ điểm MMLU theo chi phí huấn luyện (nghìn tỉ token): Minitron 8B đạt khoảng 64 điểm với khoảng 0,1 nghìn tỉ token, cắt từ Nemotron-4 15B; Minitron 4B khoảng 58; Nemotron-3 8B khoảng 55 điểm với khoảng 3,8 nghìn tỉ token; mũi tên ghi 40 lần rẻ hơn, tốt hơn 9%" loading="lazy"><figcaption>Minitron 8B (cắt từ Nemotron-4 15B) so với các mô hình huấn luyện từ đầu. Mũi tên đỏ: "rẻ hơn 40 lần, tốt hơn 9%" so với Nemotron-3 8B.</figcaption></figure>
+<p>Kết quả: Minitron 8B chỉ cần khoảng 0,1 nghìn tỉ token huấn luyện (vì được thừa hưởng từ mô hình 15B), so với khoảng 4 nghìn tỉ của Nemotron-3 8B huấn luyện từ đầu, mà MMLU cao hơn khoảng 9 điểm. (Trace để mục "Results" ở dạng <code>TODO</code>, chỉ có biểu đồ.)</p>
+
+<h3>Hai công thức tạo mô hình nhanh</h3>
+<p>Trang 1 tóm tắt Phần 2: giảm độ phức tạp của inference mà không làm hại độ chính xác. Có hai công thức:</p>
+<div class="l10-ladder">
+  <div><h5>Làm từ đầu</h5><p>1. Thiết kế kiến trúc nhanh hơn (GQA, MLA, cửa sổ trượt…).<br>2. Huấn luyện mô hình đó từ đầu.</p></div>
+  <div><h5>Chưng cất</h5><p>1. Thiết kế kiến trúc nhanh hơn.<br>2. Khởi tạo trọng số từ mô hình gốc (dù kiến trúc khác).<br>3. Sửa mô hình nhanh bằng chưng cất.</p></div>
+</div>
+<p>Uptraining của GQA và Minitron đều thuộc công thức thứ hai: rẻ hơn nhiều so với huấn luyện lại từ đầu.</p>
+<div class="note life"><p>Chưng cất giống học trò học theo thầy. Học từ sách đáp án (nhãn one-hot) chỉ biết "đáp án là B". Học từ thầy (phân phối đầu ra của mô hình lớn) còn biết "B khả năng 70%, C 25%, còn A và D gần như không thể", nên học nhanh hơn với ít bài tập hơn.</p></div>
+
+
+<!-- ============================================================ -->
+<div class="part" id="l10-part3" data-short="Phần 3 · Đường tắt có kiểm tra">Phần 3 · Đi đường tắt nhưng kiểm tra lại<small>Speculative sampling: để một mô hình nhỏ đoán trước vài token, mô hình lớn kiểm tra tất cả trong một lượt. Nhanh hơn 2–3 lần, và kết quả đúng y như mô hình lớn tự sinh.</small></div>
+
+<h2 id="l10-spec" data-short="Speculative sampling"><span>Speculative sampling: đoán trước, kiểm tra sau</span><span class="slide-range">trang 13</span></h2>
+<div class="slides" data-s="13"></div>
+<p>Nhắc lại hai giai đoạn của inference:</p>
+<ul>
+  <li><b>Prefill</b>: cho một chuỗi, mã hoá mọi token song song (compute-bound). Thầy lưu ý: prefill còn cho luôn <b>xác suất</b> của mô hình ở mọi vị trí.</li>
+  <li><b>Generation</b>: sinh từng token một (memory-bound).</li>
+</ul>
+<p>Nói cách khác: <mark>kiểm tra nhanh hơn sinh</mark>. Muốn biết mô hình lớn nghĩ gì về 4 token cho trước, chỉ cần một lượt forward, tốn thời gian gần bằng sinh một token (vì cả hai đều chủ yếu là đọc tham số). Còn tự sinh 4 token thì cần 4 lượt.</p>
+<p><dfn>Speculative sampling</dfn> (Leviathan và cộng sự 2022, Chen và cộng sự 2023) tận dụng điều này:</p>
+<ul>
+  <li>Dùng một <b>draft model</b> \(p\) rẻ tiền để đoán trước vài token (ví dụ 4).</li>
+  <li>Đánh giá bằng <b>target model</b> \(q\) (mô hình thật ta muốn dùng), xử lý mọi token đoán song song, rồi chấp nhận nếu chúng "trông ổn".</li>
+</ul>
+<div class="note life"><p>Giống một thư ký viết nháp email và sếp duyệt. Thư ký (draft) viết nhanh vài câu. Sếp (target) đọc lướt một lượt: giữ các câu đầu nếu đúng ý, gạch đi từ câu đầu tiên sai và tự viết lại câu đó. Sếp đọc nhanh hơn nhiều so với tự viết, nên cả quy trình nhanh hơn, mà email cuối cùng vẫn đúng giọng sếp.</p></div>
+<h3>Thuật toán (Algorithm 2 của Chen 2023)</h3>
+<p>Cho lookahead \(K\), mô hình target \(q\), mô hình draft \(p\), và chuỗi đã có \(x_1, \dots, x_n\). Lặp lại:</p>
+<ol class="l10-steps">
+  <li><b>Đoán</b>: draft sinh tuần tự \(K\) token \(\tilde x_1, \dots, \tilde x_K\), mỗi token lấy mẫu từ \(p(\cdot \mid x_1, \dots, x_n, \tilde x_1, \dots, \tilde x_{t-1})\).</li>
+  <li><b>Chấm song song</b>: chạy target <b>một lần</b> trên cả chuỗi, được \(K + 1\) phân phối: \(q(\cdot \mid x_{1..n})\), \(q(\cdot \mid x_{1..n}, \tilde x_1)\), …, \(q(\cdot \mid x_{1..n}, \tilde x_{1..K})\).</li>
+  <li><b>Duyệt từng token</b> \(t = 1, \dots, K\): lấy \(r \sim U[0, 1]\). Nếu \(r < \min\left(1, \dfrac{q(\tilde x_t)}{p(\tilde x_t)}\right)\) thì <b>nhận</b> \(\tilde x_t\). Nếu không thì lấy mẫu một token từ phân phối phần dư \((q - p)_+\) (chuẩn hoá lại), đặt vào vị trí này, và <b>dừng</b>.</li>
+  <li><b>Thưởng</b>: nếu cả \(K\) token đều được nhận, lấy mẫu thêm một token từ \(q(\cdot \mid x_{1..n}, \tilde x_{1..K})\), vì phân phối này đã có sẵn từ bước 2.</li>
+</ol>
+<p>Mỗi vòng lặp cho ra ít nhất 1 token và nhiều nhất \(K + 1\) token, mà chỉ tốn một lượt chạy target.</p>
+<ul>
+  <li>Đây là <b>lấy mẫu loại bỏ</b> (rejection sampling) đã sửa đổi, với phân phối đề xuất \(p\) và phân phối đích \(q\).</li>
+  <li>Sửa đổi: luôn sinh được ít nhất một token. Rejection sampling thường thì bị loại là phải thử lại, có thể lặp mãi.</li>
+  <li>Tính chất then chốt: kết quả là <b>một mẫu chính xác</b> từ mô hình target!</li>
+</ul>
+
+
+<h2 id="l10-spec-proof" data-short="Vì sao kết quả chính xác"><span>Vì sao kết quả đúng y phân phối của mô hình lớn</span><span class="slide-range">trang 13</span></h2>
+<div class="slides" data-s="13"></div>
+<p>Thầy chứng minh bằng ví dụ với từ vựng chỉ có hai token \(\{A, B\}\):</p>
+<ul>
+  <li>Xác suất của target: \([q(A), q(B)]\). Của draft: \([p(A), p(B)]\).</li>
+  <li>Giả sử \(p(A) > q(A)\): draft <b>lấy mẫu thừa</b> \(A\). Suy ra \(p(B) < q(B)\): draft lấy mẫu thiếu \(B\).</li>
+  <li>Phần dư \(\max(q - p, 0) = [0,\; q(B) - p(B)]\), chuẩn hoá lại thành \([0, 1]\): nếu bị loại thì chắc chắn chọn \(B\).</li>
+</ul>
+<p>Tính xác suất mỗi token được chọn:</p>
+<div class="mathbox">\[\begin{aligned}
+P[A] &= \underbrace{p(A)}_{\text{draft đề xuất }A} \cdot \underbrace{\tfrac{q(A)}{p(A)}}_{\text{được nhận}} \;+\; \underbrace{p(B) \cdot 1}_{\text{đề xuất }B\text{, luôn nhận}} \cdot \underbrace{0}_{\text{không thành }A} = q(A),\\[4pt]
+P[B] &= p(B) \cdot 1 \;+\; p(A) \cdot \Big(1 - \tfrac{q(A)}{p(A)}\Big) \cdot 1 = p(B) + p(A) - q(A) = 1 - q(A) = q(B).
+\end{aligned}\]</div>
+<p>Trực giác: với token draft đề xuất <b>quá nhiều</b> (\(p > q\)), ta chỉ nhận một phần \(q/p\) để cắt bớt phần thừa. Với token draft đề xuất <b>quá ít</b> (\(p &lt; q\)), ta luôn nhận, rồi bù phần thiếu bằng phân phối phần dư mỗi khi có token khác bị loại.</p>
+<div class="note key"><p><b>Trường hợp tổng quát</b> (mình thêm, gọn hơn ví dụ hai token). Với mọi token \(x\):</p>
+<div class="mathbox">\[P[x] = \underbrace{p(x)\min\!\Big(1, \tfrac{q(x)}{p(x)}\Big)}_{=\;\min(p(x),\,q(x))} + \underbrace{\Big(1 - \textstyle\sum_y \min(p(y), q(y))\Big)}_{P[\text{bị loại}]} \cdot \frac{(q(x) - p(x))_+}{\sum_y (q(y) - p(y))_+}.\]</div>
+<p>Vì \(\sum_y (q - p)_+ = 1 - \sum_y \min(p, q)\), hai đại lượng đó triệt tiêu nhau, còn lại \(\min(p, q) + (q - p)_+ = q(x)\). Xác suất nhận trung bình là \(\beta = \sum_x \min(p(x), q(x))\): draft càng giống target thì càng ít bị loại.</p></div>
+
+<div class="widget" id="specW">
+  <h4>Thử nghiệm: kiểm tra bằng lấy mẫu thật</h4>
+  <p style="margin:0 0 4px">Từ vựng có hai token A và B, giống ví dụ của thầy.</p>
+  <p style="margin:12px 0 4px"><label for="specQ">Target: q(A) = <span class="chip" id="specQv"></span></label></p>
+  <input type="range" id="specQ" min="1" max="99" value="30">
+  <p style="margin:10px 0 4px"><label for="specP">Draft: p(A) = <span class="chip" id="specPv"></span></label></p>
+  <input type="range" id="specP" min="1" max="99" value="70">
+  <div class="l10-ctl"><button class="l10-btn ghost" id="specRun" aria-pressed="false">↻ Chạy 10 000 lần</button></div>
+  <div class="l10-hbars" id="specBars"></div>
+  <div class="l10-stats" id="specS"></div>
+  <p class="l10-msg" id="specM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('specW'); if (!box || !window.L10P) return;
+  const P = window.L10P, sq = box.querySelector('#specQ'), sp = box.querySelector('#specP');
+  let res = null;
+  function run() {
+    const q = +sq.value / 100, p = +sp.value / 100, n = 10000;
+    let a = 0, acc = 0;
+    const rA = Math.max(q - p, 0), rB = Math.max((1 - q) - (1 - p), 0), rs = rA + rB;
+    for (let i = 0; i < n; i++) {
+      const x = Math.random() < p ? 'A' : 'B', px = x === 'A' ? p : 1 - p, qx = x === 'A' ? q : 1 - q;
+      let out;
+      if (Math.random() < Math.min(1, qx / px)) { out = x; acc++; }
+      else out = Math.random() < (rs > 0 ? rA / rs : 0.5) ? 'A' : 'B';
+      if (out === 'A') a++;
+    }
+    res = { q, p, fa: a / n, acc: acc / n };
+  }
+  function bar(lab, v, cls) { return `<div class="l10-hbar${cls ? ' ' + cls : ''}"><span>${lab}</span><span class="track"><span class="fill" style="display:block;width:${(100 * v).toFixed(1)}%"></span></span><b>${P.nf(100 * v, 1)}%</b></div>`; }
+  function upd(rerun) {
+    const q = +sq.value / 100, p = +sp.value / 100;
+    box.querySelector('#specQv').textContent = P.nf(q, 2) + ' · q(B) = ' + P.nf(1 - q, 2);
+    box.querySelector('#specPv').textContent = P.nf(p, 2) + ' · p(B) = ' + P.nf(1 - p, 2);
+    if (rerun || !res || res.q !== q || res.p !== p) run();
+    const aA = Math.min(1, q / p), aB = Math.min(1, (1 - q) / (1 - p)), beta = Math.min(p, q) + Math.min(1 - p, 1 - q);
+    box.querySelector('#specBars').innerHTML =
+      bar('Draft đề xuất A: p(A)', p, 'base') +
+      bar('Nhận A nếu được đề xuất', aA) +
+      bar('Nhận B nếu được đề xuất', aB) +
+      bar('Mục tiêu: q(A)', q, 'best') +
+      bar('Thực tế: tỉ lệ ra A', res.fa, 'best');
+    const err = Math.abs(res.fa - q);
+    box.querySelector('#specS').innerHTML = `
+      <div class="${err < 0.015 ? 'good' : ''}"><b>${P.nf(100 * res.fa, 1)}% / ${P.nf(100 * q, 1)}%</b><small>tỉ lệ ra A thực tế / q(A)</small></div>
+      <div><b>${P.nf(100 * beta, 1)}%</b><small>xác suất nhận theo lý thuyết, β = Σ min(p, q)</small></div>
+      <div><b>${P.nf(100 * res.acc, 1)}%</b><small>tỉ lệ nhận đo được</small></div>`;
+    const over = p > q ? 'A' : p < q ? 'B' : null;
+    let m = over ? `Draft đề xuất thừa ${over}, nên ${over} chỉ được nhận với xác suất ${P.nf(over === 'A' ? aA : aB, 2)}. Khi bị loại, phần dư dồn hết cho token còn lại. ` : 'Draft trùng target: mọi đề xuất đều được nhận. ';
+    m += `Sau 10 000 lần, tỉ lệ ra A là ${P.nf(100 * res.fa, 1)}%, khớp với q(A) = ${P.nf(100 * q, 0)}% (lệch do ngẫu nhiên cỡ 0,5%). Đổi draft thế nào thì đầu ra vẫn theo q; chỉ có tỉ lệ nhận, tức tốc độ, là thay đổi.`;
+    box.querySelector('#specM').textContent = m;
+  }
+  sq.addEventListener('input', () => upd()); sp.addEventListener('input', () => upd());
+  box.querySelector('#specRun').addEventListener('click', () => upd(true));
+  upd();
+})();
+</script>
+
+
+<h2 id="l10-spec-practice" data-short="Speculative trong thực tế"><span>Speculative sampling trong thực tế</span><span class="slide-range">trang 14</span></h2>
+<div class="slides" data-s="14"></div>
+<p>Kết quả của Chen và cộng sự (2023): target là Chinchilla 70B, draft là một mô hình 4 tỉ tham số, batch 1, \(K = 4\).</p>
+<div class="tbl"><table class="l10-cmp">
+  <tr><th>Cách lấy mẫu</th><th>Benchmark</th><th>Kết quả</th><th>Thời gian mỗi token</th><th>Tăng tốc</th></tr>
+  <tr><td>Tuần tự (nucleus)</td><td rowspan="2">XSum (ROUGE-2)</td><td>0,112</td><td>14,1 ms</td><td>1×</td></tr>
+  <tr><td>Speculative (nucleus)</td><td>0,114</td><td>7,52 ms</td><td class="good">1,92×</td></tr>
+  <tr><td>Tuần tự (greedy)</td><td rowspan="2">XSum (ROUGE-2)</td><td>0,157</td><td>14,1 ms</td><td>1×</td></tr>
+  <tr><td>Speculative (greedy)</td><td>0,156</td><td>7,00 ms</td><td class="good">2,01×</td></tr>
+  <tr><td>Tuần tự (nucleus)</td><td rowspan="2">HumanEval (100 shot)</td><td>45,1%</td><td>14,1 ms</td><td>1×</td></tr>
+  <tr><td>Speculative (nucleus)</td><td>47,0%</td><td>5,73 ms</td><td class="good">2,46×</td></tr>
+</table></div>
+<p>Kết quả gần như không đổi (khác nhau chỉ do ngẫu nhiên, vì phân phối đầu ra giống hệt), còn tốc độ tăng 2–2,5 lần. Code (HumanEval) tăng nhiều hơn văn xuôi (XSum), vì code dễ đoán hơn nên draft được nhận nhiều hơn.</p>
+<figure class="l10-fig"><img src="img/l10/f-spec-k.png" width="1400" height="591" alt="Ba biểu đồ theo số token draft K từ 0 đến 7: thời gian lấy mẫu trung bình 128 token giảm mạnh tới K khoảng 3 rồi đi ngang (XSum) hoặc giảm chậm (HumanEval); tỉ lệ nhận giảm dần khi K tăng, HumanEval giảm chậm hơn XSum; tổng thời gian một vòng lặp tăng gần tuyến tính từ 14 lên 28 ms" loading="lazy"><figcaption>Theo số token draft \(K\): thời gian sinh 128 token (trái), tỉ lệ nhận (giữa), thời gian một vòng (phải).</figcaption></figure>
+<p>Biểu đồ cho thấy đánh đổi khi chọn \(K\): \(K\) lớn thì mỗi vòng có thể cho nhiều token hơn, nhưng mỗi vòng cũng lâu hơn (draft phải chạy \(K\) lần) và token càng xa càng dễ bị loại. Với XSum, quá \(K = 3\) là không lợi thêm.</p>
+
+<div class="widget" id="specK">
+  <h4>Thử nghiệm: chọn số token draft K</h4>
+  <p style="margin:12px 0 4px"><label for="skA">Xác suất nhận mỗi token α: <span class="chip" id="skAv"></span></label></p>
+  <input type="range" id="skA" min="30" max="98" value="80">
+  <p style="margin:10px 0 4px"><label for="skC">Chi phí draft so với target c: <span class="chip" id="skCv"></span></label></p>
+  <input type="range" id="skC" min="1" max="60" value="5">
+  <div class="l10-plot" id="skP"></div>
+  <div class="l10-legend"><span><i style="border-color:var(--accent)"></i>tăng tốc so với sinh tuần tự</span><span><i class="d" style="border-color:var(--muted)"></i>số token trung bình mỗi vòng</span></div>
+  <div class="l10-stats" id="skS"></div>
+  <p class="l10-msg" id="skM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('specK'); if (!box || !window.L10P) return;
+  const P = window.L10P, sa = box.querySelector('#skA'), sc = box.querySelector('#skC');
+  const tok = (a, K) => a >= 1 ? K + 1 : (1 - Math.pow(a, K + 1)) / (1 - a);
+  const sp = (a, c, K) => tok(a, K) / (K * c + 1);
+  function upd() {
+    const a = +sa.value / 100, c = +sc.value / 100;
+    box.querySelector('#skAv').textContent = P.nf(a, 2);
+    box.querySelector('#skCv').textContent = P.nf(c, 2) + ' (draft nhỏ cỡ ' + P.nf(1 / c, 0) + ' lần)';
+    const Ks = []; for (let K = 0; K <= 16; K++) Ks.push(K);
+    let best = 0; Ks.forEach(K => { if (sp(a, c, K) > sp(a, c, best) + 1e-9) best = K; });
+    const sB = sp(a, c, best);
+    P.plot(box.querySelector('#skP'), {
+      aria: 'Tăng tốc và số token mỗi vòng theo K',
+      x: { min: 0, max: 16, label: 'số token draft K', ticks: [0, 2, 4, 6, 8, 10, 12, 14, 16], fmt: v => v },
+      y: { min: 0, max: Math.max(4, Math.ceil(tok(a, 16) + 0.5)), label: 'lần', n: 5 },
+      hlines: [{ y: 1, label: 'không tăng tốc' }],
+      series: [
+        { pts: Ks.map(K => [K, tok(a, K)]), color: 'var(--muted)', dash: '5 5', width: 2, tip: p => `K = ${p[0]}<br>trung bình <b>${P.nf(p[1], 2)}</b> token mỗi vòng` },
+        { pts: Ks.map(K => [K, sp(a, c, K)]), color: 'var(--accent)', width: 2.5, dots: 3, tip: p => `K = ${p[0]}<br>tăng tốc <b>${P.nf(p[1], 2)}×</b>` }
+      ],
+      marks: [{ x: best, y: sB, label: `K tốt nhất = ${best}`, dx: 0, dy: 24, anchor: 'middle', tip: `K = ${best}: tăng tốc <b>${P.nf(sB, 2)}×</b>` }]
+    });
+    box.querySelector('#skS').innerHTML = `
+      <div class="good"><b>${P.nf(sB, 2)}×</b><small>tăng tốc lớn nhất (ở K = ${best})</small></div>
+      <div><b>${P.nf(tok(a, best), 2)}</b><small>token trung bình mỗi lượt chạy target</small></div>
+      <div><b>${P.nf(1 / (1 - a), 1)}</b><small>trần token mỗi vòng khi K → ∞, bằng 1 / (1 − α)</small></div>`;
+    let m = `Mỗi vòng tốn K lần chạy draft (mỗi lần bằng ${P.nf(c, 2)} target) cộng một lần chạy target. `;
+    m += best === 0 ? 'Với α và c thế này, speculative không có lợi: draft quá đắt hoặc đoán quá kém.' : `Đi quá K = ${best} thì token đoán thêm thường bị loại, mà vẫn phải trả tiền chạy draft cho chúng.`;
+    if (a >= 0.9) m += ' α cao (văn bản dễ đoán như code): K lớn hơn mới bõ.';
+    box.querySelector('#skM').textContent = m;
+  }
+  sa.addEventListener('input', upd); sc.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<p>Công thức trong ô trên là của Leviathan và cộng sự (2022), giả sử mỗi token được nhận độc lập với cùng xác suất \(\alpha\). Số token trung bình mỗi vòng là \((1 - \alpha^{K+1})/(1 - \alpha)\), và tăng tốc là con số đó chia cho \(Kc + 1\). Giả định độc lập không hoàn toàn đúng trong thực tế, nên chỉ dùng để thấy xu hướng.</p>
+
+<h3>Chọn draft model thế nào</h3>
+<ul>
+  <li>Target 70 tỉ tham số thì draft khoảng 8 tỉ. Target 8 tỉ thì draft khoảng 1 tỉ.</li>
+  <li>Cố gắng làm draft giống target nhất có thể, ví dụ bằng chưng cất.</li>
+</ul>
+<p>Các cách cải thiện draft:</p>
+<ul>
+  <li><b>Medusa</b> (Cai và cộng sự 2024): gắn thêm vài "đầu" vào chính mô hình target, mỗi đầu đoán một token ở vị trí xa hơn (+1, +2…), sinh song song nhiều token.</li>
+  <li><b>EAGLE</b> (Li và cộng sự 2024): draft lấy đặc trưng cấp cao (trạng thái ẩn) của target làm đầu vào, thay vì chỉ nhìn token. Đoán chính xác hơn nhiều.</li>
+</ul>
+<figure class="l10-fig md"><img src="img/l10/f-medusa.png" width="1168" height="397" alt="Bốn kiểu draft: speculative sampling dùng một LLM nhỏ đoán t4 rồi t5; lookahead dùng 2-gram và Jacobi; Medusa dùng các Medusa head đoán t4 và t5 từ đặc trưng f2; EAGLE dùng embedding và đầu tự hồi quy trên đặc trưng f để đoán t4, t5" loading="lazy"><figcaption>Bốn kiểu draft: LLM nhỏ riêng, Lookahead (n-gram), Medusa (thêm đầu vào target), EAGLE (tự hồi quy trên đặc trưng của target).</figcaption></figure>
+<p>Ý tưởng "đoán trước nhiều token" cũng xuất hiện trong lúc huấn luyện: module MTP của DeepSeek-V3 (<a href="#l04-mtp">Lecture 4</a>) được dùng lại làm draft khi suy luận.</p>
+<div class="note key">
+  <p><b>Tóm tắt speculative sampling</b> (trang 14):</p>
+  <ul>
+    <li>Lấy mẫu <b>chính xác</b> từ target, nhờ toán học của rejection sampling.</li>
+    <li>Tận dụng sự bất đối xứng: kiểm tra (song song) nhanh hơn sinh (tuần tự).</li>
+    <li>Còn rất nhiều chỗ để sáng tạo ở draft model (cần huấn luyện).</li>
+  </ul>
+</div>
+
+
+<!-- ============================================================ -->
+<div class="part" id="l10-part4" data-short="Phần 4 · Tải động">Phần 4 · Xử lý tải động<small>Người dùng đến lúc nào cũng được, câu dài câu ngắn khác nhau, nhiều câu chung một phần prompt. Gom chúng thành batch thế nào cho hiệu quả?</small></div>
+
+<h2 id="l10-contbatch" data-short="Continuous batching"><span>Continuous batching: lập lịch theo từng bước</span><span class="slide-range">trang 2, 14–15</span></h2>
+<div class="slides" data-s="14,15"></div>
+<p>Phần 1 cho thấy muốn throughput cao thì phải gom nhiều yêu cầu thành batch. Nhưng gom batch với lưu lượng thật khó, vì ba lý do (trang 2):</p>
+<ol>
+  <li><b>Yêu cầu đến vào những lúc khác nhau.</b> Chờ đủ batch thì người đến sớm phải đợi.</li>
+  <li><b>Nhiều chuỗi có chung phần đầu</b> (cùng system prompt, hoặc sinh nhiều câu trả lời cho một prompt). Lưu nhiều lần là phí.</li>
+  <li><b>Các chuỗi dài ngắn khác nhau.</b> Thêm padding cho bằng nhau là lãng phí.</li>
+</ol>
+<p>Mục này giải quyết lý do 1 và 3. <a href="#l10-paged">Mục sau</a> giải quyết lý do 2 (và thêm một phần của 3).</p>
+<p>Bài báo gốc là <b>Orca</b> (Yu và cộng sự, OSDI 2022). Vấn đề:</p>
+<ul>
+  <li>Khi huấn luyện, ta có một khối token đặc (batch × độ dài chuỗi).</li>
+  <li>Khi suy luận, yêu cầu đến và kết thúc vào những lúc khác nhau, nên ta có một mảng "răng cưa".</li>
+</ul>
+<figure class="l10-fig"><img src="img/l10/f-contbatch.png" width="1400" height="326" alt="Hai bảng 4 hàng S1 đến S4, 8 cột T1 đến T8. Bảng trái: các ô vàng là prompt, ô xanh là token sinh ra, mỗi chuỗi dừng ở thời điểm khác nhau và để lại ô trống. Bảng phải: các chuỗi kết thúc bằng ô đỏ END ở T5, T6, T7, T8 khác nhau" loading="lazy"><figcaption>Vàng: token của prompt. Xanh: token sinh ra. Đỏ: kết thúc. Mỗi chuỗi có prompt dài khác nhau và kết thúc ở thời điểm khác nhau.</figcaption></figure>
+<p><b>Giải pháp: lập lịch theo từng vòng lặp</b> (iteration-level scheduling).</p>
+<ul>
+  <li>Giải mã từng bước một.</li>
+  <li>Sau mỗi bước, chuỗi nào xong thì rời batch ngay. Yêu cầu mới đến thì được thêm vào batch ngay, không phải chờ cả batch sinh xong.</li>
+</ul>
+<p>Vấn đề tiếp theo: batching chỉ chạy được khi mọi chuỗi có cùng kích thước, đúng không? Mà mỗi yêu cầu lại dài khác nhau.</p>
+<p><b>Giải pháp: selective batching</b> (gom batch có chọn lọc).</p>
+<ul>
+  <li>Khi huấn luyện, mọi chuỗi dài bằng nhau nên ta làm việc trên một tensor \(B \times S \times H\).</li>
+  <li>Khi suy luận, độ dài khác nhau: \([3, H]\), \([9, H]\), \([5, H]\)…</li>
+  <li><b>Phần attention</b>: xử lý riêng từng chuỗi (mỗi chuỗi có KV cache riêng, đằng nào cũng không dùng chung được).</li>
+  <li><b>Phần không phải attention</b> (MLP, các phép chiếu, norm): nối mọi chuỗi thành một tensor \([3 + 9 + 5, H]\) và xử lý một lần. Các phép này làm việc trên từng token độc lập, nên không cần các chuỗi bằng nhau, và đây chính là chỗ batching giúp tăng intensity.</li>
+</ul>
+<div class="note life"><p>Batching tĩnh giống một chuyến xe buýt du lịch: chờ đủ khách mới chạy, và phải đợi người cuối cùng xong việc mới quay về đón đoàn sau. Continuous batching giống xe buýt thành phố: ai xuống thì có chỗ trống, người đang chờ ở trạm lên ngay.</p></div>
+
+<div class="widget" id="schedW">
+  <h4>Thử nghiệm: batching tĩnh và continuous batching</h4>
+  <p style="margin:0 0 4px">4 chỗ trong batch, 10 yêu cầu, mỗi yêu cầu cần sinh số token khác nhau. Số trong ô là số thứ tự yêu cầu.</p>
+  <div class="l10-ctl" data-g="arr">
+    <span>Yêu cầu đến:</span>
+    <button class="l10-btn" data-v="0" aria-pressed="true">Cùng lúc</button>
+    <button class="l10-btn" data-v="1" aria-pressed="false">Rải rác</button>
+    <button class="l10-btn ghost" id="schedRe" aria-pressed="false">↻ Độ dài khác</button>
+  </div>
+  <div class="l10-sched" id="schedG"></div>
+  <div class="l10-stats" id="schedS"></div>
+  <p class="l10-msg" id="schedM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('schedW'); if (!box || !window.L10P) return;
+  const P = window.L10P, SLOTS = 4, NREQ = 10, st = { arr: 0 };
+  const COL = ['var(--accent)', 'var(--num)', 'var(--life)', 'var(--warn)', 'var(--key)'];
+  let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  let reqs = [];
+  function sample() { reqs = []; for (let i = 0; i < NREQ; i++) reqs.push({ id: i + 1, len: 2 + Math.floor(rnd() * 11) }); }
+  const arrival = i => st.arr ? Math.round(i * 1.6) : 0;
+  function staticSched() {
+    const rows = Array.from({ length: SLOTS }, () => []); let t = 0, i = 0; const done = {};
+    while (i < NREQ) {
+      t = Math.max(t, arrival(i));
+      const batch = []; while (i < NREQ && batch.length < SLOTS && arrival(i) <= t) batch.push(reqs[i++]);
+      const span = Math.max(...batch.map(r => r.len));
+      for (let s = 0; s < SLOTS; s++) for (let k = 0; k < span; k++) rows[s][t + k] = batch[s] && k < batch[s].len ? batch[s].id : 0;
+      batch.forEach(r => done[r.id] = t + r.len);
+      t += span;
+    }
+    return { rows, T: t, done };
+  }
+  function contSched() {
+    const rows = Array.from({ length: SLOTS }, () => []), slot = Array(SLOTS).fill(null), done = {};
+    let t = 0, i = 0, left = NREQ;
+    while (left > 0 && t < 500) {
+      for (let s = 0; s < SLOTS; s++) if (!slot[s] && i < NREQ && arrival(i) <= t) slot[s] = { r: reqs[i++], k: 0 };
+      for (let s = 0; s < SLOTS; s++) {
+        if (!slot[s]) { rows[s][t] = 0; continue; }
+        rows[s][t] = slot[s].r.id; slot[s].k++;
+        if (slot[s].k >= slot[s].r.len) { done[slot[s].r.id] = t + 1; slot[s] = null; left--; }
+      }
+      t++;
+    }
+    return { rows, T: t, done };
+  }
+  function grid(title, res, T) {
+    let h = `<h5>${title}</h5><div class="g" style="grid-template-columns:52px repeat(${T}, minmax(0, 1fr))">`;
+    res.rows.forEach((row, s) => {
+      h += `<i class="lab">chỗ ${s + 1}</i>`;
+      for (let t = 0; t < T; t++) { const id = row[t] || 0; h += id ? `<i style="background:${COL[(id - 1) % 5]}" title="Yêu cầu ${id}, bước ${t + 1}">${id}</i>` : `<i title="Trống, bước ${t + 1}"></i>`; }
+    });
+    return h + '</div>';
+  }
+  function upd() {
+    const a = staticSched(), b = contSched(), T = Math.max(a.T, b.T);
+    box.querySelector('#schedG').innerHTML = grid(`Batching tĩnh: ${a.T} bước`, a, T) + grid(`Continuous batching: ${b.T} bước`, b, T);
+    const work = reqs.reduce((s, r) => s + r.len, 0);
+    const lat = res => reqs.reduce((s, r, i) => s + res.done[r.id] - arrival(i), 0) / NREQ;
+    const ua = work / (a.T * SLOTS), ub = work / (b.T * SLOTS);
+    box.querySelector('#schedS').innerHTML = `
+      <div class="bad"><b>${P.nf(100 * ua, 0)}%</b><small>ô được dùng, batching tĩnh</small></div>
+      <div class="good"><b>${P.nf(100 * ub, 0)}%</b><small>ô được dùng, continuous</small></div>
+      <div><b>${P.nf(lat(a), 1)} → ${P.nf(lat(b), 1)}</b><small>thời gian trung bình từ lúc đến tới lúc xong (bước)</small></div>
+      <div class="good"><b>${P.nf(a.T / b.T, 2)}×</b><small>throughput (cùng lượng việc, ít bước hơn)</small></div>`;
+    let m = `Tổng cộng có ${work} token phải sinh. Batching tĩnh phải đợi yêu cầu dài nhất trong mỗi batch, nên các chỗ xong sớm ngồi không. Continuous batching lấp chỗ trống ngay bước sau.`;
+    if (st.arr) m += ' Khi yêu cầu đến rải rác, batching tĩnh còn tệ hơn: người mới đến phải chờ cả batch đang chạy xong mới được vào.';
+    m += ' Mô phỏng coi mỗi bước tốn thời gian như nhau và bỏ qua prefill.';
+    box.querySelector('#schedM').textContent = m;
+  }
+  box.querySelector('[data-g="arr"]').addEventListener('click', e => {
+    const b = e.target.closest('.l10-btn'); if (!b || b.id === 'schedRe') return;
+    box.querySelectorAll('[data-g="arr"] .l10-btn:not(#schedRe)').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st.arr = +b.dataset.v; upd();
+  });
+  box.querySelector('#schedRe').addEventListener('click', () => { sample(); upd(); });
+  sample(); upd();
+})();
+</script>
+
+
+<h2 id="l10-paged" data-short="PagedAttention"><span>PagedAttention: quản lý KV cache như bộ nhớ ảo</span><span class="slide-range">trang 15–16</span></h2>
+<div class="slides" data-s="15,16"></div>
+<p>Đây là bài báo giới thiệu cả vLLM lẫn PagedAttention (Kwon và cộng sự, 2023). Cách làm cũ:</p>
+<ul>
+  <li>Một yêu cầu đến.</li>
+  <li>Cấp cho nó một đoạn KV cache <b>liền mạch</b> đủ cho prompt và câu trả lời, tính theo độ dài <b>tối đa</b>.</li>
+</ul>
+<figure class="l10-fig"><img src="img/l10/f-frag.png" width="1400" height="244" alt="Một dải bộ nhớ KV cache: 7 ô cho prompt của yêu cầu A, 1 ô cho token đang sinh, 2 ô đặt trước cho tương lai, 2038 ô không bao giờ dùng (phân mảnh trong); một khoảng trống giữa hai yêu cầu (phân mảnh ngoài); 3 ô cho prompt của yêu cầu B, 1 ô đang sinh, 507 ô không bao giờ dùng" loading="lazy"><figcaption>Cấp phát liền mạch theo độ dài tối đa: yêu cầu A giữ 2038 ô không bao giờ dùng (phân mảnh trong), và còn khoảng trống giữa các yêu cầu (phân mảnh ngoài).</figcaption></figure>
+<p><b>Vấn đề: phân mảnh</b> (giống ổ cứng của bạn):</p>
+<ul>
+  <li><b>Phân mảnh trong</b> (internal fragmentation): đặt chỗ cho 2048 token nhưng câu trả lời có thể ngắn hơn nhiều. Phần còn lại bỏ phí.</li>
+  <li><b>Phân mảnh ngoài</b> (external fragmentation): giữa các đoạn đã cấp có thể còn những khoảng trống quá nhỏ, không đủ cho yêu cầu nào.</li>
+</ul>
+<p><b>Giải pháp: PagedAttention</b> (nhớ lại môn hệ điều hành). Chia KV cache của mỗi chuỗi thành các <b>khối</b> (block) cố định, ví dụ mỗi khối 16 token, và các khối <b>không cần nằm liền nhau</b>. Kernel attention đọc từng khối theo một bảng tra.</p>
+<figure class="l10-fig md"><img src="img/l10/f-blocks.png" width="1240" height="570" alt="Vector query 'forth' nhìn vào ba khối key và value nằm rời nhau: khối 1 chứa 'years ago our fathers', khối 2 chứa 'brought forth', khối 0 chứa 'Four score and seven'" loading="lazy"><figcaption>Query "forth" đọc lần lượt ba khối nằm rải rác trong bộ nhớ. Mỗi khối 4 token.</figcaption></figure>
+<p>Hai yêu cầu dùng chung bộ nhớ vật lý. Mỗi yêu cầu có một <b>bảng khối</b> (block table) ánh xạ khối logic (thứ tự trong câu) sang khối vật lý (vị trí thật trong bộ nhớ), giống bảng trang của hệ điều hành:</p>
+<figure class="l10-fig"><img src="img/l10/f-share.png" width="1400" height="617" alt="Yêu cầu A có các khối logic 0, 1, 2 chứa 'Four score and seven', 'years ago our fathers', 'brought'; yêu cầu B có khối logic 0, 1 chứa 'It was the best', 'of times'. Ở giữa là 9 khối vật lý, các khối của A và B nằm xen kẽ: khối vật lý 7, 1, 3 của A; 5, 2 của B" loading="lazy"><figcaption>Khối logic của hai yêu cầu được đặt xen kẽ trong cùng một vùng khối vật lý. Chỉ khối cuối của mỗi yêu cầu có thể còn trống.</figcaption></figure>
+<p>Nhờ vậy:</p>
+<ul>
+  <li>Phân mảnh trong chỉ còn ở khối <b>cuối</b> của mỗi chuỗi (tối đa một khối).</li>
+  <li>Không còn phân mảnh ngoài, vì mọi khối cùng cỡ: khối trống nào cũng dùng được.</li>
+  <li>Cấp thêm khối khi cần, không phải đặt trước độ dài tối đa.</li>
+</ul>
+
+<h3>Chia sẻ KV cache giữa các chuỗi</h3>
+<p>Có nhiều kiểu chia sẻ:</p>
+<figure class="l10-fig md"><img src="img/l10/f-prefix.png" width="1400" height="559" alt="Hai chuỗi A và B có chung phần đầu prompt là hướng dẫn dịch tiếng Anh sang tiếng Pháp với ba ví dụ; phần riêng của A là 'cheese' cho ra 'fromage', của B là 'I love you' cho ra 'Je t'amie'" loading="lazy"><figcaption>Hai yêu cầu chung phần đầu prompt (hướng dẫn và ví dụ dịch), chỉ khác phần cuối.</figcaption></figure>
+<ul>
+  <li><b>Chung system prompt</b>: mọi yêu cầu của một ứng dụng thường bắt đầu bằng cùng một đoạn hướng dẫn.</li>
+  <li><b>Sinh nhiều câu trả lời cho một prompt</b>: ví dụ tổng hợp chương trình (program synthesis), hoặc RL sinh nhiều mẫu rồi chấm điểm.</li>
+</ul>
+<p><b>Giải pháp: dùng chung phần đầu, copy-on-write ở mức khối.</b> Nhiều chuỗi trỏ vào cùng khối vật lý, mỗi khối có một <b>bộ đếm tham chiếu</b>. Khi một chuỗi cần ghi vào khối đang dùng chung, ta chép khối đó ra một bản riêng rồi mới ghi, và giảm bộ đếm của khối cũ.</p>
+<figure class="l10-fig"><img src="img/l10/f-cow.png" width="1400" height="644" alt="Hai mẫu A1 và A2 cùng có khối logic 0 'Four score and seven' và khối logic 1 'years ago our ...'. Khối vật lý 7 dùng chung. Khối vật lý 1 lúc đầu dùng chung với ref count 2; khi A1 sinh 'fathers' còn A2 sinh 'mothers', khối được chép sang khối vật lý 3 (copy-on-write), ref count giảm từ 2 xuống 1" loading="lazy"><figcaption>Hai mẫu sinh từ cùng một prompt dùng chung khối 7 và khối 1. Khi chúng bắt đầu khác nhau ("fathers" và "mothers"), khối 1 được chép sang khối 3 và bộ đếm tham chiếu giảm từ 2 xuống 1.</figcaption></figure>
+<p>Các tối ưu khác của vLLM:</p>
+<ul>
+  <li>Kernel gộp việc đọc khối với tính attention, giảm chi phí khởi chạy kernel.</li>
+  <li>Dùng kernel mới nhất (FlashAttention, FlashDecoding).</li>
+  <li>Dùng CUDA graphs để tránh chi phí khởi chạy kernel (ghi lại cả chuỗi kernel một lần, rồi phát lại).</li>
+</ul>
+<p>SGLang (nhắc ở đầu bài) đẩy ý tưởng chia sẻ phần đầu đi xa hơn với RadixAttention: giữ KV cache của các phần đầu đã gặp trong một cây tiền tố, để các yêu cầu <b>sau</b> có cùng phần đầu cũng dùng lại được.</p>
+<div class="note life"><p>Cấp phát liền mạch giống đặt bàn nhà hàng theo số khách tối đa có thể đến: bàn 20 chỗ cho một nhóm thường chỉ có 3 người. PagedAttention giống ghép bàn 4 chỗ: nhóm đông thêm người thì kê thêm bàn, ở đâu trống thì kê ở đó, miễn là sổ ghi rõ bàn nào của nhóm nào.</p></div>
+
+<div class="widget" id="pageW">
+  <h4>Thử nghiệm: bao nhiêu yêu cầu vừa bộ nhớ KV cache</h4>
+  <p style="margin:0 0 4px">Llama 2 13B (MHA) trên một H100: 54 GB còn trống sau tham số, đủ cho khoảng 65 900 token KV. Prompt dài 20–600 token, câu trả lời trung bình 200 token.</p>
+  <div class="l10-ctl" data-g="max">
+    <span>Đặt trước tối đa (cách cũ):</span>
+    <button class="l10-btn" data-v="512" aria-pressed="false">512</button>
+    <button class="l10-btn" data-v="2048" aria-pressed="true">2 048</button>
+    <button class="l10-btn" data-v="8192" aria-pressed="false">8 192</button>
+  </div>
+  <div class="l10-ctl" data-g="blk">
+    <span>Cỡ khối (PagedAttention):</span>
+    <button class="l10-btn" data-v="16" aria-pressed="true">16</button>
+    <button class="l10-btn" data-v="128" aria-pressed="false">128</button>
+    <button class="l10-btn ghost" id="pageRe" aria-pressed="false">↻ Yêu cầu khác</button>
+  </div>
+  <div class="l10-memlab"><span>Cấp liền mạch theo tối đa</span><div class="l10-mem" id="memA"></div></div>
+  <div class="l10-memlab"><span>PagedAttention</span><div class="l10-mem" id="memB"></div></div>
+  <div class="l10-legend"><span><i class="sq" style="background:var(--accent)"></i>token thật (prompt + câu trả lời)</span><span><i class="sq" style="background:var(--warn);opacity:.75"></i>đã đặt nhưng không dùng</span><span><i class="sq" style="background:var(--code-bg);border:1px solid var(--line)"></i>còn trống</span></div>
+  <div class="l10-stats" id="pageS"></div>
+  <p class="l10-msg" id="pageM"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('pageW'); if (!box || !window.L10P) return;
+  const P = window.L10P, st = { max: 2048, blk: 16 }, CAP = Math.floor(54e9 / 819200);
+  let seed = 5; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  let reqs = [];
+  function sample() { reqs = []; for (let i = 0; i < 4000; i++) reqs.push({ p: 20 + Math.floor(rnd() * 581), o: Math.max(1, Math.round(-200 * Math.log(1 - rnd()))) }); }
+  function fill(cost) {
+    let used = 0, real = 0, n = 0;
+    for (const r of reqs) { const c = cost(r); if (used + c > CAP) break; used += c; real += r.p + r.o; n++; }
+    return { n, used, real };
+  }
+  function bar(el, f) {
+    el.innerHTML = `<i class="u" style="width:${(100 * f.real / CAP).toFixed(2)}%"></i><i class="r" style="width:${(100 * (f.used - f.real) / CAP).toFixed(2)}%"></i><i class="f" style="flex:1"></i>`;
+    el.title = `${f.n} yêu cầu · token thật ${P.nf(100 * f.real / CAP, 0)}% · bỏ phí ${P.nf(100 * (f.used - f.real) / CAP, 0)}%`;
+  }
+  box.querySelectorAll('.l10-ctl').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.l10-btn'); if (!b || b.id === 'pageRe') return;
+    g.querySelectorAll('.l10-btn:not(#pageRe)').forEach(x => x.setAttribute('aria-pressed', x === b));
+    st[g.dataset.g] = +b.dataset.v; upd();
+  }));
+  function upd() {
+    // câu trả lời bị cắt ở mức tối đa đã đặt
+    const cut = r => ({ p: r.p, o: Math.min(r.o, st.max) });
+    const saved = reqs; reqs = saved.map(cut);
+    const A = fill(r => r.p + st.max), B = fill(r => Math.ceil((r.p + r.o) / st.blk) * st.blk);
+    reqs = saved;
+    bar(box.querySelector('#memA'), A); bar(box.querySelector('#memB'), B);
+    box.querySelector('#pageS').innerHTML = `
+      <div class="bad"><b>${P.nf(A.n, 0)}</b><small>yêu cầu chạy cùng lúc (cấp theo tối đa)</small></div>
+      <div class="good"><b>${P.nf(B.n, 0)}</b><small>yêu cầu chạy cùng lúc (PagedAttention)</small></div>
+      <div><b>${P.nf(100 * A.real / A.used, 0)}% → ${P.nf(100 * B.real / B.used, 0)}%</b><small>phần bộ nhớ đã cấp chứa token thật</small></div>
+      <div class="good"><b>${P.nf(B.n / Math.max(1, A.n), 1)}×</b><small>batch lớn hơn</small></div>`;
+    let m = `Cách cũ phải giữ chỗ cho ${P.nf(st.max, 0)} token trả lời dù trung bình chỉ dùng khoảng 200, nên phần lớn bộ nhớ đã cấp bỏ trống. PagedAttention chỉ phí tối đa một khối mỗi yêu cầu (trung bình nửa khối = ${st.blk / 2} token), nên batch lớn hơn ${P.nf(B.n / Math.max(1, A.n), 1)} lần. Theo ô latency – throughput ở Phần 1, batch lớn hơn nghĩa là throughput cao hơn.`;
+    if (st.blk === 128) m += ' Khối 128 phí nhiều hơn khối 16 một chút, nhưng bảng khối ngắn hơn và kernel đọc hiệu quả hơn.';
+    m += ' Ô này giả sử mọi yêu cầu đã sinh xong câu trả lời (lúc tốn bộ nhớ nhất) và chưa tính phân mảnh ngoài, vốn làm cách cũ còn tệ hơn.';
+    box.querySelector('#pageM').textContent = m;
+  }
+  box.querySelector('#pageRe').addEventListener('click', () => { sample(); upd(); });
+  sample(); upd();
+})();
+</script>
+<div class="note key"><p><b>Tóm tắt</b> (trang 16): dùng ý tưởng của hệ điều hành (phân trang) để tận dụng bộ nhớ cho tải động. Không còn đặt trước theo độ dài tối đa, không còn phân mảnh ngoài, và phần đầu chung chỉ lưu một lần.</p></div>
+
+
+<h2 id="l10-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">trang 2, 16</span></h2>
+<div class="slides" data-s="2,16"></div>
+<div class="note key">
+  <ul>
+    <li><b>Inference quan trọng</b> vì nó lặp lại mãi: dùng thật, đánh giá, và RL. Ba thước đo: TTFT, latency, throughput.</li>
+    <li><b>Arithmetic intensity</b> của phép nhân ma trận với batch \(B\) xấp xỉ \(B\). H100 cần khoảng 295 FLOP mỗi byte để không phí sức tính.</li>
+    <li><b>Prefill</b> compute-bound (intensity \(BS\) cho MLP, \(S/2\) cho attention). <b>Generation</b> memory-bound (MLP: \(B\), attention: dưới 1, batching không giúp).</li>
+    <li>Mô hình đơn giản: mỗi bước đọc toàn bộ tham số và KV cache. <b>Batch lớn</b>: throughput tốt, latency kém, và KV cache nhanh chóng vượt bộ nhớ.</li>
+    <li><b>Thu nhỏ KV cache</b>: GQA (ít KV head), MLA (nén chiều, tương thích RoPE nhờ 64 chiều riêng), CLA (chung giữa layer), cửa sổ trượt và layer lai, DeepSeek v4 ghép nén, chọn top-k và cửa sổ.</li>
+    <li><b>Quantization</b>: ít bit hơn, đọc ít hơn. Outlier là vấn đề lớn nhất. AWQ phóng to các trọng số quan trọng trước khi lượng tử hoá. <b>Pruning + distillation</b> (Minitron) tạo mô hình nhỏ rẻ hơn nhiều so với huấn luyện lại.</li>
+    <li><b>Speculative sampling</b>: draft đoán, target kiểm tra song song. Lấy mẫu chính xác từ target, nhanh 2–3 lần.</li>
+    <li><b>Continuous batching</b> thêm và bớt yêu cầu sau mỗi bước. <b>PagedAttention</b> chia KV cache thành khối, xoá phân mảnh và cho phép dùng chung phần đầu.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao prefill thường compute-bound còn generation thường memory-bound, dù dùng cùng một mô hình?</summary>
+    <div><p>Prefill xử lý cả prompt cùng lúc: mỗi lần đọc trọng số được dùng cho \(B \times S\) token, nên intensity cao. Generation mỗi bước chỉ xử lý một token mỗi chuỗi, nên mỗi lần đọc toàn bộ trọng số và KV cache chỉ làm được vài FLOP mỗi byte. Cùng lượng dữ liệu phải đọc, nhưng ít việc hơn hẳn.</p></div></details>
+  <details><summary>2. Phép nhân \(X\) (\(B \times D\)) với \(W\) (\(D \times F\)) có intensity xấp xỉ bao nhiêu? Trên H100, cần batch bao nhiêu để compute-bound? Còn \(B = 1\) thì sao?</summary>
+    <div><p>Intensity \(= BDF/(BD + DF + BF) \approx B\) khi \(B \ll D, F\). H100 có \(989/3{,}35 \approx 295\) FLOP mỗi byte, nên cần \(B > 295\). Với \(B = 1\) (nhân ma trận với vector), intensity là 1, chỉ dùng được khoảng 0,3% sức tính.</p></div></details>
+  <details><summary>3. Ở giai đoạn sinh, vì sao tăng batch giúp MLP nhưng không giúp attention?</summary>
+    <div><p>Mọi chuỗi trong batch dùng chung trọng số MLP: đọc một lần, dùng cho \(B\) token, nên intensity tăng theo \(B\). Còn mỗi chuỗi có KV cache riêng: batch lớn bao nhiêu thì phải đọc nhiều KV bấy nhiêu, intensity vẫn là \(S/(S+1) &lt; 1\).</p></div></details>
+  <details><summary>4. Llama 2 13B (MHA, bf16) chạy batch 16 với ngữ cảnh 4096 token. KV cache tốn bao nhiêu? Có vừa một H100 không?</summary>
+    <div><p>Mỗi token tốn \(2 \times 40 \times 40 \times 128 \times 2 \approx 0{,}82\) MB. Một chuỗi 4096 token là khoảng 3,36 GB. 16 chuỗi là 53,7 GB. Cộng 26 GB tham số được 79,7 GB: vừa sát nút 80 GB, chưa tính activation. Đây cũng chính là con số của cấu hình \(B = 64\), \(S = 1024\) trong trace, vì KV cache chỉ phụ thuộc tích \(B \times S\).</p></div></details>
+  <details><summary>5. Theo mô hình của trace, latency của Llama 2 13B ở \(B = 1\) là khoảng 8 ms. Nếu lượng tử hoá trọng số xuống int4 (KV cache giữ bf16), latency khoảng bao nhiêu?</summary>
+    <div><p>Tham số còn \(13 \times 10^9 \times 0{,}5 \approx 6{,}5\) GB, cộng 0,84 GB KV cache, tổng khoảng 7,35 GB. Chia cho 3,35 TB/s được khoảng 2,2 ms mỗi token, nhanh hơn khoảng 3,7 lần. Trên thực tế còn tốn chi phí giải lượng tử trong kernel, nên tăng tốc thấp hơn một chút.</p></div></details>
+  <details><summary>6. Một mô hình có 40 query head. Chuyển sang GQA với 8 KV head thì KV cache giảm bao nhiêu? Ngoài cache nhỏ hơn, GQA còn giúp attention lúc sinh theo cách nào?</summary>
+    <div><p>Giảm \(40/8 = 5\) lần. Ngoài ra, mỗi KV head được \(G = 5\) query head dùng chung, nên mỗi byte key/value đọc vào được dùng cho 5 phép tính thay vì 1. Intensity của attention lúc sinh tăng từ dưới 1 lên khoảng 5.</p></div></details>
+  <details><summary>7. MLA của DeepSeek-V2 lưu bao nhiêu số mỗi token mỗi layer, so với MHA? Vì sao phải thêm 64 chiều cho RoPE?</summary>
+    <div><p>MLA lưu \(512 + 64 = 576\) số, MHA lưu \(2 \times 16\,384 = 32\,768\), nhỏ hơn khoảng 57 lần. MLA tránh tạo key đầy đủ bằng cách gộp \(W_K\) vào phía query. RoPE chèn phép xoay phụ thuộc vị trí vào giữa nên không gộp được nữa. Vì vậy phần nén \(c\) không dùng RoPE, và vị trí được mã hoá bằng một key riêng 64 chiều có RoPE, dùng chung cho mọi head.</p></div></details>
+  <details><summary>8. Một mô hình 32 layer dùng attention cửa sổ trượt với \(W = 4096\). Thông tin đi xa được khoảng bao nhiêu token? KV cache mỗi chuỗi lớn cỡ nào khi chuỗi dài 100 000 token? Vì sao người ta vẫn xen layer toàn cục vào?</summary>
+    <div><p>Khoảng \(32 \times 4096 \approx 131\,000\) token (theo lý thuyết, thông tin lan qua từng layer). KV cache chỉ giữ 4096 token gần nhất, không phụ thuộc độ dài chuỗi. Nhưng thông tin truyền gián tiếp qua nhiều layer bị mờ dần, nên mô hình khó tìm lại chính xác một chi tiết ở xa. Vài layer toàn cục giải quyết chuyện đó mà vẫn giữ phần lớn tiết kiệm.</p></div></details>
+  <details><summary>9. Vì sao một giá trị ngoại lai làm hỏng lượng tử hoá dùng một scale cho cả tensor? Chia nhóm và AWQ giải quyết vấn đề này theo hai cách khác nhau thế nào?</summary>
+    <div><p>Với absmax, scale tỉ lệ với giá trị lớn nhất. Một outlier lớn làm lưới thưa ra, các giá trị bình thường bị làm tròn về vài mức gần 0. Chia nhóm khoanh vùng thiệt hại: outlier chỉ làm hỏng scale của nhóm chứa nó. AWQ nhìn vào activation: kênh có activation lớn thì trọng số tương ứng quan trọng, nên phóng to trọng số đó lên \(s\) lần (và chia activation cho \(s\)) trước khi lượng tử hoá, làm sai số tương đối của nó nhỏ đi mà kết quả phép nhân không đổi.</p></div></details>
+  <details><summary>10. Từ vựng \(\{A, B\}\), target \(q = (0{,}3;\ 0{,}7)\), draft \(p = (0{,}7;\ 0{,}3)\). Xác suất ra \(A\) sau speculative sampling là bao nhiêu? Tỉ lệ nhận trung bình là bao nhiêu?</summary>
+    <div><p>\(A\) được đề xuất với xác suất 0,7 và được nhận với xác suất \(0{,}3/0{,}7\), nên \(P[A] = 0{,}3\). Khi bị loại, phần dư dồn hết cho \(B\). Đúng bằng \(q(A)\). Tỉ lệ nhận trung bình \(\beta = \min(0{,}7;0{,}3) + \min(0{,}3;0{,}7) = 0{,}6\). Draft lệch nhiều nên 40% đề xuất bị loại, nhưng đầu ra vẫn đúng.</p></div></details>
+  <details><summary>11. Với tỉ lệ nhận \(\alpha = 0{,}8\) và \(K = 4\), mỗi lượt chạy target trung bình cho bao nhiêu token? Nếu draft tốn 5% chi phí của target, tăng tốc là bao nhiêu?</summary>
+    <div><p>\((1 - 0{,}8^5)/(1 - 0{,}8) = (1 - 0{,}328)/0{,}2 \approx 3{,}36\) token. Mỗi vòng tốn \(4 \times 0{,}05 + 1 = 1{,}2\) lần chạy target. Tăng tốc khoảng \(3{,}36/1{,}2 = 2{,}8\) lần (theo giả định mỗi token được nhận độc lập).</p></div></details>
+  <details><summary>12. Continuous batching và PagedAttention mỗi cái giải quyết vấn đề gì? Copy-on-write dùng khi nào?</summary>
+    <div><p>Continuous batching giải quyết việc yêu cầu đến và kết thúc lúc khác nhau: sau mỗi bước, chuỗi xong thì rời đi, yêu cầu mới vào ngay, không ai phải chờ cả batch. PagedAttention giải quyết lãng phí bộ nhớ KV cache: chia thành khối nhỏ cấp khi cần, nên hết đặt trước theo độ dài tối đa (phân mảnh trong) và hết khoảng trống lẻ (phân mảnh ngoài). Copy-on-write dùng khi nhiều chuỗi chung phần đầu (system prompt, nhiều mẫu từ một prompt): chúng trỏ vào cùng khối, và chỉ khi một chuỗi cần ghi khác đi thì khối mới được chép ra.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Inference</td><td>Dùng mô hình đã huấn luyện để sinh câu trả lời từ prompt</td></tr>
+  <tr><td>TTFT</td><td>Time-to-first-token: thời gian chờ đến token đầu tiên, gần bằng thời gian prefill</td></tr>
+  <tr><td>Latency</td><td>Thời gian sinh mỗi token cho một yêu cầu (giây/token)</td></tr>
+  <tr><td>Throughput</td><td>Tổng số token sinh ra mỗi giây trên mọi yêu cầu (token/giây)</td></tr>
+  <tr><td>Arithmetic intensity</td><td>Số FLOP làm được cho mỗi byte đọc/ghi bộ nhớ</td></tr>
+  <tr><td>Compute-bound / Memory-bound</td><td>Bị giới hạn bởi sức tính / bởi băng thông bộ nhớ</td></tr>
+  <tr><td>Accelerator intensity</td><td>FLOP/s chia băng thông của phần cứng, khoảng 295 với H100</td></tr>
+  <tr><td>KV cache</td><td>Key và value của các token đã xử lý, lưu lại để không phải tính lại</td></tr>
+  <tr><td>Prefill</td><td>Giai đoạn đọc prompt, xử lý song song mọi token, điền KV cache</td></tr>
+  <tr><td>Generation / Decode</td><td>Giai đoạn sinh từng token một</td></tr>
+  <tr><td>MHA / MQA / GQA</td><td>Mỗi query head có KV riêng / mọi head chung một KV / mỗi nhóm head chung một KV</td></tr>
+  <tr><td>Uptraining</td><td>Chuyển checkpoint MHA sang GQA rồi huấn luyện thêm một ít</td></tr>
+  <tr><td>MLA</td><td>Multi-head latent attention: chỉ cache một vector nén, chiếu ra key/value khi cần</td></tr>
+  <tr><td>CLA</td><td>Cross-layer attention: vài layer liền nhau dùng chung key/value</td></tr>
+  <tr><td>Sliding window attention</td><td>Mỗi token chỉ nhìn \(W\) token gần nhất; KV cache không lớn theo độ dài chuỗi</td></tr>
+  <tr><td>Quantization</td><td>Biểu diễn số bằng ít bit hơn (fp8, int8, int4)</td></tr>
+  <tr><td>Scale / Zero point</td><td>Khoảng cách giữa hai mức lưới / số nguyên ứng với giá trị 0</td></tr>
+  <tr><td>QAT / PTQ</td><td>Lượng tử hoá trong lúc huấn luyện / sau khi huấn luyện xong</td></tr>
+  <tr><td>GPTQ</td><td>PTQ từng cột, dùng thông tin bậc hai để bù sai số cho các cột còn lại</td></tr>
+  <tr><td>AWQ</td><td>Lượng tử hoá có để ý activation: phóng to trọng số quan trọng trước khi làm tròn</td></tr>
+  <tr><td>Outlier</td><td>Giá trị lớn bất thường, kéo scale lên và làm lưới lượng tử thưa ra</td></tr>
+  <tr><td>Pruning</td><td>Cắt bỏ layer, head hoặc kênh ít quan trọng</td></tr>
+  <tr><td>Distillation</td><td>Huấn luyện mô hình nhỏ bắt chước phân phối đầu ra của mô hình lớn</td></tr>
+  <tr><td>Speculative sampling</td><td>Draft model đoán vài token, target model kiểm tra song song, giữ nguyên phân phối của target</td></tr>
+  <tr><td>Draft / Target model</td><td>Mô hình nhỏ đoán trước / mô hình thật ta muốn lấy mẫu</td></tr>
+  <tr><td>Rejection sampling</td><td>Lấy mẫu từ phân phối dễ, nhận hoặc loại theo tỉ lệ để ra đúng phân phối khó</td></tr>
+  <tr><td>Medusa / EAGLE</td><td>Draft gắn vào target: thêm đầu dự đoán / tự hồi quy trên đặc trưng của target</td></tr>
+  <tr><td>Continuous batching</td><td>Lập lịch theo từng bước: thêm và bớt yêu cầu sau mỗi bước sinh</td></tr>
+  <tr><td>Selective batching</td><td>Gộp mọi token để chạy MLP, nhưng tính attention riêng từng chuỗi</td></tr>
+  <tr><td>Internal / External fragmentation</td><td>Bộ nhớ đã cấp mà không dùng / khoảng trống lẻ giữa các đoạn đã cấp</td></tr>
+  <tr><td>PagedAttention</td><td>Chia KV cache thành khối cố định, không cần liền nhau, tra qua bảng khối</td></tr>
+  <tr><td>Block table</td><td>Bảng ánh xạ khối logic của một chuỗi sang khối vật lý trong bộ nhớ</td></tr>
+  <tr><td>Copy-on-write</td><td>Nhiều chuỗi dùng chung khối; chỉ chép ra bản riêng khi một chuỗi cần ghi khác đi</td></tr>
+</table></div>

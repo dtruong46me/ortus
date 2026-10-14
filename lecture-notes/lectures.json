@@ -64,6 +64,16 @@
       "slides": 57,
       "file": "lectures/l09.html",
       "imgDir": "img/l09"
+    },
+    {
+      "id": "l10",
+      "num": 10,
+      "title": "Inference",
+      "titleVi": "Inference: suy luận nhanh và rẻ",
+      "slides": 16,
+      "unit": "page",
+      "file": "lectures/l10.html",
+      "imgDir": "img/l10"
     }
   ]
 }
