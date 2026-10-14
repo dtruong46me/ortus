@@ -8,6 +8,15 @@
       "slides": 60,
       "file": "lectures/l04.html",
       "imgDir": "img/l04"
+    },
+    {
+      "id": "l05",
+      "num": 5,
+      "title": "GPUs",
+      "titleVi": "GPU: hiểu phần cứng để viết code nhanh",
+      "slides": 55,
+      "file": "lectures/l05.html",
+      "imgDir": "img/l05"
     }
   ]
 }

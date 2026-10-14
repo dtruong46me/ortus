@@ -1,0 +1,655 @@
+<style>
+  .l05-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l05-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l05-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l05-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l05-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l05-stats small { color: var(--muted); font-size: 12.5px; }
+  .l05-mem { display: flex; flex-wrap: wrap; gap: 8px; margin: 34px 0 12px; }
+  .l05-burst { display: flex; gap: 3px; padding: 4px; border: 2px dashed var(--line); border-radius: 8px; position: relative; }
+  .l05-burst.hit { border: 2px solid var(--accent); background: var(--accent-soft); }
+  .l05-cell { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 5px; background: var(--code-bg); font: 600 13px var(--f-mono); color: var(--muted); position: relative; }
+  .l05-cell.on { background: var(--accent); color: var(--surface); }
+  .l05-cell .t { position: absolute; top: -24px; font: 700 11px var(--f-display); color: var(--accent); }
+  .l05-waves { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
+  .l05-wave { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  .l05-wave .track { flex: 1; height: 16px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l05-wave .fill { height: 100%; background: var(--accent); }
+  .l05-svg { width: 100%; max-width: 560px; display: block; margin: 8px 0; }
+</style>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 5 · 55 slide</span>
+  <h1>GPU: hiểu phần cứng để viết code nhanh</h1>
+  <p class="sub">GPUs — vì sao GPU nhanh, khi nào nó chậm, và những mẹo (tiling, fusion, recomputation…) giúp FlashAttention nhanh hơn attention thường nhiều lần.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Đã hiểu 0 phần</span></div>
+</header>
+
+<details class="mtoc"><summary>Mục lục lecture</summary><ol></ol></details>
+
+<h2 id="l05-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">slide 1–4</span></h2>
+<div class="slides" data-s="2,4"></div>
+<p>Lecture 4 bàn về <i>kiến trúc</i> mô hình. Lecture này lùi xuống một tầng: con chip thực sự chạy các phép tính đó hoạt động ra sao. Mục tiêu của thầy là <mark>làm cho CUDA và GPU bớt "phép thuật"</mark>. Đọc xong, khi thấy một đoạn code chạy chậm, bạn sẽ đoán được vì sao.</p>
+<p>Lecture chia làm ba phần:</p>
+<ol>
+  <li><b>Phần 1 — GPU bên trong có gì</b> (slide 5–19): các bộ phận chính, cách GPU chia việc, và các tầng bộ nhớ.</li>
+  <li><b>Phần 2 — Vì sao GPU lúc nhanh lúc chậm</b> (slide 20–49): mô hình roofline và 5 mẹo tăng tốc. Phần này kết thúc bằng lời giải cho "bí ẩn" ở biểu đồ bên trái slide 2.</li>
+  <li><b>Phần 3 — FlashAttention</b> (slide 50–55): ghép các mẹo ở phần 2 lại để hiểu vì sao FlashAttention nhanh như vậy (biểu đồ bên phải slide 2).</li>
+</ol>
+
+<div class="note life">
+  <p>Cả lecture dùng chung một hình ảnh, và tài liệu này cũng sẽ dùng nó xuyên suốt: <b>GPU giống một nhà máy</b>.</p>
+  <ul>
+    <li><b>Phân xưởng</b> = SM (streaming multiprocessor). Mỗi phân xưởng có rất nhiều <b>công nhân</b> (thread).</li>
+    <li>Công nhân làm theo <b>tổ 32 người</b>, cả tổ luôn làm cùng một động tác. Một tổ như vậy gọi là <b>warp</b>.</li>
+    <li>Mỗi phân xưởng có một <b>cái bàn nhỏ ngay cạnh</b> để để đồ (shared memory / SRAM). Lấy đồ trên bàn rất nhanh.</li>
+    <li>Nguyên liệu chính nằm ở <b>nhà kho xa</b> (global memory / HBM). Kho rất to nhưng mỗi chuyến chở mất nhiều thời gian.</li>
+  </ul>
+  <p>Hầu hết các mẹo trong lecture này đều quy về một câu: <mark>đừng bắt công nhân ngồi chờ xe chở hàng từ kho</mark>.</p>
+</div>
+<p>Slide 3 là phần ghi công các nguồn tham khảo. Nếu muốn đọc thêm: blog của Horace He ("Thonk From First Principles"), nhóm CUDA Mode, và cuốn sách "How to Scale Your Model" của Google DeepMind.</p>
+
+<!-- ============================================================ -->
+<div class="part" id="l05-part1" data-short="Phần 1 · GPU bên trong">Phần 1 · GPU bên trong có gì<small>Nhiều công nhân, ít điều phối, và bộ nhớ chia nhiều tầng.</small></div>
+
+<h2 id="l05-why" data-short="Vì sao cần GPU"><span>Vì sao học về GPU: mô hình to cần tính toán, mà tính toán đến từ GPU</span><span class="slide-range">slide 5–7</span></h2>
+<div class="slides" data-s="5"></div>
+<p><b>Slide 5</b> là biểu đồ scaling law của Kaplan và cộng sự. Trục ngang là lượng tính toán, trục dọc là loss. Cả hai trục đều là thang log. Các đường màu là các mô hình cỡ khác nhau, và chúng cùng bám theo một đường thẳng nét đứt. Ý nghĩa: <mark>có thêm tính toán thì loss giảm một cách đoán trước được</mark>. Vì thế chỉ cần phần cứng nhanh hơn, dùng phần cứng hiệu quả hơn, hoặc song song hoá tốt hơn là mô hình đã tiến bộ, chưa cần ý tưởng mới nào.</p>
+
+<div class="slides" data-s="6,7"></div>
+<p><b>Slide 6 — Dennard scaling đã hết.</b> Từ khoảng 1980 đến 2005, mỗi thế hệ transistor nhỏ hơn thì chip chạy được ở <i>tần số</i> cao hơn mà không nóng hơn. Đó là "Dennard scaling". Cùng một chương trình, sang máy mới tự nhiên chạy nhanh hơn. Hãy nhìn các chấm xanh lá (tần số, MHz): khoảng năm 2005 chúng nằm ngang hẳn. Sau thời điểm đó tốc độ của <i>một luồng xử lý</i> gần như không tăng nữa. Số transistor (tam giác cam) vẫn tăng, nhưng phải dùng chúng theo cách khác: <b>làm nhiều việc cùng lúc</b>.</p>
+<p><b>Slide 7 — song song hoá vẫn tiếp tục.</b> Hiệu năng suy luận trên một chip GPU đã tăng khoảng 1000 lần trong 10 năm (từ K20X đến H100). Cột bên trái cho biết phần tăng đó đến từ đâu:</p>
+<ul>
+  <li>Dùng số ít bit hơn (FP32 → FP16 → Int8): khoảng 16 lần.</li>
+  <li>Lệnh phức tạp hơn, ví dụ một lệnh nhân cả một khối ma trận nhỏ (HMMA, IMMA): khoảng 12,5 lần.</li>
+  <li>Quy trình sản xuất chip nhỏ hơn (28nm → 5nm): chỉ khoảng 2,5 lần.</li>
+  <li>Tính thưa (sparsity): khoảng 2 lần.</li>
+</ul>
+<div class="note key"><p>Phần lớn tiến bộ <i>không</i> đến từ transistor nhanh hơn. Nó đến từ số ít bit hơn và phần cứng chuyên dụng cho nhân ma trận. Câu chốt của slide: <i>không có scaling LLM nếu không có scaling GPU.</i></p></div>
+
+<h2 id="l05-cpu-gpu" data-short="CPU khác GPU thế nào"><span>CPU khác GPU thế nào?</span><span class="slide-range">slide 8</span></h2>
+<div class="slides" data-s="8"></div>
+<p>Nhìn hình bên trái:</p>
+<ul>
+  <li><b>CPU</b> dành nhiều diện tích cho khối <i>Control</i> (điều khiển: đoán trước rẽ nhánh, sắp xếp lại lệnh…) và <i>Cache</i> (bộ nhớ đệm lớn). Nó chỉ có vài ALU (đơn vị tính toán), nhưng mỗi ALU rất mạnh.</li>
+  <li><b>GPU</b> thì gần như toàn bộ là ô xanh, tức là ALU nhỏ. Phần điều khiển và cache chỉ là một dải mỏng bên trái.</li>
+</ul>
+<p>Hai thiết kế tối ưu hai mục tiêu khác nhau:</p>
+<div class="tbl"><table>
+  <tr><th></th><th>CPU</th><th>GPU</th></tr>
+  <tr><td>Tối ưu cho</td><td><b>Độ trễ</b> (latency): mỗi việc xong càng sớm càng tốt</td><td><b>Thông lượng</b> (throughput): tổng lượng việc xong mỗi giây càng nhiều càng tốt</td></tr>
+  <tr><td>Số luồng</td><td>Ít, mỗi luồng rất nhanh</td><td>Hàng nghìn đến hàng chục nghìn, mỗi luồng chậm</td></tr>
+  <tr><td>Hợp với</td><td>Code nhiều <code>if/else</code>, logic phức tạp</td><td>Cùng một phép tính lặp trên dữ liệu khổng lồ (như nhân ma trận)</td></tr>
+</table></div>
+<div class="note life"><p>CPU giống vài chiếc xe đua: chở 2 người, đến nơi cực nhanh. GPU giống một đoàn xe buýt: mỗi xe chạy chậm hơn, nhưng mỗi giờ chở được gấp trăm lần số người. Huấn luyện mô hình là bài toán "chở thật nhiều người", nên GPU thắng.</p></div>
+<p><b>Hình bên phải</b> giải thích vì sao thread của GPU chậm mà tổng thể vẫn nhanh. Mỗi hàng là một thread. Ô trắng là lúc thread <i>chờ dữ liệu</i>, ô xanh là lúc nó đang tính. CPU (hàng dưới) chạy từng thread một cho xong. GPU (các hàng trên) có nhiều thread chồng lên nhau: thread này chờ hàng thì thread khác tính. Nhờ đó các ALU luôn có việc để làm.</p>
+
+<h2 id="l05-anatomy" data-short="Cấu tạo: SM & bộ nhớ"><span>Cấu tạo GPU: phân xưởng (SM) và các tầng bộ nhớ</span><span class="slide-range">slide 9–10</span></h2>
+<div class="slides" data-s="9"></div>
+<p><b>Đơn vị thực thi.</b> Hình bên phải là toàn bộ chip GA100 (dòng A100), có 128 SM. Mỗi khối xanh nhỏ là một SM. Hình bên trái phóng to một SM. Bên trong có:</p>
+<ul>
+  <li>Rất nhiều ô nhỏ ghi INT32, FP32, FP64. Đây là các <b>SP</b> (streaming processor, còn gọi là CUDA core). Mỗi SP chạy một thread.</li>
+  <li>Bốn khối lớn ghi <b>TENSOR CORE</b>: mạch chuyên nhân ma trận (nói kỹ ở slide 17).</li>
+  <li>Thanh cam <i>Warp Scheduler</i>: bộ phận chọn tổ (warp) nào được chạy tiếp.</li>
+  <li>Thanh <i>Register File</i>: thanh ghi, nơi mỗi thread để biến của riêng mình.</li>
+</ul>
+<p>Mỗi SM nhận các <b>block</b> (một gói việc) và tự chạy độc lập với các SM khác.</p>
+
+<div class="slides" data-s="10"></div>
+<p><b>Bộ nhớ.</b> Quy tắc vàng: <mark>bộ nhớ càng gần SM thì càng nhanh</mark>.</p>
+<div class="tbl"><table>
+  <tr><th>Loại bộ nhớ</th><th>Nằm ở đâu</th><th>Thời gian đọc (chu kỳ)</th><th>Trong ví dụ nhà máy</th></tr>
+  <tr><td>Register (thanh ghi)</td><td>Trong SM, riêng từng thread</td><td>≈ 1</td><td>Đồ trong tay công nhân</td></tr>
+  <tr><td>Shared memory / L1</td><td>Trong SM</td><td>19–33</td><td>Cái bàn cạnh tổ</td></tr>
+  <tr><td>L2 cache</td><td>Trên chip, dùng chung mọi SM</td><td>200</td><td>Kho trung chuyển giữa nhà máy</td></tr>
+  <tr><td>Global memory (HBM)</td><td>Các chip nhớ <i>bên cạnh</i> GPU</td><td>290</td><td>Nhà kho xa</td></tr>
+</table></div>
+<p>Trong ảnh chụp chip bên phải, các khối "HBM2(e)" nằm ở viền ngoài là cổng nối ra các chip nhớ. Phần xanh dương ở giữa là L2 cache (40 MB trên A100). SRAM (loại dùng cho shared memory và cache) đắt hơn DRAM khoảng 100 lần nhưng nhanh hơn khoảng 8 lần. Vì thế nó chỉ có vài chục MB, còn HBM có tới 40–80 GB.</p>
+
+<h2 id="l05-exec" data-short="Thread, warp, block"><span>Cách GPU chia việc: thread, warp, block</span><span class="slide-range">slide 11–12</span></h2>
+<div class="slides" data-s="11"></div>
+<p>Khi bạn chạy một <dfn>kernel</dfn> (một hàm chạy trên GPU), công việc được chia theo ba cấp:</p>
+<ol>
+  <li><b>Thread</b> — người làm việc thật sự. Mọi thread chạy <i>cùng một đoạn code</i> nhưng trên dữ liệu khác nhau, mỗi thread có một số thứ tự riêng để biết mình phụ trách phần nào. Cách chạy này gọi là <dfn>SIMT</dfn> (single instruction, multiple threads: một lệnh, nhiều luồng).</li>
+  <li><b>Block</b> — một nhóm thread, ví dụ 256 thread. Cả block được giao cho <i>một</i> SM và dùng chung shared memory của SM đó. Hình trên có 4096 block được phân phát cho các SM.</li>
+  <li><b>Warp</b> — bên trong SM, block được cắt thành các tổ 32 thread có số thứ tự liên tiếp. Block 256 thread → 8 warp. Mỗi SM có 4 warp scheduler, mỗi lúc chọn một warp đã sẵn sàng và cho cả 32 thread của nó chạy cùng một lệnh.</li>
+</ol>
+
+<div class="slides" data-s="12"></div>
+<p><b>Ai được đọc bộ nhớ nào</b> (hình slide 12):</p>
+<ul>
+  <li>Mỗi thread có <b>register</b> riêng.</li>
+  <li>Các thread trong <i>cùng block</i> dùng chung <b>shared memory</b> của block đó.</li>
+  <li>Mọi block đều thấy <b>global memory</b>. CPU (host) cũng chỉ trao đổi dữ liệu với GPU qua tầng này.</li>
+</ul>
+<div class="note key"><p>Hai block khác nhau <b>không thể</b> nói chuyện qua shared memory. Muốn trao đổi thông tin giữa các block thì phải ghi ra global memory rồi đọc lại, và việc đó chậm. Khi thiết kế thuật toán, ta cố sắp xếp để mỗi block tự làm xong phần của mình với dữ liệu nằm sẵn trên "bàn".</p></div>
+
+<h2 id="l05-tpu" data-short="Còn TPU thì sao"><span>Ngoài lề: còn TPU thì sao?</span><span class="slide-range">slide 13–14</span></h2>
+<div class="slides" data-s="13,14"></div>
+<p>TPU của Google và các chip tăng tốc khác thực ra có cùng khung xương với GPU: <mark>phần điều khiển gọn nhẹ + một khối nhân ma trận rất mạnh + bộ nhớ nhanh</mark>. Trong một TensorCore của TPU:</p>
+<ul>
+  <li><b>Scalar Unit</b> làm việc điều phối, giống một CPU nhỏ phát lệnh.</li>
+  <li><b>VPU</b> (vector unit) làm các phép tính từng phần tử như hàm kích hoạt.</li>
+  <li><b>MXU</b> (matrix multiply unit) nhân ma trận. Đây là nơi tạo ra gần hết FLOP/s của chip.</li>
+  <li><b>HBM</b> chứa trọng số, activation, trạng thái optimizer.</li>
+</ul>
+<p>Bảng ở slide 14 dịch thuật ngữ giữa hai bên: SM ↔ TensorCore, Tensor Core ↔ MXU, SMEM ↔ VMEM… Khác biệt lớn nhất là về số lượng. H100 có 132 SM nhỏ, còn TPU v5p chỉ có 2 TensorCore nhưng mỗi cái rất to, và tổng sức nhân ma trận tương đương nhau. TPU cũng không có khái niệm warp. Ngoài ra cách các chip nối với nhau thành cụm cũng khác, phần đó sẽ học ở lecture về song song hoá.</p>
+
+<h2 id="l05-strengths" data-short="Điểm mạnh & tensor core"><span>Điểm mạnh của GPU, và vì sao nhân ma trận là "con cưng"</span><span class="slide-range">slide 15–17</span></h2>
+<div class="slides" data-s="15"></div>
+<p>Slide 15 tóm tắt ba điểm mạnh:</p>
+<ol>
+  <li><b>Dễ mở rộng:</b> muốn nhanh hơn thì thêm SM. Các block độc lập với nhau nên chip có thêm SM là tự chạy được nhiều block hơn.</li>
+  <li><b>Tương đối dễ lập trình</b> nhờ SIMT: bạn viết code cho <i>một</i> thread, phần cứng tự nhân ra hàng nghìn bản.</li>
+  <li><b>Thread rất "nhẹ":</b> dừng một warp đang chờ dữ liệu và chuyển sang warp khác gần như không tốn gì. Đây là cách GPU "giấu" độ trễ của bộ nhớ như đã thấy ở slide 8.</li>
+</ol>
+
+<div class="slides" data-s="16,17"></div>
+<p><b>Slide 16</b> là một chút lịch sử. Ngày xưa GPU chỉ dùng để vẽ hình. Các nhà nghiên cứu đã "hack" phần lập trình đồ hoạ (shader) để nhân ma trận, ví dụ nhét 4 số vào 4 kênh màu R, G, B, A của một điểm ảnh. Nhân ma trận là việc GPU đã được dùng vào từ rất sớm.</p>
+<p><b>Slide 17</b> rất quan trọng. Từ thế hệ V100, NVIDIA thêm <dfn>tensor core</dfn>, một mạch chỉ làm đúng một việc là nhân ma trận nhỏ. Từ đó đường cam (FLOP/s cho nhân ma trận) vọt lên, còn đường xanh (các phép tính khác) gần như đứng yên. Trên H100, chênh lệch là khoảng 1000 so với 60 TFLOP/s.</p>
+<div class="note key"><p><b>Nhân ma trận nhanh hơn các phép tính khác hơn 10 lần.</b> Hệ quả: những phép "nhẹ" như softmax, layernorm, dropout tuy tốn ít FLOP nhưng có thể chiếm nhiều <i>thời gian</i> hơn cả phép nhân ma trận. Bạn sẽ thấy đúng hiện tượng này trong biểu đồ attention của GPT-2 ở slide 50.</p></div>
+
+<h2 id="l05-memwall" data-short="Bức tường bộ nhớ"><span>Tính toán tăng nhanh hơn bộ nhớ: "bức tường bộ nhớ"</span><span class="slide-range">slide 18–19</span></h2>
+<div class="slides" data-s="18"></div>
+<p>Biểu đồ này có lẽ là hình quan trọng nhất của Phần 1. Trong 20 năm:</p>
+<ul>
+  <li>Sức tính toán (FLOPS, chấm đen) tăng <b>60.000 lần</b>, khoảng gấp 3 mỗi 2 năm.</li>
+  <li>Băng thông bộ nhớ DRAM (xanh lá) chỉ tăng <b>100 lần</b>.</li>
+  <li>Băng thông kết nối giữa các chip (xanh dương) chỉ tăng <b>30 lần</b>.</li>
+</ul>
+<div class="note life"><p>Quay lại nhà máy (slide 30 vẽ đúng cảnh này): mỗi năm nhà máy xây thêm rất nhiều dây chuyền, nhưng con đường từ kho đến nhà máy gần như vẫn vậy. Kết quả là dây chuyền thường xuyên đứng chờ hàng. <mark>Cái chậm thường không phải là tính toán, mà là chở dữ liệu.</mark></p></div>
+
+<div class="slides" data-s="19"></div>
+<p><b>Tóm tắt Phần 1</b> (slide 19):</p>
+<ul>
+  <li>GPU song song cực mạnh: cùng một lệnh áp dụng cho rất nhiều thread.</li>
+  <li>Sức tính toán, nhất là nhân ma trận, tăng nhanh hơn bộ nhớ rất nhiều.</li>
+  <li>Muốn nhanh thì phải tôn trọng thứ bậc bộ nhớ: dùng tối đa register và shared memory, hạn chế đi ra global memory.</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="part" id="l05-part2" data-short="Phần 2 · Làm GPU nhanh">Phần 2 · Vì sao GPU lúc nhanh lúc chậm<small>Roofline, rồi năm mẹo để không bị bộ nhớ "kìm chân".</small></div>
+
+<h2 id="l05-mystery-intro" data-short="Một bí ẩn để giải"><span>Một bí ẩn để giải cuối phần</span><span class="slide-range">slide 20</span></h2>
+<div class="slides" data-s="20"></div>
+<p>Đây là tốc độ (TFLOP/s) đo được khi nhân hai ma trận vuông \(N\times N\), với \(N\) từ 0 đến 4096. Một phép tính đơn giản như vậy mà biểu đồ lại rất lộn xộn:</p>
+<ul>
+  <li>Đoạn đầu đi lên dần (chú thích hồng "Compute Intensity").</li>
+  <li>Các chấm tách thành nhiều "dải" ở các độ cao khác nhau (chú thích vàng "Tiling!").</li>
+  <li>Trong mỗi dải có những cú tụt đột ngột theo chu kỳ (chú thích xanh "Wave Quantization").</li>
+</ul>
+<p>Đến cuối Phần 2 (mục <a href="#l05-mystery">"Giải bí ẩn"</a>), bạn sẽ giải thích được cả ba hiện tượng này.</p>
+
+<h2 id="l05-roofline" data-short="Mô hình roofline"><span>Mô hình roofline: bị giới hạn bởi tính toán hay bởi bộ nhớ?</span><span class="slide-range">slide 21</span></h2>
+<div class="slides" data-s="21"></div>
+<p>Muốn biết một phép tính nhanh hay chậm, chỉ cần một con số gọi là <dfn>cường độ tính toán</dfn> (<span class="en">arithmetic / operational intensity</span>):</p>
+<div class="mathbox">\[ I = \frac{\text{số phép tính (FLOP)}}{\text{số byte phải chở từ bộ nhớ}} \]</div>
+<p>Nói nôm na: với mỗi byte chở về từ kho, công nhân làm được bao nhiêu việc. Tốc độ đạt được bị chặn bởi cái nào thấp hơn trong hai giới hạn:</p>
+<div class="mathbox">\[ \text{Tốc độ đạt được} = \min\big(\underbrace{\text{đỉnh tính toán}}_{\text{mái nhà ngang}},\ \underbrace{\text{băng thông} \times I}_{\text{mái dốc}}\big) \]</div>
+<p>Vẽ lên hai trục log, ta được một hình giống mái nhà, nên gọi là <b>roofline</b>:</p>
+<ul>
+  <li><b>Phần dốc bên trái</b>: \(I\) thấp, công nhân xong việc rồi ngồi chờ hàng. Ta nói phép tính bị <dfn>memory-bound</dfn> (giới hạn bởi bộ nhớ).</li>
+  <li><b>Phần ngang bên phải</b>: \(I\) đủ cao, hàng về kịp, ALU chạy hết công suất. Ta nói phép tính bị <dfn>compute-bound</dfn> (giới hạn bởi tính toán). Đây là trạng thái ta muốn.</li>
+</ul>
+<p>Trong slide, nhân ma trận dày (hình thoi) có \(I \approx 1000\), nằm sát mái ngang. Nhân ma trận thưa (chấm tròn) có \(I \approx 0{,}5\), nằm tít dưới mái dốc. Các mái dốc khác nhau ứng với các tầng bộ nhớ khác nhau: dữ liệu nằm ở register thì mái dốc rất cao, nằm ở bộ nhớ chính thì thấp hơn nhiều.</p>
+
+<div class="widget" id="roofW">
+  <h4>Thử nghiệm: đặt phép tính lên roofline</h4>
+  <div class="row" role="group" aria-label="Chọn GPU">
+    <span>GPU:</span>
+    <button class="l05-btn" data-g="a100">A100 (312 TFLOP/s · 2,0 TB/s)</button>
+    <button class="l05-btn" data-g="h100">H100 (989 TFLOP/s · 3,35 TB/s)</button>
+  </div>
+  <p style="margin:14px 0 4px"><label for="roofN">Nhân hai ma trận \(N\times N\) (BF16), \(N\) = <span class="chip" id="roofNv"></span></label></p>
+  <input type="range" id="roofN" min="3" max="14" step="0.25" value="8">
+  <svg class="l05-svg" id="roofSvg" viewBox="0 0 360 220" role="img" aria-label="Biểu đồ roofline"></svg>
+  <div class="l05-stats" id="roofStats"></div>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('roofW'); if (!box) return;
+  const gpus = { a100: { peak: 312, bw: 2.0 }, h100: { peak: 989, bw: 3.35 } };
+  let g = 'h100';
+  const W = 360, H = 220, L = 46, R = 10, T = 10, B = 34, X0 = -2, X1 = 4, Y0 = -1, Y1 = 3.5;
+  const px = v => L + (Math.log10(v) - X0) / (X1 - X0) * (W - L - R);
+  const py = v => T + (Y1 - Math.log10(v)) / (Y1 - Y0) * (H - T - B);
+  const svg = box.querySelector('#roofSvg'), slider = box.querySelector('#roofN');
+  const fmt = (x, d = 1) => x.toLocaleString('vi-VN', { maximumFractionDigits: d });
+  const big = x => x >= 1e12 ? fmt(x / 1e12) + ' nghìn tỷ' : x >= 1e9 ? fmt(x / 1e9) + ' tỷ' : x >= 1e6 ? fmt(x / 1e6) + ' triệu' : fmt(x, 0);
+  function draw() {
+    const G = gpus[g], N = Math.round(Math.pow(2, parseFloat(slider.value)));
+    const I = N / 3, att = Math.min(G.peak, G.bw * I), ridge = G.peak / G.bw;
+    let s = `<defs><clipPath id="roofClip"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}"/></clipPath></defs>`;
+    for (let e = X0; e <= X1; e++) s += `<line x1="${px(10 ** e)}" x2="${px(10 ** e)}" y1="${T}" y2="${H - B}" style="stroke:var(--line)"/><text x="${px(10 ** e)}" y="${H - B + 14}" text-anchor="middle" style="fill:var(--muted);font:10px var(--f-mono)">${['0,01', '0,1', '1', '10', '100', '1000', '10⁴'][e - X0]}</text>`;
+    for (let e = Y0; e <= 3; e++) s += `<line x1="${L}" x2="${W - R}" y1="${py(10 ** e)}" y2="${py(10 ** e)}" style="stroke:var(--line)"/><text x="${L - 5}" y="${py(10 ** e) + 3}" text-anchor="end" style="fill:var(--muted);font:10px var(--f-mono)">${['0,1', '1', '10', '100', '1000'][e - Y0]}</text>`;
+    s += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle" style="fill:var(--muted);font:10.5px var(--f-display)">Cường độ I (FLOP / byte)</text>`;
+    s += `<text transform="translate(11 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle" style="fill:var(--muted);font:10.5px var(--f-display)">TFLOP/s</text>`;
+    const pts = []; for (let e = X0; e <= X1 + 1e-9; e += 0.02) { const x = 10 ** e; pts.push(`${px(x)},${py(Math.min(G.peak, G.bw * x))}`); }
+    s += `<polyline clip-path="url(#roofClip)" points="${pts.join(' ')}" style="fill:none;stroke:var(--ink);stroke-width:2"/>`;
+    s += `<line x1="${px(ridge)}" x2="${px(ridge)}" y1="${py(G.peak)}" y2="${H - B}" style="stroke:var(--muted);stroke-dasharray:3 3"/>`;
+    const dot = (x, y, lab, main, dy) => `<circle cx="${px(x)}" cy="${py(y)}" r="${main ? 6 : 4.5}" style="fill:${main ? 'var(--accent)' : 'var(--warn)'}"/><text x="${px(x) > 250 ? px(x) - 9 : px(x) + 8}" y="${py(y) + dy}" text-anchor="${px(x) > 250 ? 'end' : 'start'}" style="fill:${main ? 'var(--accent)' : 'var(--warn)'};font:600 10.5px var(--f-display)">${lab}</text>`;
+    s += dot(0.125, G.bw * 0.125, 'ReLU FP32', false, 14);
+    s += dot(0.25, G.bw * 0.25, 'ReLU BF16', false, -8);
+    s += dot(I, att, `matmul N=${N}`, true, -9);
+    svg.innerHTML = s;
+    box.querySelector('#roofNv').textContent = N.toLocaleString('vi-VN');
+    const bound = I < ridge;
+    box.querySelector('#roofStats').innerHTML =
+      `<div><small>Số phép tính 2N³</small><b>${big(2 * N ** 3)}</b></div>` +
+      `<div><small>Byte phải chở (A, B, C × 2 byte)</small><b>${big(6 * N * N)}</b></div>` +
+      `<div><small>Cường độ I = N/3</small><b>${fmt(I)} FLOP/byte</b></div>` +
+      `<div><small>Điểm gãy của mái (đỉnh ÷ băng thông)</small><b>${fmt(ridge, 0)} FLOP/byte</b></div>` +
+      `<div><small>Tốc độ tối đa theo roofline</small><b>${fmt(att)} TFLOP/s (${fmt(att / G.peak * 100)}%)</b></div>` +
+      `<div><small>Kết luận</small><b style="color:${bound ? 'var(--warn)' : 'var(--life)'}">${bound ? 'Bị giới hạn bởi bộ nhớ' : 'Bị giới hạn bởi tính toán ✓'}</b></div>`;
+    box.querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.g === g)));
+  }
+  box.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => { g = b.dataset.g; draw(); }));
+  slider.addEventListener('input', draw); draw();
+})();
+</script>
+<p>Kéo thanh trượt sẽ thấy: ma trận nhỏ (\(N\) vài chục) nằm trên mái dốc, bị bộ nhớ kìm. Ma trận càng to thì \(I = N/3\) càng tăng, đến khoảng \(N \approx 900\) trên H100 thì lên được mái ngang. Còn ReLU thì luôn nằm sát đáy: nó gần như không làm phép tính nào, chỉ chở dữ liệu ra vào. Đây chính là hiện tượng "Compute Intensity" ở đoạn đầu biểu đồ bí ẩn.</p>
+<div class="note warn"><p>Con số \(I = N/3\) là trường hợp <i>lý tưởng</i>: mỗi phần tử của A, B chỉ được đọc từ HBM đúng một lần. Một kernel viết ngây thơ sẽ đọc lặp lại cùng một phần tử rất nhiều lần, nên \(I\) thực tế thấp hơn nhiều. Mẹo <a href="#l05-tiling">tiling</a> sinh ra để kéo \(I\) thực tế lại gần con số lý tưởng này.</p></div>
+
+<h2 id="l05-tricks" data-short="Danh sách mẹo"><span>Làm sao cho GPU chạy nhanh: danh sách mẹo</span><span class="slide-range">slide 22</span></h2>
+<div class="slides" data-s="22"></div>
+<p>Câu hỏi chính của Phần 2 là <b>làm sao để không bị giới hạn bởi bộ nhớ?</b> Các mẹo dưới đây đều trả lời câu hỏi đó, trừ mục 1:</p>
+<div class="tbl"><table>
+  <tr><th>Mẹo</th><th>Ý tưởng một dòng</th><th>Trong ví dụ nhà máy</th></tr>
+  <tr><td>Tránh control divergence</td><td>Đừng để các thread trong một warp rẽ nhánh khác nhau</td><td>Cả tổ làm cùng một động tác</td></tr>
+  <tr><td>1. Độ chính xác thấp</td><td>Dùng ít bit hơn cho mỗi số</td><td>Đóng hàng gọn hơn, mỗi chuyến chở được nhiều hơn</td></tr>
+  <tr><td>2. Gộp phép tính (fusion)</td><td>Làm nhiều bước liền một mạch, không cất kết quả trung gian về kho</td><td>Làm xong cả dây chuyền rồi mới chở về</td></tr>
+  <tr><td>3. Tính lại (recomputation)</td><td>Vứt kết quả trung gian, khi cần thì tính lại</td><td>Tự làm lại còn nhanh hơn chạy ra kho lấy</td></tr>
+  <tr><td>4. Coalescing</td><td>Các thread cạnh nhau đọc các ô nhớ cạnh nhau</td><td>Mỗi chuyến xe chở đầy, không chở nửa thùng</td></tr>
+  <tr><td>5. Tiling</td><td>Chở một khối dữ liệu lên "bàn" rồi dùng đi dùng lại</td><td>Lấy một lần, dùng nhiều lần</td></tr>
+</table></div>
+
+<h2 id="l05-divergence" data-short="Control divergence"><span>Control divergence: khi cả tổ phải chờ nhau</span><span class="slide-range">slide 23</span></h2>
+<div class="slides" data-s="23"></div>
+<p>Nhắc lại: 32 thread trong một warp luôn chạy <b>cùng một lệnh</b> tại cùng một thời điểm. Vậy chuyện gì xảy ra với đoạn code này?</p>
+<pre><code>if (threadIdx.x &lt; 4) { A; B; } else { X; Y; }
+Z;</code></pre>
+<p>Warp không thể vừa chạy A vừa chạy X. Nó phải chạy <b>lần lượt</b>: các thread số 0–3 chạy A, B trong khi các thread còn lại đứng chờ, rồi đến lượt nhóm kia chạy X, Y. Cuối cùng cả warp gặp lại nhau ở Z. Hình bên phải vẽ đúng điều này: các ô A, B, X, Y nằm so le theo thời gian, chứ không song song.</p>
+<div class="note key"><p><code>if/else</code> vẫn dùng được, nhưng nếu các thread trong <i>cùng một warp</i> đi vào các nhánh khác nhau thì thời gian bằng <b>tổng</b> thời gian của mọi nhánh. Đây không phải vấn đề bộ nhớ, mà là cái giá của mô hình SIMT. Cách tránh: sắp xếp dữ liệu sao cho cả warp cùng đi một nhánh.</p></div>
+
+<h2 id="l05-lowprec" data-short="Mẹo 1: ít bit hơn"><span>Mẹo 1: dùng số ít bit hơn</span><span class="slide-range">slide 24–29</span></h2>
+<div class="slides" data-s="24,25"></div>
+<p>Slide 24 nhắc lại biểu đồ "1000 lần trong 10 năm": riêng việc dùng ít bit hơn đã góp khoảng 16 lần. Lý do rất đơn giản: <mark>số ít bit thì chở ít bit</mark>.</p>
+<div class="note num">
+  <p><b>ReLU trên vector \(n\) phần tử</b> (slide 25), tức \(x \leftarrow \max(0, x)\):</p>
+  <ul>
+    <li>Mỗi phần tử: đọc 1 lần, ghi 1 lần, tính 1 phép so sánh.</li>
+    <li>FP32 (4 byte): chở \(4 + 4 = 8\) byte cho mỗi phép tính → \(I = 1/8\) FLOP/byte.</li>
+    <li>FP16 (2 byte): chở \(2 + 2 = 4\) byte → \(I = 1/4\) FLOP/byte. Cường độ gấp đôi, nên nếu bị bộ nhớ kìm thì chạy nhanh gấp đôi.</li>
+  </ul>
+</div>
+<div class="note warn"><p>Slide ghi "Intensity: 8 bytes / FLOP". Đó là <i>nghịch đảo</i> của cường độ như định nghĩa ở trên (FLOP/byte). Ý nghĩa vẫn vậy: ít byte cho mỗi phép tính thì tốt hơn.</p></div>
+
+<div class="slides" data-s="26"></div>
+<p><b>Mixed precision trên tensor core</b> (slide 26). Tensor core nhận đầu vào 16 bit, nhân ra kết quả chính xác, rồi <b>cộng dồn bằng FP32</b>. Lý do: cộng hàng nghìn tích nhỏ vào một tổng lớn bằng 16 bit thì sai số làm tròn tích tụ rất nhanh. Bảng bên phải chia các phép tính thành ba nhóm:</p>
+<ul>
+  <li><b>16 bit là đủ:</b> nhân ma trận, đa số phép tính từng phần tử (relu, tanh, cộng, nhân).</li>
+  <li><b>Cần chính xác hơn</b> (FP32): các phép <i>cộng dồn</i> như sum, softmax, normalization. Cộng một số nhỏ vào một tổng lớn rất dễ bị "nuốt mất".</li>
+  <li><b>Cần dải giá trị rộng hơn</b> (FP32 hoặc BF16): các hàm làm giá trị phình rất to hoặc co rất nhỏ như exp, log, pow, và hàm loss.</li>
+</ul>
+
+<div class="slides" data-s="27,28"></div>
+<p><b>Đọc cấu tạo một số thực</b> (bên trái slide 27). Mỗi số gồm ba phần:</p>
+<div class="mathbox">\[ x = (-1)^{\text{dấu}} \times 1.\text{mantissa} \times 2^{\text{exponent}} \]</div>
+<ul>
+  <li><b>Exponent</b> (ô cam) quyết định <i>dải</i> giá trị: số lớn hay nhỏ được tới đâu.</li>
+  <li><b>Mantissa</b> (ô xanh) quyết định <i>độ mịn</i>: có bao nhiêu chữ số có nghĩa.</li>
+</ul>
+<div class="tbl"><table>
+  <tr><th>Định dạng</th><th>Exponent / mantissa</th><th>Biểu diễn số 0,395 thành</th><th>Ghi chú</th></tr>
+  <tr><td>FP16</td><td>5 / 10</td><td>0,395264</td><td>Mịn nhưng dải hẹp (tối đa ~65.504)</td></tr>
+  <tr><td>BF16</td><td>8 / 7</td><td>0,394531</td><td>Thô hơn nhưng dải rộng như FP32, ít bị tràn số</td></tr>
+  <tr><td>FP8 E4M3</td><td>4 / 3</td><td>0,40625</td><td>Mịn hơn trong họ FP8, tối đa ~448</td></tr>
+  <tr><td>FP8 E5M2</td><td>5 / 2</td><td>0,375</td><td>Dải rộng hơn, rất thô</td></tr>
+</table></div>
+<p><b>MXFP8</b> (bên phải slide 27, dùng trên GPU Blackwell). FP8 có dải giá trị quá hẹp, nên nếu cả ma trận chỉ dùng một hệ số co giãn (scaling factor) thì số rất to và số rất nhỏ không cùng vừa. MXFP8 chia dữ liệu thành các nhóm <b>32 số</b>, mỗi nhóm có một hệ số co giãn riêng. Hệ số này là một luỹ thừa của 2, lưu ở dạng E8M0 (chỉ có exponent, không có mantissa).</p>
+<div class="note life"><p>Giống việc ghi số đo: nhóm này đo bằng mm, nhóm kia đo bằng mét. Mỗi số chỉ cần vài chữ số vì "đơn vị" đã được ghi riêng cho cả nhóm.</p></div>
+<p>Vì các nhóm 32 số chạy theo hàng, <b>chuyển vị ma trận không còn đơn giản nữa</b>. Lượt lan truyền ngược cần ma trận chuyển vị, tức cần nhóm theo cột. Nhóm cũ đã bị phá, nên phải lượng tử hoá lại từ bản độ chính xác cao. Slide 28 cho thấy điều này: có các ô "transpose &amp; quantize" riêng, và chỉ các lớp tuyến tính (màu xanh: Q, K, V, Projection, FC1, FC2) dùng MXFP8. Softmax, LayerNorm, hàm kích hoạt vẫn ở BF16. Trọng số gốc ("master weights") để optimizer cập nhật thì giữ ở FP32.</p>
+
+<div class="slides" data-s="29"></div>
+<p><b>4 bit</b> (slide 29): đây là <i>toàn bộ</i> các giá trị một số 4 bit (1 dấu, 2 exponent, 1 mantissa) biểu diễn được: 0; 0,5; 1; 1,5; 2; 3; 4; 6 và các số âm tương ứng. Chỉ 16 giá trị. Phần lớn "độ chính xác" nằm ở hệ số co giãn của từng nhóm.</p>
+<div class="note warn"><p>Slide gọi là "MXFP4" nhưng mô tả "1 hệ số cho mỗi 16 số, hệ số dạng E4M3". Theo chuẩn OCP, MXFP4 dùng nhóm 32 số với hệ số E8M0. Cấu hình "nhóm 16, hệ số E4M3" là định dạng <b>NVFP4</b> của NVIDIA. Ý tưởng hai bên giống nhau.</p></div>
+
+<h2 id="l05-fusion" data-short="Mẹo 2: gộp phép tính"><span>Mẹo 2: gộp phép tính (operator fusion)</span><span class="slide-range">slide 30–33</span></h2>
+<div class="slides" data-s="30,31"></div>
+<p>Slide 30 vẽ đúng hình nhà máy: nhà máy (Compute) mở rộng gấp đôi, nhưng băng chuyền từ kho (Memory) vẫn vậy, nên nửa nhà máy mới bỏ trống. Slide 31 cho thấy điều tệ hơn khi phải làm nhiều bước liên tiếp:</p>
+<ul>
+  <li><b>Không gộp</b> (trái): chở nguyên liệu vào, làm bước 1, chở kết quả (tam giác) về kho. Rồi lại chở tam giác vào, làm bước 2, chở hình tròn về kho… Mỗi bước tốn một chuyến đi và một chuyến về.</li>
+  <li><b>Gộp</b> (phải): chở vào một lần, làm liền cả ba bước ngay trong nhà máy, chở kết quả cuối cùng về một lần.</li>
+</ul>
+<p>Trên GPU, mỗi "bước" thường là một <b>kernel</b>. Gộp nhiều bước thành một kernel gọi là <dfn>fusion</dfn>.</p>
+
+<div class="slides" data-s="32"></div>
+<p><b>Ví dụ \(\sin^2 x + \cos^2 x\)</b> (slide 32–33). Viết bằng PyTorch thường, code này chạy 5 kernel: <code>sin</code>, <code>cos</code>, <code>pow</code>, <code>pow</code>, <code>add</code>.</p>
+<div class="note num">
+  <p>Với \(x\) có \(n\) phần tử, đếm số lần chở cả vector giữa HBM và SM:</p>
+  <ul>
+    <li><b>Không gộp:</b> sin (đọc 1, ghi 1), cos (1, 1), pow (1, 1), pow (1, 1), add (đọc 2, ghi 1) → <b>11 lượt</b>.</li>
+    <li><b>Gộp thành 1 kernel:</b> đọc \(x\) một lần, ghi kết quả một lần → <b>2 lượt</b>.</li>
+  </ul>
+  <p>Các phép này đều memory-bound, nên thời gian gần như tỷ lệ với số lượt chở: nhanh hơn khoảng 5 lần, dù số phép tính không đổi.</p>
+</div>
+<div class="slides" data-s="33"></div>
+<p>Những kiểu gộp "dễ" như thế này, tức một chuỗi phép tính từng phần tử, được trình biên dịch làm tự động. Bạn chỉ cần gọi <code>torch.compile</code>: TorchInductor gom cả 5 nút trong khung đỏ thành một kernel duy nhất (khối cam bên phải).</p>
+
+<h2 id="l05-recompute" data-short="Mẹo 3: tính lại"><span>Mẹo 3: tính lại thay vì lưu (recomputation)</span><span class="slide-range">slide 34–36</span></h2>
+<div class="slides" data-s="34"></div>
+<p>Nhắc lại lan truyền ngược (backprop). Ví dụ trong slide 34 lấy từ CS221: \(\text{Loss} = (\mathbf{w}\cdot\phi(x) - y)^2\) với \(\mathbf{w} = [3, 1]\), \(\phi(x) = [1, 2]\), \(y = 2\).</p>
+<ul>
+  <li><b>Lượt xuôi</b> (từ lá lên gốc): score = 3·1 + 1·2 = 5, residual = 5 − 2 = 3, loss = 9. Các giá trị màu vàng này là <dfn>activation</dfn>, và ta <i>lưu lại</i>.</li>
+  <li><b>Lượt ngược</b> (từ gốc xuống lá): dùng lại các activation đã lưu để tính đạo hàm (màu xanh): \(\nabla_{\mathbf w}\text{Loss} = 2\cdot 3 \cdot [1, 2] = [6, 12]\).</li>
+</ul>
+<p>Vấn đề: lưu activation nghĩa là ghi ra HBM ở lượt xuôi rồi đọc lại ở lượt ngược. Toàn là chở hàng.</p>
+
+<div class="slides" data-s="35,36"></div>
+<p><b>Ví dụ ba hàm sigmoid xếp chồng.</b></p>
+<div class="tbl"><table>
+  <tr><th></th><th>Cách cũ: lưu s1, s2</th><th>Cách mới: vứt đi, tính lại</th></tr>
+  <tr><td>Lượt xuôi</td><td>đọc x (1) + ghi s1, s2, out (3) = 4</td><td>đọc x (1) + ghi out (1) = 2</td></tr>
+  <tr><td>Lượt ngược</td><td>đọc s1, s2, dout (3) + ghi dx (1) = 4</td><td>đọc x, dout (2) + ghi dx (1) = 3. Tính lại 3 sigmoid ngay trên chip</td></tr>
+  <tr><td><b>Tổng lượt truy cập bộ nhớ</b></td><td><b>8</b></td><td class="hi">5, tức 5/8 so với cách cũ</td></tr>
+</table></div>
+<div class="note key"><p>Nghe ngược đời: <b>làm thêm phép tính mà lại nhanh hơn</b>. Lý do là tính toán thì "rẻ", còn chở dữ liệu thì "đắt" (nhớ bức tường bộ nhớ ở slide 18). Trong huấn luyện mô hình lớn, kỹ thuật này còn được gọi là <dfn>activation checkpointing</dfn>, và nó cũng giúp tiết kiệm dung lượng bộ nhớ. FlashAttention dùng đúng mẹo này ở lượt ngược.</p></div>
+
+<h2 id="l05-coalesce" data-short="Mẹo 4: coalescing"><span>Mẹo 4: đọc bộ nhớ theo "lô" (memory coalescing)</span><span class="slide-range">slide 37–39</span></h2>
+<div class="slides" data-s="37"></div>
+<p>Một đặc điểm của DRAM: nó đọc theo <b>chế độ burst</b>. Bộ nhớ được chia thành các đoạn liền nhau (burst section). Khi bạn đọc <i>một</i> ô, cả đoạn chứa ô đó được gửi về luôn. Lý do nằm ở cấu tạo vật lý: lấy một hàng ra bộ khuếch đại (sense amplifier) rất chậm, nhưng một khi hàng đã ra thì lấy nhiều ô cạnh nhau gần như miễn phí. Thực tế, một burst dài khoảng 128 byte hoặc hơn.</p>
+<div class="slides" data-s="38"></div>
+<p>Từ đó có khái niệm <dfn>coalesced</dfn> (được gộp lô): khi cả warp cùng thực hiện một lệnh đọc, nếu tất cả địa chỉ rơi vào cùng một burst thì chỉ tốn <b>một</b> yêu cầu DRAM. Thử bên dưới với 4 thread và burst dài 4 ô, giống slide:</p>
+
+<div class="widget" id="coalW">
+  <h4>Thử nghiệm: 4 thread cùng đọc, tốn bao nhiêu chuyến?</h4>
+  <div class="row" role="group" aria-label="Kiểu truy cập">
+    <button class="l05-btn" data-p="seq">Liền nhau</button>
+    <button class="l05-btn" data-p="off">Liền nhau nhưng lệch 2 ô</button>
+    <button class="l05-btn" data-p="stride">Cách nhau 4 ô</button>
+  </div>
+  <div class="l05-mem" id="coalMem"></div>
+  <p id="coalOut" style="margin:0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('coalW'); if (!box) return;
+  const P = {
+    seq: { a: [0, 1, 2, 3], msg: 'Cả 4 địa chỉ nằm trong cùng một burst nên được gộp hoàn toàn. Mỗi chuyến xe chở đầy.' },
+    off: { a: [2, 3, 4, 5], msg: 'Vẫn liền nhau nhưng vắt qua ranh giới hai burst, nên tốn gấp đôi. Đây là chuyện "căn lề" (alignment) ở slide 44.' },
+    stride: { a: [0, 4, 8, 12], msg: 'Mỗi thread rơi vào một burst khác nhau. Tốn 4 chuyến, và mỗi chuyến chở 4 ô nhưng chỉ dùng 1. Đây là trường hợp mỗi thread đọc một hàng khác nhau của ma trận lưu theo hàng.' }
+  };
+  function upd(p) {
+    const a = P[p].a, bursts = new Set(a.map(i => Math.floor(i / 4)));
+    let h = '';
+    for (let b = 0; b < 4; b++) {
+      h += `<div class="l05-burst${bursts.has(b) ? ' hit' : ''}">`;
+      for (let i = b * 4; i < b * 4 + 4; i++) { const t = a.indexOf(i); h += `<div class="l05-cell${t >= 0 ? ' on' : ''}">${t >= 0 ? `<span class="t">T${t}</span>` : ''}${i}</div>`; }
+      h += '</div>';
+    }
+    box.querySelector('#coalMem').innerHTML = h;
+    const used = a.length, moved = bursts.size * 4;
+    box.querySelector('#coalOut').innerHTML = `<b>${bursts.size} yêu cầu DRAM</b> · chở ${moved} ô, dùng ${used} ô (hiệu suất ${Math.round(used / moved * 100)}%). ${P[p].msg}`;
+    box.querySelectorAll('[data-p]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.p === p)));
+  }
+  box.querySelectorAll('[data-p]').forEach(x => x.addEventListener('click', () => upd(x.dataset.p)));
+  upd('seq');
+})();
+</script>
+
+<div class="slides" data-s="39"></div>
+<p><b>Áp dụng vào ma trận</b> (slide 39). Ma trận thường được lưu <b>theo hàng</b> (row-major): hết hàng 0 rồi mới đến hàng 1. Phần tử \(M_{r,c}\) nằm ở địa chỉ \(r \times \text{WIDTH} + c\).</p>
+<ul>
+  <li><b>(A) Mỗi thread đi dọc một hàng:</b> ở cùng một bước, thread 1 đọc \(M_{1,k}\), thread 2 đọc \(M_{2,k}\). Hai địa chỉ cách nhau cả một hàng (WIDTH ô) nên rơi vào các burst khác nhau → <b>không gộp lô được</b>.</li>
+  <li><b>(B) Mỗi thread đi dọc một cột:</b> ở cùng một bước, thread 1 đọc \(M_{k,1}\), thread 2 đọc \(M_{k,2}\). Hai ô nằm cạnh nhau → <b>gộp lô được</b>. Hình bên phải cho thấy: mỗi "load iteration", cả nhóm thread đọc trọn một hàng liền mạch.</li>
+</ul>
+<div class="note warn"><p>Điều dễ ngược trực giác: cái quan trọng <b>không</b> phải là một thread đọc các ô theo thứ tự nào theo thời gian. Cái quan trọng là <b>các thread cạnh nhau đọc gì tại cùng một thời điểm</b>. Vì vậy cách (B), nhìn qua tưởng "nhảy cóc", lại là cách nhanh.</p></div>
+
+<h2 id="l05-tiling" data-short="Mẹo 5: tiling"><span>Mẹo 5 (mẹo lớn nhất): tiling</span><span class="slide-range">slide 40–42</span></h2>
+<div class="slides" data-s="40"></div>
+<p><b>Vấn đề của cách nhân ma trận ngây thơ</b> (slide 40). Tính \(P = M \times N\) với mỗi thread tính một ô của \(P\). Thread\(_{0,0}\) cần cả hàng 0 của \(M\) và cột 0 của \(N\). Nhìn bảng "Access order": \(M_{0,0}\) bị thread\(_{0,0}\) và thread\(_{0,1}\) đọc hai lần, \(N_{1,0}\) cũng bị đọc hai lần. Với ma trận \(N\times N\), mỗi phần tử bị đọc từ HBM <b>\(N\) lần</b>, mà mỗi lần lại không được gộp lô.</p>
+
+<div class="slides" data-s="41"></div>
+<p><b>Ý tưởng tiling</b> (slide 41): cắt ma trận thành các khối vuông nhỏ (<i>tile</i>). Cả block thread cùng nhau:</p>
+<ol>
+  <li>Chở tile \(M_{0,0}\) và tile \(N_{0,0}\) từ HBM lên shared memory (lên "bàn"). Việc chở này có thể gộp lô.</li>
+  <li>Tính phần tổng dở dang cho tile \(P\) tương ứng, đọc toàn bộ từ shared memory (nhanh).</li>
+  <li>Chở cặp tile tiếp theo dọc theo hàng/cột, cộng dồn tiếp.</li>
+  <li>Lặp lại cho đến hết, rồi ghi tile \(P\) về HBM một lần.</li>
+</ol>
+
+<div class="slides" data-s="42"></div>
+<p><b>Tiết kiệm bao nhiêu?</b> (slide 42). Với tile cỡ \(T\times T\):</p>
+<ul>
+  <li><b>Không tiling:</b> mỗi phần tử đầu vào bị đọc từ HBM \(N\) lần.</li>
+  <li><b>Có tiling:</b> mỗi phần tử chỉ bị đọc từ HBM \(N/T\) lần (một lần cho mỗi tile của \(P\) cần đến nó), và được dùng lại \(T\) lần ngay trên shared memory.</li>
+</ul>
+<div class="note num"><p>\(N = 4096\), tile \(T = 64\): mỗi phần tử chỉ đọc từ HBM \(4096/64 = 64\) lần thay vì 4096 lần, tức <b>giảm 64 lần</b> lượng dữ liệu phải chở. Cường độ tính toán tăng tương ứng, đẩy phép nhân từ mái dốc lên mái ngang của roofline.</p></div>
+<div class="note life"><p>Bạn nấu 10 món, món nào cũng cần hành. Cách ngây thơ: mỗi món chạy ra chợ mua một củ hành. Tiling: mua một túi hành để sẵn trên bếp, dùng cho cả 10 món. Bếp (shared memory) nhỏ nên không để được cả chợ, chỉ để được một "tile" mỗi lần.</p></div>
+
+<h2 id="l05-tiling-cx" data-short="Tiling: chia không hết & căn lề"><span>Những rắc rối của tiling: chia không hết và căn lề</span><span class="slide-range">slide 43–44</span></h2>
+<div class="slides" data-s="43"></div>
+<p><b>Kích thước ma trận không chia hết cho cỡ tile</b> (slide 43). Tile 128×128:</p>
+<ul>
+  <li>Ma trận 256×256 → vừa khít 2×2 = 4 tile. Mọi block đều làm việc có ích.</li>
+  <li>Ma trận 256×<b>257</b> → cần 2×3 = 6 tile, trong đó 2 tile ở cột cuối chỉ có <b>1 cột</b> dữ liệu thật trên 128 cột. Thêm 50% số block chỉ để xử lý thêm 1 cột.</li>
+</ul>
+<p>Cỡ tile được chọn dựa trên ba yếu tố: (1) đọc có gộp lô được không, (2) shared memory có đủ chỗ không, (3) có chia hết kích thước ma trận không.</p>
+
+<div class="slides" data-s="44"></div>
+<p><b>Căn lề bộ nhớ</b> (slide 44). Bộ nhớ đến theo từng burst. Nếu độ dài mỗi hàng của ma trận là bội số của độ dài burst thì mỗi hàng bắt đầu đúng đầu một burst, và tile đọc ra gọn gàng ("One Nice Tile"). Nếu không, các hàng bắt đầu lệch, và mỗi tile phải đọc vắt qua nhiều burst hơn ("Two Bad Tiles"), giống trường hợp "lệch 2 ô" trong ví dụ coalescing ở trên. Cách sửa: <b>padding</b>, tức thêm cột rỗng cho tròn số.</p>
+
+<h2 id="l05-mystery" data-short="Giải bí ẩn ma trận"><span>Ghép lại: giải bí ẩn của phép nhân ma trận</span><span class="slide-range">slide 45–48</span></h2>
+<div class="slides" data-s="45"></div>
+<p>Tweet của Andrej Karpathy (slide 45): tối ưu ấn tượng nhất cho nanoGPT, giúp nhanh hơn khoảng 25%, chỉ là <b>tăng kích thước từ vựng từ 50257 lên 50304</b>, tức bội số gần nhất của 64. Mô hình phải tính thêm những chiều vô dụng, vậy mà lại nhanh hơn. Tại sao?</p>
+
+<div class="slides" data-s="46,47"></div>
+<p><b>Hiện tượng 1, các "dải" (slide 47)</b>. Tô màu từng điểm theo việc \(N\) chia hết cho bao nhiêu:</p>
+<ul>
+  <li>\(N\) chia hết cho 32 (tím): nhanh nhất, khoảng 250 TFLOP/s.</li>
+  <li>Chia hết cho 16, 8 (xanh lá, cam): thấp hơn hẳn.</li>
+  <li>Chỉ chia hết cho 2 (xanh dương): khoảng 80 TFLOP/s, chậm hơn 3 lần.</li>
+</ul>
+<p>Lý do chính là căn lề và chia tile: kích thước "tròn" thì tile khớp với burst và chia hết, kích thước "lẻ" thì phải đọc vắt burst và có tile bị bỏ phí. Đây là lời giải cho chuyện của Karpathy: 50257 là số lẻ, còn 50304 = 64 × 786.</p>
+
+<div class="slides" data-s="48"></div>
+<p><b>Hiện tượng 2, các cú tụt theo chu kỳ (slide 48): wave quantization.</b> Thư viện dùng tile 256×128. Mỗi tile của ma trận kết quả được giao cho một SM, và A100 có <b>108 SM</b>.</p>
+<ul>
+  <li>\(N = 1792\): \(\frac{1792}{256}\times\frac{1792}{128} = 7 \times 14 = 98\) tile. 98 ≤ 108 nên cả 98 tile chạy trong <b>một đợt</b> (một "wave").</li>
+  <li>\(N = 1793\): chỉ thêm 1 mà thành \(8 \times 15 = 120\) tile. 108 tile chạy đợt đầu, rồi 12 tile còn lại chạy đợt hai trong khi 96 SM ngồi chơi. Thời gian gần như <b>gấp đôi</b> mà khối lượng việc chỉ tăng chút xíu.</li>
+</ul>
+
+<div class="widget" id="waveW">
+  <h4>Thử nghiệm: wave quantization trên A100 (tile 256×128, 108 SM)</h4>
+  <p style="margin:0 0 4px"><label for="waveN">Kích thước \(N\): <span class="chip" id="waveNv"></span></label></p>
+  <input type="range" id="waveN" min="1024" max="4096" step="1" value="1792">
+  <div class="row" style="margin-top:8px"><span>Thử nhanh:</span>
+    <button class="l05-btn" data-n="1792">1792</button><button class="l05-btn" data-n="1793">1793</button><button class="l05-btn" data-n="2048">2048</button><button class="l05-btn" data-n="2049">2049</button>
+  </div>
+  <div class="l05-waves" id="waveBars"></div>
+  <div class="l05-stats" id="waveStats"></div>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('waveW'); if (!box) return;
+  const SM = 108, r = box.querySelector('#waveN');
+  function upd() {
+    const N = +r.value, tm = Math.ceil(N / 256), tn = Math.ceil(N / 128), tiles = tm * tn, waves = Math.ceil(tiles / SM);
+    const smUse = tiles / (waves * SM), tileUse = (N * N) / (tiles * 256 * 128), eff = smUse * tileUse;
+    box.querySelector('#waveNv').textContent = N;
+    let bars = '';
+    for (let w = 0; w < waves; w++) { const k = Math.min(SM, tiles - w * SM); bars += `<div class="l05-wave"><span style="min-width:52px">Đợt ${w + 1}</span><div class="track"><div class="fill" style="width:${k / SM * 100}%"></div></div><span style="min-width:72px;text-align:right">${k}/${SM} SM</span></div>`; }
+    box.querySelector('#waveBars').innerHTML = bars;
+    box.querySelector('#waveStats').innerHTML =
+      `<div><small>Số tile</small><b>${tm} × ${tn} = ${tiles}</b></div>` +
+      `<div><small>Số đợt (wave)</small><b>${waves}</b></div>` +
+      `<div><small>SM bận trung bình</small><b>${Math.round(smUse * 100)}%</b></div>` +
+      `<div><small>Phần việc có ích trong các tile</small><b>${Math.round(tileUse * 100)}%</b></div>` +
+      `<div><small>Hiệu suất ước lượng</small><b style="color:${eff > 0.8 ? 'var(--life)' : 'var(--warn)'}">${Math.round(eff * 100)}%</b></div>`;
+    box.querySelectorAll('[data-n]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === N)));
+  }
+  box.querySelectorAll('[data-n]').forEach(b => b.addEventListener('click', () => { r.value = b.dataset.n; upd(); }));
+  r.addEventListener('input', upd); upd();
+})();
+</script>
+<p>Kéo thanh trượt sẽ thấy hiệu suất có dạng răng cưa. Mỗi khi số tile vừa vượt qua một bội số của 108, một đợt mới gần như trống xuất hiện và hiệu suất tụt mạnh. Sau đó nó leo dần lên khi đợt mới được lấp đầy. Đó chính là các cú tụt theo chu kỳ trong biểu đồ. (Đây là mô hình đơn giản hoá. Thư viện thật còn tự đổi cỡ tile theo \(N\).)</p>
+<div class="note key"><p>Tóm lại biểu đồ bí ẩn có ba lớp: <b>(1)</b> ma trận nhỏ thì cường độ tính toán thấp, bị bộ nhớ kìm (đoạn đi lên ban đầu). <b>(2)</b> Kích thước có chia hết cho 2, 8, 16, 32… hay không quyết định tile có khớp burst không (các dải). <b>(3)</b> Số tile so với số SM quyết định có đợt nào bị lãng phí không (răng cưa). Bài học thực hành: <mark>chọn kích thước mô hình là bội số của 64 hoặc 128</mark>.</p></div>
+
+<h2 id="l05-recap2" data-short="Tóm tắt Phần 2"><span>Tóm tắt Phần 2</span><span class="slide-range">slide 49</span></h2>
+<div class="slides" data-s="49"></div>
+<p>Mọi mẹo đều phục vụ một mục tiêu là <b>bớt chở dữ liệu</b>, và chia thành ba nhóm:</p>
+<ul>
+  <li><b>Giảm số lần truy cập bộ nhớ:</b> coalescing (mỗi chuyến chở đầy), fusion (không cất kết quả trung gian về kho).</li>
+  <li><b>Đưa dữ liệu lên bộ nhớ nhanh:</b> tiling (lấy một lần lên shared memory, dùng nhiều lần).</li>
+  <li><b>Đổi bộ nhớ lấy tính toán hoặc độ chính xác:</b> lượng tử hoá (ít bit hơn), recomputation (tính lại thay vì lưu).</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="part" id="l05-part3" data-short="Phần 3 · FlashAttention">Phần 3 · FlashAttention<small>Tiling + fusion + recomputation, áp vào attention.</small></div>
+
+<h2 id="l05-flash-intro" data-short="FlashAttention nhanh cỡ nào"><span>FlashAttention nhanh cỡ nào, và attention chậm ở đâu?</span><span class="slide-range">slide 50–51</span></h2>
+<div class="slides" data-s="50"></div>
+<p><b>Biểu đồ trái:</b> attention của GPT-2 trong PyTorch thường mất khoảng 17 ms. Phần lớn thời gian không nằm ở hai phép nhân ma trận (Matmul) mà nằm ở Dropout, Softmax, Mask, đúng như cảnh báo ở slide 17. FlashAttention gộp tất cả vào một kernel ("Fused Kernel") và chỉ mất khoảng 2 ms.</p>
+<div class="tbl"><table>
+  <tr><th>Attention</th><th>Thường</th><th>FlashAttention</th></tr>
+  <tr><td>Số phép tính (GFLOPs)</td><td>66,6</td><td>75,2 (<b>nhiều hơn!</b>)</td></tr>
+  <tr><td>Đọc/ghi HBM (GB)</td><td>40,3</td><td class="hi">4,4 (ít hơn 9 lần)</td></tr>
+  <tr><td>Thời gian (ms)</td><td>41,7</td><td class="hi">7,3 (nhanh hơn 5,7 lần)</td></tr>
+</table></div>
+<p>Bảng này tóm gọn cả lecture: FlashAttention <b>tính nhiều hơn</b> (do tính lại) nhưng <b>chở ít hơn 9 lần</b>, nên nhanh hơn gần 6 lần. Biểu đồ bên phải: block (tile) càng lớn thì càng ít truy cập HBM và càng nhanh, cho đến khi bão hoà. Bài báo nói rõ họ chỉ dùng hai kỹ thuật đã biết là <b>tiling và recomputation</b>.</p>
+
+<div class="slides" data-s="51"></div>
+<p><b>Nhắc lại attention</b> (slide 51): \(\;S = QK^\top\), \(\;P = \text{softmax}(S)\), \(\;O = PV\). Hai phép nhân ma trận kẹp một softmax ở giữa. (Ba lớp chồng nhau trong hình là ba "head" của multi-head attention, nên có kích thước \(3\times n\times n\).)</p>
+<p>Thủ phạm là các ma trận \(S\) và \(P\) cỡ \(n \times n\). Với \(n = 8192\), mỗi head đã là 67 triệu số. Attention thường tính \(S\) rồi ghi ra HBM, đọc lại để làm mask, ghi ra, đọc lại để softmax, ghi ra, đọc lại để nhân với \(V\)… Chở đi chở lại một ma trận khổng lồ nhiều lần.</p>
+
+<h2 id="l05-flash-tiling" data-short="Tiling cho Q, K, V"><span>Bước 1: tiling cho phép nhân Q, K, V</span><span class="slide-range">slide 52</span></h2>
+<div class="slides" data-s="52"></div>
+<p><b>Kim tự tháp bên trái</b> là các tầng bộ nhớ của A100: SRAM chạy 19 TB/s nhưng chỉ có 20 MB, HBM chạy 1,5 TB/s và có 40 GB, RAM của CPU chỉ 12,8 GB/s. SRAM nhanh hơn HBM khoảng 13 lần.</p>
+<p><b>Hình bên phải</b> (Figure 1 của bài báo) đơn giản chỉ là <i>tiling cho phép nhân ma trận</i>, đúng như ở Phần 2:</p>
+<ul>
+  <li>Vòng ngoài (đỏ): lần lượt chở từng khối của \(K^\top\) và \(V\) lên SRAM.</li>
+  <li>Vòng trong (xanh): với mỗi khối của \(Q\), tính khối tương ứng của \(QK^\top\) ngay trên SRAM, nhân luôn với khối \(V\), rồi cộng dồn vào đầu ra.</li>
+  <li>Ma trận \(n\times n\) <b>không bao giờ được ghi đầy đủ ra HBM</b>. Mỗi lần chỉ có một mảnh nhỏ tồn tại trên SRAM.</li>
+</ul>
+<p>Nhưng có một vấn đề: <b>softmax thì sao?</b> Softmax của một hàng cần biết <i>cả hàng</i>, gồm giá trị lớn nhất và tổng mọi \(e^{x}\), trong khi ta chỉ đang cầm một mảnh của hàng.</p>
+
+<h2 id="l05-online-softmax" data-short="Online softmax"><span>Bước 2: tính softmax từng mảnh (online softmax)</span><span class="slide-range">slide 53</span></h2>
+<div class="slides" data-s="53"></div>
+<p><b>Softmax "an toàn"</b> (bên trái). Công thức gốc là \(y_i = e^{x_i} / \sum_j e^{x_j}\). Nhưng \(e^{1000}\) tràn số, nên người ta trừ đi giá trị lớn nhất \(m = \max_k x_k\) trước:</p>
+<div class="mathbox">\[ y_i = \frac{e^{x_i - m}}{\sum_j e^{x_j - m}} \]</div>
+<p>Kết quả không đổi, vì tử và mẫu cùng được nhân với \(e^{-m}\), nhưng giờ mọi số mũ đều ≤ 0 nên không tràn. Cái giá là phải duyệt dữ liệu <b>3 lượt</b>: tìm max, tính tổng, rồi chia.</p>
+<p><b>Online softmax</b> (bên phải, Milakov &amp; Gimelshein 2018) gộp hai lượt đầu thành một. Ta đi qua từng phần tử và giữ hai con số: max tạm thời \(m_j\) và tổng tạm thời \(d_j\):</p>
+<div class="mathbox">\[ m_j = \max(m_{j-1},\, x_j), \qquad d_j = d_{j-1}\cdot e^{\,m_{j-1} - m_j} + e^{\,x_j - m_j} \]</div>
+<p>Chìa khoá là thừa số \(e^{m_{j-1} - m_j}\). Tổng cũ được tính với max cũ. Khi gặp một max mới lớn hơn, ta "chỉnh lại" tổng cũ cho đúng với max mới bằng cách nhân với thừa số đó. Nếu max không đổi thì thừa số bằng 1 và ta chỉ cộng thêm. Sau mỗi bước luôn có \(d_j = \sum_{k \le j} e^{x_k - m_j}\), tức đúng là tổng an toàn của các phần tử đã thấy. Kiểu triệt tiêu dây chuyền này là "telescoping sum" mà slide nhắc tới.</p>
+
+<div class="widget" id="osmW">
+  <h4>Đi từng bước: online softmax trên 8 số</h4>
+  <div class="row"><button class="l05-btn" id="osmNext">Bước tiếp →</button><button class="l05-btn" id="osmAll">Chạy hết</button><button class="l05-btn" id="osmReset">Làm lại</button></div>
+  <div class="tbl"><table id="osmTbl"></table></div>
+  <p id="osmOut" style="margin:0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('osmW'); if (!box) return;
+  const xs = [3, 1, 4, 1, 5, 9, 2, 6];
+  let j = 0;
+  const f = (v, d = 4) => v.toLocaleString('vi-VN', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+  function render() {
+    let m = -Infinity, d = 0, rows = '<tr><th>j</th><th>x<sub>j</sub></th><th>max m<sub>j</sub></th><th>Chỉnh tổng cũ</th><th>tổng d<sub>j</sub></th></tr>';
+    for (let k = 0; k < j; k++) {
+      const x = xs[k], mn = Math.max(m, x), first = m === -Infinity, up = !first && mn > m, sc = first ? 0 : Math.exp(m - mn);
+      const note = first ? 'bắt đầu' : up ? `max tăng ${m}→${mn}: × e<sup>${m - mn}</sup> ≈ ${f(sc)}` : 'max giữ nguyên: × 1';
+      d = d * sc + Math.exp(x - mn); m = mn;
+      rows += `<tr><td>${k + 1}</td><td>${x}</td><td${up ? ' class="hi"' : ''}>${m}</td><td>${note}</td><td>${f(d)}</td></tr>`;
+    }
+    box.querySelector('#osmTbl').innerHTML = rows;
+    const out = box.querySelector('#osmOut');
+    if (j < xs.length) out.innerHTML = j === 0 ? `Dãy số: [${xs.join(', ')}]. Bấm "Bước tiếp" để đưa từng số vào.` : `Đã thấy ${j}/${xs.length} số. Ta chưa cần biết các số phía sau.`;
+    else {
+      const M = Math.max(...xs), direct = xs.reduce((a, x) => a + Math.exp(x - M), 0);
+      out.innerHTML = `Xong một lượt duy nhất: max = <b>${m}</b>, tổng = <b>${f(d, 6)}</b>. Tính trực tiếp kiểu 2 lượt: Σ e<sup>x−${M}</sup> = <b>${f(direct, 6)}</b>. Hai kết quả trùng nhau ✓. Giờ chỉ cần thêm lượt chia y<sub>i</sub> = e<sup>x<sub>i</sub>−m</sup>/d.`;
+    }
+  }
+  box.querySelector('#osmNext').addEventListener('click', () => { if (j < xs.length) j++; render(); });
+  box.querySelector('#osmAll').addEventListener('click', () => { j = xs.length; render(); });
+  box.querySelector('#osmReset').addEventListener('click', () => { j = 0; render(); });
+  render();
+})();
+</script>
+<p>Hãy để ý bước \(j = 6\): gặp số 9, max nhảy từ 5 lên 9, và tổng cũ bị nhân với \(e^{-4} \approx 0{,}018\). Đây chính là "chỉnh lại cho đúng mẫu số". Điều quan trọng: <mark>phép cập nhật này không cần nhìn thấy cả hàng một lúc</mark>, nên làm được từng mảnh một, tức là làm được theo tile.</p>
+
+<h2 id="l05-flash-forward" data-short="Ghép lại: lượt xuôi"><span>Ghép lại: lượt xuôi của FlashAttention</span><span class="slide-range">slide 54</span></h2>
+<div class="slides" data-s="54"></div>
+<p>Hình này lấy từ Dao 2023 (FlashAttention-2), với \(K\) và \(V\) chia làm 2 khối. Ô xanh nét liền là dữ liệu nằm ở HBM, ô cam nét đứt là dữ liệu chỉ tồn tại trên SRAM, không bao giờ ghi ra HBM.</p>
+<ol>
+  <li><b>Khối 1:</b> \(S^{(1)} = Q\,(K^{(1)})^\top\), rồi \(A^{(1)} = \exp(S^{(1)})\) và tổng theo hàng \(\ell^{(1)} = \sum \exp(S^{(1)})\). Đầu ra tạm: \(O^{(1)} = \frac{A^{(1)}}{\ell^{(1)}} V^{(1)}\). Kết quả này chỉ đúng nếu không còn khối nào khác.</li>
+  <li><b>Khối 2:</b> \(S^{(2)}\), \(A^{(2)}\) tương tự. Tổng mới \(\ell^{(2)} = \ell^{(1)} + \sum \exp(S^{(2)})\). Đầu ra được <b>chỉnh lại mẫu số</b>:
+    <div class="mathbox">\[ O^{(2)} = \frac{\ell^{(1)}}{\ell^{(2)}}\,O^{(1)} + \frac{A^{(2)}}{\ell^{(2)}}\,V^{(2)} \]</div>
+    Thử khai triển: \(\frac{\ell^{(1)}}{\ell^{(2)}}\cdot\frac{A^{(1)}V^{(1)}}{\ell^{(1)}} + \frac{A^{(2)}V^{(2)}}{\ell^{(2)}} = \frac{A^{(1)}V^{(1)} + A^{(2)}V^{(2)}}{\ell^{(2)}}\). Đây đúng là softmax trên cả hàng nhân với \(V\).</li>
+</ol>
+<p>Nhận diện các mẹo từ Phần 2 trong hình:</p>
+<ul>
+  <li><b>Tiling:</b> tính tích vô hướng \(S\) theo từng khối.</li>
+  <li><b>Fusion:</b> exp, cộng tổng, nhân với \(V\) đều làm ngay trong cùng một kernel trên SRAM.</li>
+  <li><b>Online softmax:</b> chỉnh mẫu số theo kiểu cộng dồn từng khối.</li>
+  <li><b>Recomputation</b> (ở lượt ngược, slide không trình bày chi tiết): không lưu \(S\), \(P\) cỡ \(n\times n\). Lượt ngược tính lại chúng từng tile từ \(Q, K, V\). Đó là lý do số GFLOPs tăng từ 66,6 lên 75,2.</li>
+</ul>
+<div class="note warn"><p>Hình đã lược bỏ bước trừ max cho gọn: nó viết \(\exp(S)\) chứ không phải \(\exp(S - m)\). Bản thật vẫn giữ max tạm thời \(m\) cho từng hàng và nhân thêm thừa số \(e^{m_{\text{cũ}} - m_{\text{mới}}}\), y như online softmax ở trên.</p></div>
+
+<h2 id="l05-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">slide 55</span></h2>
+<div class="slides" data-s="55"></div>
+<div class="note key">
+  <ul>
+    <li><b>Phần cứng quyết định quy mô.</b> Những chi tiết cấp thấp quyết định cái gì scale được và cái gì không.</li>
+    <li><b>GPU hiện nay "thưởng" cho hai thứ:</b> nhân ma trận (tensor core nhanh hơn hơn 10 lần) và ít di chuyển dữ liệu (vì tính toán tăng nhanh hơn bộ nhớ rất nhiều).</li>
+    <li><b>Hiểu GPU thì viết được code nhanh:</b> coalescing, tiling, fusion, recomputation, số ít bit. FlashAttention chỉ là các mẹo này ghép lại.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Vì sao GPU có rất ít phần điều khiển và cache mà vẫn nhanh hơn CPU khi huấn luyện mô hình?</summary>
+    <div><p>Huấn luyện là lặp cùng một phép tính trên lượng dữ liệu khổng lồ, nên cái cần là <i>thông lượng</i>, không phải độ trễ. GPU dùng diện tích chip cho thật nhiều ALU, và giấu độ trễ bộ nhớ bằng cách chuyển sang warp khác khi một warp phải chờ dữ liệu.</p></div></details>
+  <details><summary>2. Một warp chạy <code>if (threadIdx.x % 2 == 0) {A} else {B}</code>. Chuyện gì xảy ra về thời gian?</summary>
+    <div><p>Trong mỗi warp có 16 thread đi nhánh A và 16 thread đi nhánh B. Warp phải chạy A (16 thread kia chờ) rồi chạy B (16 thread này chờ), nên thời gian bằng A + B, chứ không phải max(A, B).</p></div></details>
+  <details><summary>3. ReLU trên FP32 có cường độ bao nhiêu? Trên H100 nó bị giới hạn bởi gì?</summary>
+    <div><p>\(I = 1/8\) FLOP/byte. Điểm gãy của H100 khoảng \(989/3{,}35 \approx 295\) FLOP/byte, nên ReLU nằm rất sâu trong vùng memory-bound. Tốc độ tối đa chỉ khoảng \(3{,}35 \times 1/8 \approx 0{,}42\) TFLOP/s, chưa tới 0,05% đỉnh.</p></div></details>
+  <details><summary>4. Vì sao recomputation có thể nhanh hơn dù làm nhiều phép tính hơn?</summary>
+    <div><p>Với các phép tính memory-bound, thời gian phụ thuộc vào số byte phải chở, không phải số phép tính. Tính lại sigmoid ngay trên chip rẻ hơn ghi ra HBM rồi đọc lại. Ví dụ 3 sigmoid: số lượt truy cập bộ nhớ giảm từ 8 xuống 5.</p></div></details>
+  <details><summary>5. Ma trận lưu theo hàng. Nếu mỗi thread phụ trách đọc một hàng, việc đọc có được gộp lô (coalesced) không?</summary>
+    <div><p>Không. Ở cùng một bước, các thread cạnh nhau đọc các phần tử cách nhau cả một hàng, nên rơi vào các burst khác nhau. Cách tốt hơn là để các thread cạnh nhau đọc các cột cạnh nhau của cùng một hàng.</p></div></details>
+  <details><summary>6. Nhân ma trận \(N = 8192\) với tile \(T = 128\). Tiling giảm số lần đọc HBM cho mỗi phần tử bao nhiêu lần?</summary>
+    <div><p>Từ \(N = 8192\) lần xuống \(N/T = 64\) lần, tức giảm \(T = 128\) lần. Mỗi phần tử được dùng lại 128 lần trên shared memory.</p></div></details>
+  <details><summary>7. Trên A100 (108 SM), tile 256×128: vì sao \(N = 1793\) chậm hơn hẳn \(N = 1792\)?</summary>
+    <div><p>1792 cho \(7\times14 = 98\) tile, vừa một đợt. 1793 cho \(8\times15 = 120\) tile, phải chạy hai đợt, và đợt hai chỉ có 12 tile trong khi 96 SM ngồi không. Ngoài ra 1793 còn lẻ nên không căn lề tốt.</p></div></details>
+  <details><summary>8. Vì sao FlashAttention cần online softmax?</summary>
+    <div><p>Tiling chỉ cho ta một mảnh của mỗi hàng \(QK^\top\) mỗi lần, trong khi softmax thường cần max và tổng của cả hàng. Online softmax giữ max và tổng tạm thời, khi gặp max mới thì chỉnh lại tổng và đầu ra cũ. Nhờ đó tính được từng mảnh mà kết quả vẫn chính xác tuyệt đối.</p></div></details>
+  <details><summary>9. FlashAttention làm nhiều FLOP hơn attention thường. Vì sao vẫn nhanh hơn 5–6 lần?</summary>
+    <div><p>Attention thường bị giới hạn bởi bộ nhớ: nó chở ma trận \(n\times n\) ra vào HBM nhiều lần. FlashAttention giữ các mảnh trên SRAM (tiling + fusion) và tính lại ở lượt ngược thay vì lưu, nên lượng đọc/ghi HBM giảm khoảng 9 lần (40,3 GB → 4,4 GB). Thêm chút FLOP chẳng đáng là bao.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>SM (streaming multiprocessor)</td><td>"Phân xưởng" của GPU. Mỗi SM nhận và chạy các block độc lập</td></tr>
+  <tr><td>SP / CUDA core</td><td>Đơn vị tính toán nhỏ trong SM, chạy một thread</td></tr>
+  <tr><td>Tensor core</td><td>Mạch chuyên nhân ma trận, nhanh hơn các phép khác hơn 10 lần</td></tr>
+  <tr><td>Thread / Warp / Block</td><td>Một luồng / tổ 32 luồng chạy cùng lệnh / nhóm luồng dùng chung shared memory trên một SM</td></tr>
+  <tr><td>Kernel</td><td>Một hàm chạy trên GPU. Mỗi lần gọi thường đọc từ HBM và ghi ra HBM</td></tr>
+  <tr><td>SIMT</td><td>Một lệnh, nhiều luồng: mọi thread chạy cùng code trên dữ liệu khác nhau</td></tr>
+  <tr><td>Control divergence</td><td>Các thread trong một warp rẽ nhánh khác nhau nên phải chạy lần lượt</td></tr>
+  <tr><td>Register / Shared memory (SRAM)</td><td>Bộ nhớ trong SM: rất nhanh, rất nhỏ</td></tr>
+  <tr><td>Global memory (HBM, DRAM)</td><td>Bộ nhớ chính cạnh GPU: lớn (40–80 GB) nhưng chậm</td></tr>
+  <tr><td>Arithmetic intensity</td><td>Số FLOP làm được cho mỗi byte dữ liệu phải chở</td></tr>
+  <tr><td>Roofline</td><td>Biểu đồ: tốc độ = min(đỉnh tính toán, băng thông × cường độ)</td></tr>
+  <tr><td>Memory-bound / Compute-bound</td><td>Bị giới hạn bởi tốc độ chở dữ liệu / bởi tốc độ tính toán</td></tr>
+  <tr><td>Mixed precision</td><td>Tính bằng 16 bit (hoặc 8 bit) nhưng cộng dồn bằng FP32</td></tr>
+  <tr><td>BF16 / FP8 / MXFP8</td><td>Các định dạng số ít bit. MX = mỗi nhóm số có hệ số co giãn riêng</td></tr>
+  <tr><td>Operator fusion</td><td>Gộp nhiều phép tính thành một kernel để không cất kết quả trung gian về HBM</td></tr>
+  <tr><td>Recomputation / activation checkpointing</td><td>Không lưu activation, đến lượt ngược thì tính lại</td></tr>
+  <tr><td>Burst / Coalescing</td><td>DRAM trả về cả một đoạn liền nhau / các thread trong warp đọc trong cùng đoạn thì chỉ tốn một chuyến</td></tr>
+  <tr><td>Tiling</td><td>Cắt ma trận thành khối, chở lên shared memory rồi dùng lại nhiều lần</td></tr>
+  <tr><td>Tile / wave quantization</td><td>Lãng phí khi kích thước không chia hết cho cỡ tile / khi số tile vượt qua bội số của số SM</td></tr>
+  <tr><td>Padding</td><td>Thêm phần tử rỗng cho kích thước tròn số (ví dụ vocab 50257 → 50304)</td></tr>
+  <tr><td>Online softmax</td><td>Tính softmax trong một lượt bằng max và tổng tạm thời, chỉnh lại khi max thay đổi</td></tr>
+</table></div>
