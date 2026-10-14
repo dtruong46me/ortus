@@ -1,0 +1,1030 @@
+<style>
+  .l07-btn { font: 700 14px var(--f-display); padding: 6px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .l07-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .l07-btn:disabled { opacity: .45; cursor: default; }
+  .l07-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+  .l07-stats div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .l07-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .l07-stats small { color: var(--muted); font-size: 12.5px; }
+  .l07-stats .bad b { color: var(--warn); }
+  .l07-stats .good b { color: var(--life); }
+  .l07-fig { margin: 18px 0 22px; }
+  .l07-fig img { display: block; width: 100%; height: auto; margin: 0 auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px; box-sizing: border-box; }
+  .l07-fig.md img { max-width: 560px; }
+  .l07-fig figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  .l07-trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 22px; }
+  .l07-trio figure { margin: 0; }
+  .l07-trio img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px; box-sizing: border-box; }
+  .l07-trio figcaption { font: 13px var(--f-display); color: var(--muted); margin-top: 6px; text-align: center; }
+  pre.l07-py { line-height: 1.5; }
+  pre.l07-py code { font-size: 13.5px; line-height: inherit; }
+  pre.l07-py .k { color: var(--accent); font-weight: 600; }
+  pre.l07-py .c { color: var(--muted); font-style: italic; }
+  pre.l07-py .n { color: var(--num); }
+  pre.l07-py .s { color: var(--life); }
+  .l07-ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 4px; }
+  .l07-rank { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg); }
+  .l07-rank h5 { margin: 0 0 6px; font: 700 12px var(--f-display); color: var(--muted); letter-spacing: .02em; }
+  .l07-vec { display: flex; gap: 4px; flex-wrap: wrap; min-height: 30px; align-items: center; }
+  .l07-v { min-width: 28px; padding: 4px 5px; border-radius: 6px; text-align: center; font: 600 12.5px var(--f-mono); border: 1px solid transparent; box-sizing: border-box; }
+  .l07-v.c0 { background: var(--accent-soft); color: var(--accent); }
+  .l07-v.c1 { background: var(--num-bg); color: var(--num); }
+  .l07-v.c2 { background: var(--life-bg); color: var(--life); }
+  .l07-v.c3 { background: var(--warn-bg); color: var(--warn); }
+  .l07-v.sum { background: var(--key-bg); color: var(--key); border-color: color-mix(in srgb, var(--key) 35%, transparent); }
+  .l07-v.e { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .l07-lab { font: 700 12.5px var(--f-display); color: var(--muted); margin: 14px 0 2px; text-transform: uppercase; letter-spacing: .05em; }
+  .l07-ring { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
+  .l07-ringrow { display: grid; grid-template-columns: 54px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+  .l07-ringrow > span { font: 700 12.5px var(--f-display); color: var(--muted); align-self: center; }
+  .l07-ringrow.hd > span { font-weight: 400; font-size: 12px; text-align: center; }
+  .l07-chunk { border: 1px solid var(--line); border-radius: 8px; padding: 5px 4px 4px; text-align: center; background: var(--surface); transition: background .2s; }
+  .l07-chunk b { display: block; font: 700 15px var(--f-mono); color: var(--ink); }
+  .l07-chunk .dots { display: flex; justify-content: center; gap: 2px; margin-top: 3px; }
+  .l07-chunk .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .l07-chunk .dots i.r0 { background: var(--accent); } .l07-chunk .dots i.r1 { background: var(--num); }
+  .l07-chunk .dots i.r2 { background: var(--life); } .l07-chunk .dots i.r3 { background: var(--warn); }
+  .l07-chunk.full { background: var(--key-bg); border-color: color-mix(in srgb, var(--key) 40%, transparent); }
+  .l07-chunk.full b { color: var(--key); }
+  .l07-chunk.send { outline: 2px dashed var(--accent); outline-offset: 1px; }
+  .l07-chunk.recv { outline: 2px solid var(--life); outline-offset: 1px; }
+  .l07-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .l07-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .l07-bars { display: flex; flex-direction: column; gap: 7px; margin: 12px 0 4px; }
+  .l07-bar { display: grid; grid-template-columns: 190px 1fr 86px; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .l07-bar .track { height: 14px; border-radius: 6px; background: var(--code-bg); overflow: hidden; }
+  .l07-bar .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+  .l07-bar.slow .fill { background: var(--warn); }
+  .l07-bar b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .l07-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; margin: 6px 0 4px; }
+  .l07-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  .l07-form select { font: 14px var(--f-body); padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .l07-cmp td.bad { color: var(--warn); font-weight: 700; }
+  .l07-cmp td.good { color: var(--life); font-weight: 700; }
+  .l07-cmp td, .l07-cmp th { font-variant-numeric: tabular-nums; }
+  .l07-gantt { width: 100%; height: auto; display: block; margin: 12px 0 4px; }
+  .l07-gantt .idle { fill: var(--code-bg); }
+  .l07-gantt .f { fill: var(--accent); }
+  .l07-gantt .b { fill: var(--num); }
+  .l07-gantt text { font: 600 11px var(--f-mono); }
+  .l07-gantt text.in { fill: var(--surface); text-anchor: middle; dominant-baseline: central; }
+  .l07-gantt text.lab { fill: var(--muted); dominant-baseline: central; font-family: var(--f-display); }
+  @media (max-width: 640px) {
+    .l07-bar { grid-template-columns: 112px 1fr 70px; font-size: 12px; }
+    .l07-trio { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .l07-trio figcaption { font-size: 11.5px; }
+    .l07-ringrow { grid-template-columns: 44px repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .l07-chunk b { font-size: 13px; }
+  }
+</style>
+
+<header class="lec-head">
+  <span class="eyebrow">CS336 · Lecture 7 · 12 trace pages</span>
+  <h1>Song song hoá trên nhiều GPU: collective, phần cứng và ba cách chia mô hình</h1>
+  <p class="sub">Lecture 5 và 6 tìm cách tận dụng một GPU. Lecture này dùng nhiều GPU cùng lúc. Bài trước lo giảm số lần đọc HBM, bài này lo giảm lượng dữ liệu gửi qua lại giữa các GPU. Công cụ là các phép collective (all-reduce, all-gather, reduce-scatter…), và ba cách cắt mô hình: theo batch, theo chiều rộng và theo chiều sâu.</p>
+  <div class="progress"><div class="bar"><i></i></div><span>Understood 0 sections</span></div>
+</header>
+
+
+<h2 id="l07-overview" data-short="Bức tranh tổng thể"><span>Bức tranh tổng thể trước khi đọc</span><span class="slide-range">trang 1–2</span></h2>
+<div class="slides" data-s="1,2"></div>
+<p>Giống Lecture 6, đây là một <b>trace</b>: bản in của file <code>lecture_07.py</code>. Thầy vừa chạy code vừa giảng. Chữ thường là lời giảng, chữ đơn cách là code. Ảnh nhỏ ở đầu mỗi mục là trang gốc tương ứng, bấm vào để xem cả trang.</p>
+<p>Hàm <code>main()</code> chia bài làm hai phần:</p>
+<ol>
+  <li><b>Phần 1: các viên gạch của tính toán phân tán</b> (trang 2–7).
+    <ul>
+      <li><b>Collective operations</b>: mô hình lập trình, tức các kiểu giao tiếp chuẩn giữa nhiều GPU.</li>
+      <li><b>Phần cứng</b>: các GPU được nối với nhau thế nào.</li>
+      <li><b>NCCL và <code>torch.distributed</code></b>: các phép collective được cài đặt ra sao.</li>
+      <li><b>Benchmark</b>: đo băng thông thật của NCCL.</li>
+    </ul>
+  </li>
+  <li><b>Phần 2: huấn luyện phân tán</b> (trang 7–11). Cài đặt tối giản ba chiến lược trên một MLP sâu:
+    <ul>
+      <li><b>Data parallelism</b>: cắt theo chiều batch.</li>
+      <li><b>Tensor parallelism</b>: cắt theo chiều rộng.</li>
+      <li><b>Pipeline parallelism</b>: cắt theo chiều sâu.</li>
+    </ul>
+  </li>
+</ol>
+<p>Thầy dùng MLP vì MLP là phần tốn tính toán nhất trong Transformer, nên nó đại diện tốt cho bài toán thật.</p>
+
+<div class="note life">
+  <p>Tài liệu tiếp tục dùng hình ảnh <b>nhà máy</b> của Lecture 5 và 6, giờ mở rộng thành một khu công nghiệp:</p>
+  <ul>
+    <li><b>Một GPU</b> = một nhà máy. HBM là nhà kho riêng của nhà máy đó.</li>
+    <li><b>Một node</b> (thường 8 GPU) = một khu công nghiệp. <b>NVLink/NVSwitch</b> = băng chuyền riêng nối thẳng các nhà máy trong khu, rất nhanh.</li>
+    <li><b>Nhiều node</b> = nhiều khu công nghiệp ở các nơi khác nhau. <b>Infiniband</b> = đường cao tốc chở hàng giữa các khu, chậm hơn băng chuyền nhiều.</li>
+    <li><b>Collective operation</b> = một quy trình trao đổi hàng chuẩn cho cả tập đoàn, kiểu "mọi nhà máy gửi báo cáo, cộng lại, rồi phát kết quả cho tất cả".</li>
+  </ul>
+</div>
+
+<p>Thầy tóm tắt cả bài ở trang 2. Đọc trước để biết mình đang đi đâu:</p>
+<div class="note key">
+  <ul>
+    <li>Có nhiều cách song song hoá: theo <b>batch</b> (data), theo <b>chiều rộng</b> (tensor, expert), theo <b>chiều sâu</b> (pipeline), theo <b>độ dài chuỗi</b> (sequence).</li>
+    <li><b>Data parallelism</b>: DDP dùng all-reduce. FSDP/ZeRO dùng all-gather + reduce-scatter.</li>
+    <li><b>Tensor parallelism</b> cần đường nối rất nhanh, ví dụ NVLink.</li>
+    <li><b>Pipeline parallelism</b> chạy được trên đường nối chậm, nhưng phải tìm cách giảm "bong bóng" (thời gian GPU ngồi chờ).</li>
+    <li>Luôn có ba lựa chọn: <b>tính lại</b>, <b>lưu</b> trong bộ nhớ, hoặc lưu ở GPU khác rồi <b>gửi qua</b> khi cần.</li>
+    <li>Phần cứng ngày càng nhanh, nhưng ta sẽ luôn muốn mô hình to hơn, nên cấu trúc nhiều tầng này sẽ còn mãi.</li>
+  </ul>
+</div>
+
+<div class="note num"><p><b>Về phần output.</b> Khi chạy thẳng <code>python lecture_07.py</code>, code dùng nhiều tiến trình (mỗi GPU một tiến trình) và in kết quả của từng tiến trình. Nhưng khi tạo trace, thầy tắt chế độ nhiều tiến trình (xem mục <a href="#l07-torchdist">torch.distributed</a>), nên trace không có kết quả chạy thật. Kết quả nằm ở một link riêng ("stdout for this lecture") không có trong PDF. Trong tài liệu này, các kết quả in ra là mình tự tính tay từ code.</p></div>
+
+<h2 id="l07-hierarchy" data-short="Thứ bậc bộ nhớ, thêm hai tầng"><span>Một thứ bậc bộ nhớ, giờ có thêm hai tầng</span><span class="slide-range">trang 1</span></h2>
+<figure class="l07-fig"><img src="img/l07/f-multigpu.png" width="1400" height="783" alt="Bốn GPU, mỗi GPU có các SM (register, L1/shared memory), L2 và HBM; các GPU nối qua NVLink vào một NVSwitch; NVSwitch nối ra ngoài bằng Infiniband/Ethernet" loading="lazy"><figcaption>Một node: mỗi GPU có SM, L2 và HBM riêng. Các GPU nối với nhau qua NVLink vào NVSwitch. Muốn ra khỏi node thì đi qua Infiniband hoặc Ethernet.</figcaption></figure>
+<p>Tuần trước ta chỉ nhìn bên trong một ô "GPU" ở hình trên. Tuần này nhìn cả hình. Điểm chung của hai tuần, theo lời thầy: <mark>bộ phận tính toán (ALU) nằm xa dữ liệu</mark>. Việc chính là sắp xếp tính toán sao cho không bị nghẽn ở khâu chuyển dữ liệu.</p>
+<p>Thứ bậc bộ nhớ đầy đủ, từ nhanh nhất đến chậm nhất:</p>
+<div class="tbl"><table>
+  <tr><th>Tầng</th><th>Phạm vi</th><th>Băng thông cỡ (B200)</th></tr>
+  <tr><td>L1 cache / shared memory</td><td>Trong một SM</td><td>Vài chục TB/s (cộng trên cả chip)</td></tr>
+  <tr><td>HBM</td><td>Trong một GPU</td><td>8 TB/s</td></tr>
+  <tr><td>NVLink / NVSwitch</td><td>Giữa các GPU trong một node</td><td>1,8 TB/s (tổng hai chiều), tức 900 GB/s mỗi chiều</td></tr>
+  <tr><td>Infiniband / Ethernet</td><td>Giữa các node</td><td>~50 GB/s mỗi card mạng</td></tr>
+</table></div>
+<p>Mỗi tầng xuống chậm đi nhiều lần. Cách đối phó cũng tương tự nhau:</p>
+<ul>
+  <li><b>Tuần trước</b>: giảm số lần đọc HBM bằng <b>fusion</b> và <b>tiling</b> (<a href="#l06-matmul">xem lại</a>).</li>
+  <li><b>Tuần này</b>: giảm lượng dữ liệu gửi giữa các GPU/node bằng <b>replication</b> (mỗi GPU giữ một bản sao) và <b>sharding</b> (mỗi GPU giữ một mảnh).</li>
+</ul>
+
+<h3>Vì sao phải dùng nhiều GPU?</h3>
+<ol>
+  <li><b>Không vừa bộ nhớ.</b> Tham số, trạng thái optimizer, gradient và activation của mô hình không nhét vừa một GPU. Ví dụ: huấn luyện với AdamW tốn khoảng 16 byte cho mỗi tham số (tham số 4 + gradient 4 + hai moment của Adam 8). Mô hình 7 tỉ tham số cần khoảng 112 GB, nhiều hơn 80 GB của một H100, và đó là chưa tính activation.</li>
+  <li><b>Muốn nhanh hơn.</b> Nhiều GPU thì nhiều FLOP hơn. Một lần huấn luyện mô hình lớn cần cỡ \(10^{24}\) FLOP. Một H100 làm khoảng \(10^{15}\) FLOP/s ở bf16, tức một mình nó cần hơn 30 năm.</li>
+</ol>
+
+<!-- ============================================================ -->
+<div class="part" id="l07-part1" data-short="Phần 1 · Các viên gạch">Phần 1 · Các viên gạch của tính toán phân tán<small>Collective operations, phần cứng, NCCL / torch.distributed, và đo băng thông.</small></div>
+
+<h2 id="l07-collectives" data-short="Tám phép collective"><span>Collective operations: tám phép giao tiếp chuẩn</span><span class="slide-range">trang 2–4</span></h2>
+<div class="slides" data-s="2,3,4"></div>
+<p><dfn>Collective operation</dfn> là các phép giao tiếp cơ bản dùng trong lập trình phân tán. Ba ý chính:</p>
+<ul>
+  <li>Chúng có từ những năm 1980 trong ngành tính toán song song (ví dụ chuẩn MPI).</li>
+  <li>"Collective" (tập thể) nghĩa là bạn mô tả một <b>kiểu giao tiếp chung cho cả nhóm</b> GPU. Bạn không phải tự viết "GPU 2 gửi cho GPU 5".</li>
+  <li>Cách này thường tốt hơn và nhanh hơn tự quản lý từng cặp gửi/nhận. Thư viện biết phần cứng nối với nhau thế nào, nên chọn được đường đi tốt nhất.</li>
+</ul>
+<p>Hai thuật ngữ:</p>
+<ul>
+  <li><dfn>Rank</dfn>: số thứ tự của một thiết bị (GPU), ví dụ 0, 1, 2, 3.</li>
+  <li><dfn>World size</dfn>: tổng số thiết bị, ví dụ 4.</li>
+</ul>
+<p>Tám phép chia làm ba nhóm:</p>
+<ul>
+  <li><b>Nền tảng</b>: broadcast, scatter, gather, reduce.</li>
+  <li><b>Hay dùng nhất</b>: all-gather, reduce-scatter, all-reduce.</li>
+  <li><b>Cho MoE</b>: all-to-all.</li>
+</ul>
+<p>Thử nghiệm dưới đây dùng đúng các ví dụ trong trace. Mỗi màu là dữ liệu xuất phát từ một rank. Ô vàng là kết quả của phép cộng nhiều rank.</p>
+
+<div class="widget" id="collW">
+  <h4>Thử nghiệm: mỗi phép collective làm gì với dữ liệu?</h4>
+  <div class="row" role="group" aria-label="Phép collective">
+    <button class="l07-btn" data-op="broadcast">Broadcast</button>
+    <button class="l07-btn" data-op="scatter">Scatter</button>
+    <button class="l07-btn" data-op="gather">Gather</button>
+    <button class="l07-btn" data-op="reduce">Reduce</button>
+    <button class="l07-btn" data-op="allgather">All-gather</button>
+    <button class="l07-btn" data-op="reducescatter">Reduce-scatter</button>
+    <button class="l07-btn" data-op="allreduce">All-reduce</button>
+    <button class="l07-btn" data-op="alltoall">All-to-all</button>
+  </div>
+  <p id="collDesc" style="margin:12px 0 0"></p>
+  <div class="l07-lab">Trước (input)</div>
+  <div class="l07-ranks" id="collIn"></div>
+  <div class="l07-lab">Sau (output)</div>
+  <div class="l07-ranks" id="collOut"></div>
+  <p id="collUse" style="margin:12px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('collW'); if (!box) return;
+  // Mỗi ô: [giá trị, lớp màu]. null = rank đó không có dữ liệu.
+  const C = (vals, cls) => vals.map((v, i) => [v, typeof cls === 'string' ? cls : cls[i]]);
+  const own = r => vals => C(vals, 'c' + r);
+  const OPS = {
+    broadcast: {
+      d: '<b>Broadcast</b>: chép dữ liệu của rank 0 sang tất cả các rank.',
+      u: 'Dùng khi nào: rank 0 đọc checkpoint ban đầu rồi phát cho mọi rank. Ít dùng trong lúc huấn luyện.',
+      i: [own(0)([0, 1, 2, 3]), null, null, null],
+      o: [0, 1, 2, 3].map(() => own(0)([0, 1, 2, 3]))
+    },
+    scatter: {
+      d: '<b>Scatter</b>: cắt tensor của rank 0 thành từng mảnh, mỗi rank nhận một mảnh.',
+      u: 'Bản thân scatter ít dùng. Nó là bước đệm để hiểu reduce-scatter.',
+      i: [own(0)([0, 1, 2, 3]), null, null, null],
+      o: [0, 1, 2, 3].map(r => own(0)([r]))
+    },
+    gather: {
+      d: '<b>Gather</b>: gom các mảnh từ mọi rank về rank 0. Ngược lại với scatter.',
+      u: 'Bước đệm để hiểu all-gather.',
+      i: [0, 1, 2, 3].map(r => own(r)([r])),
+      o: [C([0, 1, 2, 3], ['c0', 'c1', 'c2', 'c3']), null, null, null]
+    },
+    reduce: {
+      d: '<b>Reduce</b>: gom các mảnh về rank 0 và gộp lại bằng một phép toán (cộng, min, max…). Ở đây là cộng: 0 + 1 + 2 + 3 = 6.',
+      u: 'Bước đệm để hiểu all-reduce.',
+      i: [0, 1, 2, 3].map(r => own(r)([r])),
+      o: [C([6], 'sum'), null, null, null]
+    },
+    allgather: {
+      d: '<b>All-gather</b>: như gather, nhưng <b>mọi</b> rank đều nhận được bản gom đầy đủ, chứ không chỉ rank 0.',
+      u: 'Dùng khi nào: mỗi rank giữ một mảnh tham số (sharding). Trước khi chạy forward, all-gather để có đủ tham số. Tensor parallelism ở Phần 2 cũng dùng all-gather để ghép activation.',
+      i: [0, 1, 2, 3].map(r => own(r)([r])),
+      o: [0, 1, 2, 3].map(() => C([0, 1, 2, 3], ['c0', 'c1', 'c2', 'c3']))
+    },
+    reducescatter: {
+      d: '<b>Reduce-scatter</b>: cộng theo từng vị trí trên mọi rank, rồi rải kết quả ra: rank \\(i\\) chỉ giữ tổng ở vị trí \\(i\\). Ví dụ rank 1 nhận 1 + 2 + 3 + 4 = 10.',
+      u: 'Dùng khi nào: sau backward, cộng gradient từ các phần dữ liệu khác nhau, nhưng mỗi rank chỉ cần giữ một phần tổng (để tiết kiệm bộ nhớ). Đây là cách FSDP/ZeRO làm.',
+      i: [0, 1, 2, 3].map(r => own(r)([r, r + 1, r + 2, r + 3])),
+      o: [0, 1, 2, 3].map(r => C([4 * r + 6], 'sum'))
+    },
+    allreduce: {
+      d: '<b>All-reduce</b> = reduce-scatter + all-gather. Cộng theo từng vị trí, và <b>mọi</b> rank nhận được toàn bộ kết quả.',
+      u: 'Dùng khi nào: sau backward, cộng gradient từ các phần dữ liệu khác nhau, và mỗi rank giữ bản đầy đủ. Đây là cách DDP làm. Tách all-reduce thành hai bước giúp linh hoạt hơn, ví dụ ZeRO/FSDP chỉ làm bước đầu ở chỗ này.',
+      i: [0, 1, 2, 3].map(r => own(r)([r, r + 1, r + 2, r + 3])),
+      o: [0, 1, 2, 3].map(() => C([6, 10, 14, 18], 'sum'))
+    },
+    alltoall: {
+      d: '<b>All-to-all</b>: mỗi rank gửi cho từng rank khác một phần riêng. Đây là phép tổng quát nhất. Rank \\(j\\) gửi phần tử thứ \\(i\\) của mình cho rank \\(i\\). Khi các phần chia đều, nó giống phép chuyển vị ma trận.',
+      u: 'Dùng khi nào: MoE. Mỗi rank giữ một phần dữ liệu và một nhóm expert, nên phải gửi token tới đúng rank chứa expert của nó (<a href="#l04-systems">xem Lecture 4</a>). All-to-all cũng chạy được khi các phần không đều nhau, nhưng càng đều càng tốt.',
+      i: [0, 1, 2, 3].map(r => own(r)([4 * r, 4 * r + 1, 4 * r + 2, 4 * r + 3])),
+      o: [0, 1, 2, 3].map(r => C([r, r + 4, r + 8, r + 12], ['c0', 'c1', 'c2', 'c3']))
+    }
+  };
+  const ranks = arr => arr.map((v, r) => `<div class="l07-rank"><h5>Rank ${r}</h5><div class="l07-vec">${
+    v ? v.map(([x, c]) => `<span class="l07-v ${c}">${x}</span>`).join('') : '<span class="l07-v e">(không có)</span>'
+  }</div></div>`).join('');
+  let cur = 'broadcast';
+  function upd() {
+    const op = OPS[cur];
+    box.querySelector('#collDesc').innerHTML = op.d;
+    box.querySelector('#collUse').innerHTML = op.u;
+    box.querySelector('#collIn').innerHTML = ranks(op.i);
+    box.querySelector('#collOut').innerHTML = ranks(op.o);
+    box.querySelectorAll('[data-op]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.op === cur)));
+    if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([box]).catch(() => {});
+  }
+  box.querySelectorAll('[data-op]').forEach(b => b.addEventListener('click', () => { cur = b.dataset.op; upd(); }));
+  upd();
+})();
+</script>
+
+<p>Cách thầy giúp nhớ tên:</p>
+<div class="note key">
+  <ul>
+    <li><b>Reduce</b>: có một phép gộp có tính kết hợp và giao hoán (cộng, min, max). Kết quả nhỏ hơn đầu vào.</li>
+    <li><b>Scatter</b> là ngược của <b>gather</b>: một đằng rải ra, một đằng gom về.</li>
+    <li><b>All-</b>: kết quả đến <b>tất cả</b> các thiết bị, không chỉ rank 0.</li>
+  </ul>
+</div>
+<p>Một mẹo nữa: để ý <b>kích thước</b>. Gọi kích thước dữ liệu mỗi rank là \(n\), với \(N\) rank:</p>
+<ul>
+  <li>All-gather: vào \(n\), ra \(Nn\) (ghép lại).</li>
+  <li>Reduce-scatter: vào \(Nn\), ra \(n\) (cộng rồi chia phần).</li>
+  <li>All-reduce: vào \(n\), ra \(n\) (cộng, ai cũng giữ đủ).</li>
+</ul>
+<p>Vì vậy all-gather và reduce-scatter là một cặp ngược nhau, và ghép hai cái lại thì được all-reduce.</p>
+
+<h2 id="l07-ring" data-short="All-reduce bằng vòng tròn"><span>All-reduce = reduce-scatter + all-gather, chạy trên một vòng tròn</span><span class="slide-range">trang 4, 7</span></h2>
+<p>Trace nói "all-reduce = reduce-scatter + all-gather" và nhắc tới thuật toán "ring hoặc tree" nhưng không giải thích. Mục này bổ sung phần đó, vì nó giải thích được công thức băng thông ở mục <a href="#l07-bench">benchmark</a>.</p>
+<h3>Cách ngây thơ: dồn hết về một chỗ</h3>
+<p>Mỗi rank có một tensor \(S\) byte. Cách đơn giản nhất: mọi rank gửi tensor về rank 0, rank 0 cộng lại, rồi gửi kết quả cho tất cả. Rank 0 phải nhận \((N-1)S\) byte và gửi \((N-1)S\) byte. Trong khi đó các rank khác gần như ngồi không. Càng nhiều GPU, rank 0 càng nghẽn.</p>
+<h3>Ring all-reduce: ai cũng gửi một ít</h3>
+<p>Xếp \(N\) GPU thành một vòng tròn: GPU \(r\) chỉ gửi cho GPU \(r+1\). Chia tensor thành \(N\) khúc. Thuật toán có hai pha:</p>
+<ol>
+  <li><b>Reduce-scatter</b> (\(N-1\) bước): mỗi bước, mọi GPU gửi một khúc cho hàng xóm, hàng xóm cộng vào khúc của mình. Sau \(N-1\) bước, mỗi GPU giữ <b>tổng đầy đủ của đúng một khúc</b>.</li>
+  <li><b>All-gather</b> (\(N-1\) bước): mỗi bước, mọi GPU chuyển tiếp một khúc đã cộng xong cho hàng xóm. Sau \(N-1\) bước, ai cũng có đủ \(N\) khúc.</li>
+</ol>
+<p>Mỗi bước, mọi GPU cùng gửi và cùng nhận một khúc \(S/N\) byte, nên mọi đường nối đều bận. Tổng cộng mỗi GPU gửi:</p>
+<p>\[ 2(N-1) \cdot \frac{S}{N} \;=\; \frac{2(N-1)}{N}\, S \;\approx\; 2S \quad \text{khi } N \text{ lớn.} \]</p>
+<p>Điều đáng chú ý: <mark>lượng dữ liệu mỗi GPU phải gửi gần như không đổi khi thêm GPU</mark>. Đó là ý của comment "Independent of world_size" trong code benchmark.</p>
+
+<div class="widget" id="ringW">
+  <h4>Thử nghiệm: ring all-reduce trên 4 GPU, từng bước</h4>
+  <p style="margin:0;font-size:13px;color:var(--muted)">Dữ liệu giống ví dụ all-reduce ở trên: GPU \(r\) có \([r, r+1, r+2, r+3]\), chia thành 4 khúc. Chấm màu dưới mỗi số cho biết khúc đó đã cộng dữ liệu của những GPU nào.</p>
+  <div class="l07-ring" id="ringGrid"></div>
+  <div class="l07-legend">
+    <span><i style="outline:2px dashed var(--accent);outline-offset:-2px"></i>khúc vừa gửi đi</span>
+    <span><i style="outline:2px solid var(--life);outline-offset:-2px"></i>khúc vừa nhận</span>
+    <span><i style="background:var(--key-bg);border:1px solid var(--key)"></i>đã cộng đủ 4 GPU</span>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="l07-btn" id="ringPrev">← Bước trước</button>
+    <button class="l07-btn" id="ringNext">Bước tiếp →</button>
+    <button class="l07-btn" id="ringReset">Làm lại</button>
+  </div>
+  <div class="l07-stats" id="ringStats"></div>
+  <p id="ringMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('ringW'); if (!box) return;
+  const N = 4, STEPS = 2 * (N - 1);
+  let k = 0;
+  const mod = x => ((x % N) + N) % N;
+  function state(upTo) {
+    const val = [...Array(N)].map((_, r) => [...Array(N)].map((_, c) => c + r));
+    const mask = [...Array(N)].map((_, r) => Array(N).fill(1 << r));
+    let send = null;
+    for (let s = 0; s < upTo; s++) {
+      const rs = s < N - 1, t = rs ? s : s - (N - 1);
+      const pk = [...Array(N)].map((_, r) => { const c = mod(rs ? r - t : r + 1 - t); return { c, v: val[r][c], m: mask[r][c] }; });
+      pk.forEach((p, r) => {
+        const d = (r + 1) % N;
+        if (rs) { val[d][p.c] += p.v; mask[d][p.c] |= p.m; } else { val[d][p.c] = p.v; mask[d][p.c] = p.m; }
+      });
+      send = pk.map(p => p.c);
+    }
+    return { val, mask, send };
+  }
+  function upd() {
+    const { val, mask, send } = state(k);
+    let h = '<div class="l07-ringrow hd"><span></span>' + [0, 1, 2, 3].map(c => `<span>khúc ${c}</span>`).join('') + '</div>';
+    for (let r = 0; r < N; r++) {
+      h += `<div class="l07-ringrow"><span>GPU ${r}</span>`;
+      for (let c = 0; c < N; c++) {
+        const m = mask[r][c], full = m === (1 << N) - 1;
+        let cls = full ? ' full' : '';
+        if (send && send[r] === c) cls += ' send';
+        if (send && send[mod(r - 1)] === c) cls += ' recv';
+        const dots = [0, 1, 2, 3].map(q => `<i class="${m & (1 << q) ? 'r' + q : ''}"></i>`).join('');
+        h += `<div class="l07-chunk${cls}"><b>${val[r][c]}</b><span class="dots">${dots}</span></div>`;
+      }
+      h += '</div>';
+    }
+    box.querySelector('#ringGrid').innerHTML = h;
+    const phase = k === 0 ? 'Chưa bắt đầu' : k <= N - 1 ? `Reduce-scatter, bước ${k}/${N - 1}` : `All-gather, bước ${k - (N - 1)}/${N - 1}`;
+    box.querySelector('#ringStats').innerHTML =
+      `<div><small>Pha</small><b style="font-size:16px">${phase}</b></div>` +
+      `<div><small>Mỗi GPU đã gửi</small><b>${k} × S/4</b></div>` +
+      `<div class="${k === STEPS ? 'good' : ''}"><small>Khi xong</small><b>6 × S/4 = 1,5 S</b></div>`;
+    let m;
+    if (k === 0) m = 'Mỗi GPU có 4 khúc của riêng nó. Mục tiêu: ai cũng có [6, 10, 14, 18]. Bấm "Bước tiếp".';
+    else if (k <= N - 1) {
+      m = `Mỗi GPU gửi một khúc cho GPU kế tiếp (GPU 3 gửi vòng về GPU 0), GPU nhận cộng vào khúc cùng vị trí của mình. Cả 4 GPU gửi cùng lúc.`;
+      if (k === N - 1) m += ' <b>Xong reduce-scatter:</b> mỗi GPU giữ tổng đầy đủ của đúng một khúc (ô vàng). Nếu dừng ở đây, ta có reduce-scatter (dùng cho FSDP/ZeRO).';
+    } else {
+      m = 'Giờ mỗi GPU chuyển tiếp khúc đã cộng xong cho GPU kế tiếp. GPU nhận chép đè lên, không cộng nữa.';
+      if (k === STEPS) m = '<b>Xong all-reduce.</b> Ai cũng có [6, 10, 14, 18]. Mỗi GPU gửi tổng cộng 6 khúc, mỗi khúc S/4, tức 2(N−1)/N · S = 1,5 S. Cách dồn về rank 0 thì rank 0 phải nhận 3S và gửi 3S.';
+    }
+    box.querySelector('#ringMsg').innerHTML = m;
+    box.querySelector('#ringPrev').disabled = k === 0;
+    box.querySelector('#ringNext').disabled = k === STEPS;
+  }
+  box.querySelector('#ringPrev').addEventListener('click', () => { if (k > 0) { k--; upd(); } });
+  box.querySelector('#ringNext').addEventListener('click', () => { if (k < STEPS) { k++; upd(); } });
+  box.querySelector('#ringReset').addEventListener('click', () => { k = 0; upd(); });
+  upd();
+})();
+</script>
+<p>Ring không phải lựa chọn duy nhất. Ring cần \(2(N-1)\) bước nối tiếp nhau, nên khi tensor nhỏ hoặc \(N\) rất lớn, thời gian chờ mỗi bước (latency) chiếm phần lớn. Khi đó thuật toán dạng cây (tree) tốt hơn. NCCL tự chọn thuật toán tuỳ kích thước dữ liệu và cách nối phần cứng.</p>
+
+<h2 id="l07-hardware" data-short="Phần cứng: GPU nối nhau thế nào"><span>Phần cứng: các GPU được nối với nhau thế nào</span><span class="slide-range">trang 4–5</span></h2>
+<div class="slides" data-s="4,5"></div>
+<h3>Kiểu cổ điển (ở nhà)</h3>
+<figure class="l07-fig md"><img src="img/l07/f-classic.png" width="685" height="348" alt="Hai server, mỗi server có RAM, hai CPU và 10 GPU cắm qua bus PCIe; hai server nối với nhau qua Ethernet" loading="lazy"><figcaption>Mỗi server có CPU, RAM và các GPU cắm vào bus PCIe. Các server nối với nhau qua Ethernet.</figcaption></figure>
+<ul>
+  <li>GPU trong cùng một máy (node) nói chuyện với nhau qua <b>bus PCIe</b>. Trace ghi PCIe 7.0, 16 lane, khoảng 242 GB/s.</li>
+  <li>GPU ở hai máy khác nhau nói chuyện qua <b>Ethernet</b>, khoảng 200 MB/s.</li>
+</ul>
+<div class="note warn"><p><b>Về con số PCIe.</b> 242 GB/s (mỗi chiều) là của chuẩn PCIe 7.0, mới công bố năm 2025 và chưa có GPU nào dùng. GPU phổ biến như H100 dùng PCIe 5.0 ×16, khoảng 64 GB/s mỗi chiều.</p></div>
+
+<h3>Kiểu hiện đại (trong trung tâm dữ liệu)</h3>
+<p>Đây chính là hình ở đầu bài. Một cấu hình điển hình:</p>
+<ul>
+  <li><b>8 GPU mỗi node</b>, nối bằng NVLink vào một NVSwitch. NVLink 5.0 của B200 đạt 1,8 TB/s. Để so sánh, HBM của B200 là 8 TB/s. Tức là đọc bộ nhớ của GPU bên cạnh chỉ chậm hơn đọc bộ nhớ của chính mình vài lần.</li>
+  <li><b>256 node mỗi pod</b>, nối bằng Infiniband: dữ liệu đi PCIe → card mạng Infiniband (HCA) → cáp Infiniband. Khoảng 0,05 TB/s = 50 GB/s.</li>
+  <li><b>Nhiều pod mỗi cụm / trung tâm dữ liệu</b>, nối bằng Ethernet (qua PCIe → CPU).</li>
+</ul>
+<div class="note num"><p>1,8 TB/s của NVLink 5.0 là tổng hai chiều (900 GB/s gửi đi và 900 GB/s nhận về cùng lúc). Khi so với các con số "mỗi chiều" khác, nên dùng 900 GB/s.</p></div>
+
+<h3>Đi vòng qua CPU</h3>
+<ul>
+  <li><b>Ethernet bắt buộc đi qua CPU</b>: chép dữ liệu vào bộ đệm socket của nhân hệ điều hành, đóng gói TCP, rồi chép vào bộ đệm vòng của card mạng. Mỗi bước tốn thời gian và băng thông bộ nhớ.</li>
+  <li><dfn>RDMA</dfn> (Remote Direct Memory Access): cho phép một GPU đọc/ghi thẳng vào bộ nhớ của GPU khác (kể cả ở máy khác) mà <b>không cần CPU</b> nhúng tay.</li>
+  <li>Infiniband hỗ trợ RDMA. Ethernet thường thì không.</li>
+</ul>
+<p>Theo hình ảnh nhà máy: Ethernet thường giống gửi hàng qua bưu điện (CPU), phải đóng gói và dán nhãn. RDMA giống xe tải của nhà máy này chạy thẳng vào kho của nhà máy kia.</p>
+
+<h3>Những tiến bộ gần đây</h3>
+<ul>
+  <li><b>GB200/GB300 NVL72</b>: 72 GPU trong một rack nằm chung <b>một miền NVLink</b>. GPU nào cũng nói chuyện với GPU nào bằng NVLink, không chỉ 8 GPU trong một node như trước.</li>
+  <li><b>RoCE</b> (RDMA over Converged Ethernet): Ethernet nhưng đi vòng qua CPU, tương tự Infiniband nhưng rẻ hơn và yếu hơn. Meta dùng cách này.</li>
+</ul>
+<div class="note warn"><p><b>Về cách xếp NVL72.</b> Trace ghi "8 GPUs per tray, 9 trays per rack". Tích 8 × 9 = 72 là đúng, nhưng theo NVIDIA, một rack GB200 NVL72 có <b>18 khay tính toán, mỗi khay 4 GPU</b> (2 chip GB200, mỗi chip gồm 1 CPU Grace và 2 GPU Blackwell), cộng thêm <b>9 khay NVSwitch</b>. Có lẽ con số 9 trong trace là số khay switch.</p></div>
+
+<p>Để cảm nhận độ chênh giữa các tầng, thử tính thời gian gửi toàn bộ gradient của một mô hình (bf16, 2 byte mỗi tham số) qua từng loại đường nối:</p>
+<div class="widget" id="bwW">
+  <h4>Thử nghiệm: gửi gradient qua đường nào thì mất bao lâu?</h4>
+  <div class="row" role="group" aria-label="Kích thước mô hình">
+    <button class="l07-btn" data-p="1.5">1,5 tỉ</button>
+    <button class="l07-btn" data-p="7">7 tỉ</button>
+    <button class="l07-btn" data-p="70">70 tỉ</button>
+    <button class="l07-btn" data-p="405">405 tỉ</button>
+  </div>
+  <div class="l07-stats" id="bwStats"></div>
+  <div class="l07-bars" id="bwBars"></div>
+  <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Thanh dài theo thang log: mỗi vạch dài thêm một đoạn bằng nhau là chậm thêm khoảng 10 lần. Đây là thời gian gửi một lần theo một chiều, chưa tính hệ số ≈2 của all-reduce và chưa tính độ trễ.</p>
+  <p id="bwMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('bwW'); if (!box) return;
+  const LINKS = [
+    ['HBM của B200 (trong một GPU)', 8000],
+    ['NVLink 5 (B200, mỗi chiều)', 900],
+    ['PCIe 5.0 ×16 (mỗi chiều)', 64],
+    ['Infiniband NDR (1 card 400 Gb/s)', 50],
+    ['Ethernet ở nhà (~200 MB/s)', 0.2]
+  ];
+  const n = (x, k) => x.toLocaleString('vi-VN', { maximumFractionDigits: k });
+  const fmtT = t => t < 1e-3 ? n(t * 1e6, 0) + ' µs' : t < 1 ? n(t * 1e3, t < 0.01 ? 2 : 1) + ' ms' : t < 60 ? n(t, t < 10 ? 2 : 1) + ' s' : t < 3600 ? n(t / 60, 1) + ' phút' : n(t / 3600, 1) + ' giờ';
+  const num = x => x.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+  const LO = Math.log10(1e-4), HI = Math.log10(1e4);
+  let P = 7;
+  function upd() {
+    const GB = P * 2;
+    box.querySelector('#bwStats').innerHTML =
+      `<div><small>Số tham số</small><b>${num(P)} tỉ</b></div>` +
+      `<div><small>Gradient bf16 (2 byte/tham số)</small><b>${num(GB)} GB</b></div>`;
+    box.querySelector('#bwBars').innerHTML = LINKS.map(([name, bw]) => {
+      const t = GB / bw, w = Math.max(2, Math.min(100, (Math.log10(t) - LO) / (HI - LO) * 100));
+      return `<div class="l07-bar${t > 10 ? ' slow' : ''}"><span>${name}</span><div class="track"><div class="fill" style="width:${w}%"></div></div><b>${fmtT(t)}</b></div>`;
+    }).join('');
+    const nv = GB / 900, ib = GB / 50;
+    box.querySelector('#bwMsg').innerHTML = `Qua NVLink mất ${fmtT(nv)}, qua Infiniband mất ${fmtT(ib)}, chậm hơn khoảng ${Math.round(ib / nv)} lần. Huấn luyện có hàng nghìn bước, mỗi bước đều phải đồng bộ gradient. Vì vậy <b>phải chọn kiểu song song sao cho đường chậm chở ít dữ liệu nhất</b>.`;
+    box.querySelectorAll('[data-p]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === P)));
+  }
+  box.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { P = +b.dataset.p; upd(); }));
+  upd();
+})();
+</script>
+
+<h3>NCCL: người dịch giữa collective và phần cứng</h3>
+<p><dfn>NCCL</dfn> (NVIDIA Collective Communication Library, đọc là "nickel") dịch các phép collective thành các gói dữ liệu cấp thấp gửi giữa các GPU. Cụ thể:</p>
+<ul>
+  <li><b>Dò cấu trúc phần cứng</b>: có bao nhiêu node, switch, GPU nào nối NVLink và GPU nào chỉ có PCIe.</li>
+  <li><b>Chọn đường đi tốt nhất</b> giữa các GPU (ring, tree…).</li>
+  <li><b>Chạy các kernel GPU</b> để gửi và nhận dữ liệu. Giao tiếp cũng là kernel, cũng chiếm SM.</li>
+</ul>
+
+<h2 id="l07-torchdist" data-short="torch.distributed"><span>torch.distributed: chạy thử ba phép collective</span><span class="slide-range">trang 5–6, 11–12</span></h2>
+<div class="slides" data-s="5,6,11,12"></div>
+<p>Thư viện phân tán của PyTorch, <code>torch.distributed</code> (viết tắt <code>dist</code>):</p>
+<ul>
+  <li>Cung cấp giao diện gọn cho các phép collective, ví dụ <code>all_gather_into_tensor</code>.</li>
+  <li>Hỗ trợ nhiều <dfn>backend</dfn> cho các loại phần cứng: <b>gloo</b> (CPU) và <b>nccl</b> (GPU).</li>
+  <li>Có cả các thuật toán cấp cao như <code>FullyShardedDataParallel</code>, nhưng môn này không dùng. Mục tiêu là tự xây từ các viên gạch cơ bản.</li>
+</ul>
+
+<h3>Khởi động: mỗi GPU một tiến trình</h3>
+<p>Phân tán trong PyTorch nghĩa là <b>chạy cùng một hàm trên \(N\) tiến trình</b>, mỗi tiến trình điều khiển một GPU và biết rank của mình. Ba hàm phụ ở cuối file (trang 11) lo việc này:</p>
+<pre class="l07-py"><code>def spawn(func, world_size, *args, **kwargs):
+    # Bình thường: tạo world_size tiến trình, tiến trình i gọi func(i, world_size, ...)
+    args = (world_size,) + args + tuple(kwargs.values())
+    mp.spawn(func, args=args, nprocs=world_size, join=True)
+
+def setup(rank, world_size):
+    # Chỉ chỗ của "master" (rank 0) để các tiến trình tìm thấy nhau.
+    # Dữ liệu thật thì đi qua NCCL, không qua địa chỉ này.
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "15623"
+    if torch.cuda.is_available():
+        dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    else:
+        dist.init_process_group("gloo", rank=rank, world_size=world_size)
+
+def cleanup():
+    torch.distributed.destroy_process_group()</code></pre>
+<ul>
+  <li><code>mp.spawn</code> tạo <code>nprocs</code> tiến trình và tự truyền số thứ tự tiến trình (0, 1, 2, …) làm tham số đầu tiên. Số đó chính là <code>rank</code>.</li>
+  <li><code>init_process_group</code>: các tiến trình "điểm danh" với rank 0 qua địa chỉ <code>MASTER_ADDR:MASTER_PORT</code>, rồi lập kênh giao tiếp. Có GPU thì dùng NCCL, không thì dùng gloo.</li>
+  <li>Mỗi hàm chạy phân tán đều bắt đầu bằng <code>setup</code> và kết thúc bằng <code>cleanup</code>.</li>
+</ul>
+<div class="note num"><p><b>Vì sao trace không có output?</b> Khi đang tạo trace (công cụ <code>edtrace</code> theo dõi từng dòng code), <code>spawn</code> không tạo tiến trình mà gọi thẳng <code>func(0, world_size, ...)</code>, tức chỉ chạy vai rank 0. Lớp <code>DisableDistributed</code> tạm thay mọi hàm của <code>dist</code> bằng hàm rỗng (<code>lambda *args, **kwargs: None</code>), nên các phép collective không làm gì. Trace vì vậy chỉ cho thấy code chạy qua những dòng nào. Kết quả thật phải chạy bằng <code>python lecture_07.py</code> trên máy có nhiều GPU.</p></div>
+
+<h3>Ba phép collective, chạy thật</h3>
+<p>Hàm <code>collective_operations_main</code> chạy trên 4 tiến trình cùng lúc. Mỗi tiến trình là một rank:</p>
+<pre class="l07-py"><code>def collective_operations_main(rank, world_size):
+    setup(rank, world_size)
+
+    ### All-reduce
+    dist.barrier()  # Chờ mọi tiến trình tới đây (để các dòng print không lẫn lộn)
+    data = tensor([0., 1, 2, 3], device=cuda_if_available(rank)) + rank  # vừa là input vừa là output
+    print(f"Rank {rank} [before all-reduce]: {data}", flush=True)
+    dist.all_reduce(tensor=data, op=dist.ReduceOp.SUM, async_op=False)  # sửa thẳng vào data
+    print(f"Rank {rank} [after all-reduce]: {data}", flush=True)
+
+    ### Reduce-scatter
+    dist.barrier()
+    input = torch.arange(world_size, dtype=torch.float32, device=cuda_if_available(rank)) + rank
+    output = torch.empty(1, device=cuda_if_available(rank))  # cấp chỗ cho output
+    dist.reduce_scatter_tensor(output=output, input=input, op=dist.ReduceOp.SUM, async_op=False)
+
+    ### All-gather
+    dist.barrier()
+    input = output  # input là output của reduce-scatter
+    output = torch.empty(world_size, device=cuda_if_available(rank))
+    dist.all_gather_into_tensor(output_tensor=output, input_tensor=input, async_op=False)
+
+    cleanup()</code></pre>
+<p>Đọc từng phần:</p>
+<ul>
+  <li><code>cuda_if_available(rank)</code>: rank \(r\) dùng GPU số \(r\) (<code>cuda:r</code>).</li>
+  <li><b>All-reduce</b>: rank \(r\) có \([r, r+1, r+2, r+3]\), giống ví dụ ở mục trước. <code>all_reduce</code> <b>sửa thẳng vào tensor</b>: sau lệnh, <code>data</code> của mọi rank là \([6, 10, 14, 18]\).</li>
+  <li><b>Reduce-scatter</b>: input dài <code>world_size</code> = 4, output dài 1. Input được chia làm 4 phần, rank \(r\) nhận tổng của phần thứ \(r\). Phải cấp sẵn chỗ cho output (<code>torch.empty</code>).</li>
+  <li><b>All-gather</b>: lấy output 1 phần tử của reduce-scatter làm input, ghép 4 rank lại thành tensor dài 4.</li>
+  <li><code>async_op=False</code>: lệnh chặn cho tới khi phép giao tiếp xong (về phía CPU). Nếu <code>True</code>, lệnh trả về một "handle" để gọi <code>.wait()</code> sau, giúp tính toán trong lúc chờ gửi.</li>
+  <li><code>dist.barrier()</code>: không tiến trình nào đi tiếp cho tới khi tất cả tới chỗ này.</li>
+</ul>
+<p>Kết quả in ra nếu chạy thật (mình tính tay; thứ tự các dòng giữa các rank có thể khác):</p>
+<pre class="l07-py"><code>Rank 1 [before all-reduce]: tensor([1., 2., 3., 4.])
+Rank 1 [after all-reduce]: tensor([ 6., 10., 14., 18.])
+Rank 1 [after reduce-scatter]: input = tensor([1., 2., 3., 4.]), output = tensor([10.])
+Rank 1 [after all-gather]: input = tensor([10.]), output = tensor([ 6., 10., 14., 18.])</code></pre>
+<p>Kết quả all-gather giống hệt kết quả all-reduce. Đúng như thầy kết luận: <mark>all-reduce = reduce-scatter + all-gather</mark>.</p>
+
+<h2 id="l07-bench" data-short="Đo băng thông NCCL"><span>Benchmark: giao tiếp nhanh cỡ nào?</span><span class="slide-range">trang 6–7</span></h2>
+<div class="slides" data-s="6,7"></div>
+<p>Thầy đo all-reduce và reduce-scatter trên 4 GPU, mỗi tensor có <code>100 * 1024**2</code> ≈ 105 triệu số float32, tức 400 MiB.</p>
+<pre class="l07-py"><code>def all_reduce(rank, world_size, num_elements):
+    setup(rank, world_size)
+    data = torch.randn(num_elements, device=cuda_if_available(rank))
+
+    # Warmup
+    dist.all_reduce(tensor=data, op=dist.ReduceOp.SUM, async_op=False)
+    torch.cuda.synchronize()  # Chờ các kernel CUDA chạy xong
+    dist.barrier()            # Chờ mọi tiến trình tới đây
+
+    # Đo all-reduce
+    start_time = time.time()
+    dist.all_reduce(tensor=data, op=dist.ReduceOp.SUM, async_op=False)
+    torch.cuda.synchronize()
+    dist.barrier()
+    end_time = time.time()
+    duration = end_time - start_time
+
+    # Tính băng thông hiệu dụng
+    size_bytes = data.element_size() * data.numel()
+    sent_bytes = size_bytes * 2 * (world_size - 1)  # trace: "2x vì gửi + nhận, world_size-1 bước"
+    total_duration = world_size * duration
+    bandwidth = sent_bytes / total_duration
+    cleanup()</code></pre>
+<p>Phần đo thời gian áp dụng đúng bài học của Lecture 6 (<a href="#l06-bench">xem lại</a>): warmup trước, rồi <code>torch.cuda.synchronize()</code> để chờ GPU thật sự xong. Thêm <code>dist.barrier()</code> vì phải chờ <b>mọi</b> GPU xong. All-reduce chỉ xong khi rank chậm nhất xong.</p>
+
+<h3>Công thức băng thông nghĩa là gì?</h3>
+<p>Rút gọn công thức trong code:</p>
+<p>\[ \text{bandwidth} = \frac{2(N-1)\, S}{N \cdot t} = \frac{2(N-1)}{N} \cdot \frac{S}{t} \]</p>
+<p>Với \(S\) là kích thước tensor và \(t\) là thời gian đo được. Tử số \(\frac{2(N-1)}{N} S\) chính là lượng dữ liệu <b>mỗi GPU</b> phải gửi trong ring all-reduce (<a href="#l07-ring">mục trước</a>). Vậy con số này là <b>tốc độ gửi thực tế trên đường nối của mỗi GPU</b>. Công cụ <code>nccl-tests</code> của NVIDIA gọi nó là <dfn>bus bandwidth</dfn>. Ưu điểm là nó so sánh được trực tiếp với băng thông phần cứng (ví dụ 900 GB/s của NVLink), dù dùng bao nhiêu GPU.</p>
+<p>Comment trong code nhân 2 "vì gửi + nhận". Thực ra mỗi đường nối gửi và nhận cùng lúc (song công). Lý do đúng của hệ số 2 là all-reduce có <b>hai pha</b>, reduce-scatter và all-gather, mỗi pha gửi \(\frac{N-1}{N} S\).</p>
+
+<h3>Reduce-scatter</h3>
+<pre class="l07-py"><code>def reduce_scatter(rank, world_size, num_elements):
+    setup(rank, world_size)
+    input = torch.randn(world_size, num_elements, device=cuda_if_available(rank))  # mỗi rank có một ma trận
+    output = torch.empty(num_elements, device=cuda_if_available(rank))
+    # ... warmup và đo giống hệt all_reduce, nhưng gọi reduce_scatter_tensor ...
+    data_bytes = input.element_size() * input.numel()  # lượng dữ liệu input
+    sent_bytes = data_bytes * (world_size - 1)         # lượng cần gửi (không có hệ số 2)
+    total_duration = world_size * duration
+    bandwidth = sent_bytes / total_duration</code></pre>
+<p>Reduce-scatter chỉ là pha đầu của ring all-reduce, nên mỗi GPU gửi \(\frac{N-1}{N}\) lượng input, không có hệ số 2. Comment cuối của thầy: <i>all-reduce chở gấp đôi dữ liệu trong gấp đôi thời gian so với reduce-scatter, nên băng thông đo được tương tự nhau</i>.</p>
+
+<div class="note warn">
+  <p>Vài chỗ nhỏ trong phần benchmark của trace:</p>
+  <ul>
+    <li>Comment ghi "Effective bandwidth ~ 2 * size_bytes / total_duration". Với <code>total_duration = world_size * duration</code>, biểu thức đó nhỏ hơn con số code thật sự tính tới \(N-1\) lần. Ý đúng là băng thông \(\approx 2S / t\) (chia cho <code>duration</code>, không phải <code>total_duration</code>) khi \(N\) lớn.</li>
+    <li>Code chia cho <code>1024**3</code> nhưng in đơn vị "GB/s". Thật ra đó là GiB/s, nhỏ hơn GB/s khoảng 7%.</li>
+    <li>Chỉ đo <b>một lần</b>. Như Lecture 6 dặn, nên đo nhiều lần rồi lấy trung bình. Đo bằng <code>time.time()</code> cũng gộp luôn thời gian chờ <code>barrier</code>.</li>
+  </ul>
+</div>
+<p>Thầy dẫn thêm hai tài liệu: cách lý luận về chi phí của các phép collective, và code benchmark mẫu. Trace không in số đo. Nếu tự chạy trên các GPU nối NVLink, hãy so con số với băng thông NVLink một chiều. Các tensor nhỏ sẽ cho băng thông thấp hơn nhiều, vì độ trễ mỗi bước chiếm phần lớn thời gian.</p>
+
+<!-- ============================================================ -->
+<div class="part" id="l07-part2" data-short="Phần 2 · Huấn luyện phân tán">Phần 2 · Huấn luyện phân tán<small>Ba cách cắt một MLP sâu: theo batch, theo chiều rộng, theo chiều sâu.</small></div>
+
+<h2 id="l07-mlp" data-short="Bài toán mẫu: MLP sâu"><span>Bài toán mẫu: một MLP sâu và ba chiều để cắt</span><span class="slide-range">trang 8, 12</span></h2>
+<div class="slides" data-s="8,12"></div>
+<p>Cả ba chiến lược dùng chung một bài toán: MLP gồm <code>num_layers</code> = 4 layer, mỗi layer là \(x \leftarrow \text{GeLU}(x W)\) với \(W\) là ma trận \(1024 \times 1024\). Dữ liệu là một batch 128 vector, mỗi vector dài 1024.</p>
+<div class="l07-trio">
+  <figure><img src="img/l07/f-dp.png" width="625" height="889" alt="Bốn layer xếp chồng, đường cắt nằm ngang qua khối Data" loading="lazy"><figcaption>Data parallel: cắt <b>dữ liệu</b></figcaption></figure>
+  <figure><img src="img/l07/f-tp.png" width="699" height="897" alt="Bốn layer xếp chồng, đường cắt dọc qua giữa mọi layer" loading="lazy"><figcaption>Tensor parallel: cắt dọc <b>mỗi layer</b></figcaption></figure>
+  <figure><img src="img/l07/f-pp.png" width="699" height="897" alt="Bốn layer xếp chồng, đường cắt ngang giữa layer 1 và layer 2" loading="lazy"><figcaption>Pipeline parallel: cắt <b>giữa các layer</b></figcaption></figure>
+</div>
+<p>Đường cam trong mỗi hình là chỗ cắt:</p>
+<ul>
+  <li><b>Data parallel</b>: mỗi GPU giữ <b>cả mô hình</b>, nhưng chỉ xử lý một phần batch.</li>
+  <li><b>Tensor parallel</b>: mỗi GPU giữ <b>một lát dọc của mọi layer</b>, xử lý cả batch.</li>
+  <li><b>Pipeline parallel</b>: mỗi GPU giữ <b>một nhóm layer liền nhau</b>, xử lý cả batch.</li>
+</ul>
+<p>Các hàm tạo dữ liệu và tham số:</p>
+<pre class="l07-py"><code>def generate_sample_data():
+    batch_size = 128
+    num_dim = 1024
+    data = torch.randn(batch_size, num_dim)
+    return data
+
+def get_init_params(num_inputs, num_outputs, rank):
+    # Tạo tham số và đặt lên GPU thứ rank
+    torch.random.manual_seed(0)  # để mọi lần chạy giống nhau
+    return nn.Parameter(torch.randn(num_inputs, num_outputs, device=cuda_if_available(rank)) / math.sqrt(num_outputs))
+
+def int_divide(a, b):
+    # Chia a cho b, báo lỗi nếu còn dư
+    assert a % b == 0
+    return a // b</code></pre>
+<ul>
+  <li>Chia cho căn bậc hai của <code>num_outputs</code> để giá trị trong \(xW\) không phình to qua các layer.</li>
+  <li><code>manual_seed(0)</code> làm mọi rank khởi tạo <b>giống hệt nhau</b>. Data parallelism cần đúng điều này: mọi bản sao của mô hình phải bắt đầu từ cùng một chỗ.</li>
+  <li><code>int_divide</code> đảm bảo chia đều được (batch 128 cho 4 GPU, 1024 chiều cho 4 GPU, 4 layer cho 2 GPU…).</li>
+</ul>
+<div class="note warn"><p><b>Một hệ quả của <code>manual_seed(0)</code> mà trace không nói.</b> Seed được đặt lại <b>mỗi lần gọi</b> hàm, nên 4 layer có 4 ma trận <b>giống hệt nhau</b>. Trong tensor parallelism, mọi rank còn nhận cùng một lát \(1024 \times 256\), chứ không phải 4 lát khác nhau của cùng một ma trận lớn. Code vẫn minh hoạ đúng luồng dữ liệu và giao tiếp, nhưng các con số in ra không giống một mô hình thật. Code thật thường khởi tạo trên rank 0 rồi broadcast (data parallel), hoặc khởi tạo cả ma trận rồi cắt lát (tensor parallel).</p></div>
+
+<h2 id="l07-dp" data-short="Data parallelism"><span>Data parallelism: mỗi GPU một phần batch</span><span class="slide-range">trang 8–9</span></h2>
+<div class="slides" data-s="8,9"></div>
+<p><b>Chiến lược:</b> mỗi rank nhận một lát dữ liệu. Với 4 rank và batch 128, mỗi rank xử lý 32 vector.</p>
+<pre class="l07-py"><code>def data_parallelism_main(rank, world_size, data, num_layers, num_steps):
+    setup(rank, world_size)
+
+    # Lấy lát dữ liệu của rank này (thực tế mỗi rank chỉ nên tự đọc phần của mình)
+    batch_size = data.size(0)       # 128
+    num_dim = data.size(1)          # 1024
+    local_batch_size = int_divide(batch_size, world_size)  # 32
+    start_index = rank * local_batch_size
+    end_index = start_index + local_batch_size
+    data = data[start_index:end_index].to(cuda_if_available(rank))
+
+    # Mỗi rank giữ TOÀN BỘ tham số, và optimizer state của riêng nó
+    params = [get_init_params(num_dim, num_dim, rank) for layer in range(num_layers)]
+    optimizer = torch.optim.AdamW(params, lr=1e-3)
+
+    for step in range(num_steps):
+        # Forward
+        x = data
+        for param in params:
+            x = x @ param
+            x = F.gelu(x)
+        loss = x.square().mean()  # loss = trung bình bình phương
+
+        # Backward
+        loss.backward()
+
+        # Đồng bộ gradient giữa các rank (khác biệt DUY NHẤT so với huấn luyện thường)
+        for param in params:
+            dist.all_reduce(tensor=param.grad, op=dist.ReduceOp.AVG, async_op=False)
+
+        # Cập nhật tham số
+        optimizer.step()
+
+    cleanup()</code></pre>
+<p>Ý chính nằm ở ba dòng <code>all_reduce</code>. Bỏ chúng đi thì đây là vòng huấn luyện bình thường. Thầy ghi ba nhận xét:</p>
+<ul>
+  <li><b>Loss khác nhau giữa các rank</b>, vì mỗi rank tính trên dữ liệu riêng.</li>
+  <li><b>Gradient được all-reduce</b> (lấy trung bình) nên giống nhau ở mọi rank.</li>
+  <li><b>Vì vậy tham số luôn giống nhau ở mọi rank</b>: cùng điểm xuất phát (seed 0), cùng gradient, cùng optimizer.</li>
+</ul>
+<p>Vì sao kết quả <b>đúng</b>? Loss của cả batch là trung bình loss của từng ví dụ. Gradient của một trung bình bằng trung bình các gradient. Mỗi rank tính gradient trung bình trên 32 ví dụ của mình. Lấy trung bình của 4 gradient đó thì được đúng gradient trung bình trên cả 128 ví dụ, như khi chạy trên một GPU.</p>
+
+<h3>Cái giá</h3>
+<ul>
+  <li><b>Giao tiếp:</b> mỗi bước, all-reduce toàn bộ gradient. Mỗi GPU gửi khoảng \(2 \times\) kích thước mô hình. Lượng này <b>tỉ lệ với số tham số</b>, không phụ thuộc batch.</li>
+  <li><b>Bộ nhớ:</b> mỗi GPU vẫn giữ đủ tham số, gradient và optimizer state (khoảng 16 byte mỗi tham số). Data parallelism <b>không giúp được</b> khi mô hình không vừa một GPU. Nó chỉ giúp chạy nhanh hơn.</li>
+</ul>
+<p>Thầy hẹn lần sau: <b>FSDP/ZeRO</b> dùng all-gather và reduce-scatter để mỗi rank không phải giữ toàn bộ tham số. Mỗi rank chỉ giữ \(1/N\). Khi cần một layer thì all-gather về, dùng xong thì bỏ. Gradient thì reduce-scatter, để mỗi rank chỉ giữ phần gradient ứng với phần tham số của mình.</p>
+
+<div class="note warn">
+  <p><b>Hai điều cần biết khi tự chạy code này:</b></p>
+  <ul>
+    <li><code>ReduceOp.AVG</code> chỉ có ở backend NCCL. Trên máy không có GPU, <code>setup</code> chuyển sang gloo và dòng <code>all_reduce(..., op=AVG)</code> sẽ báo lỗi. Cách sửa: dùng <code>ReduceOp.SUM</code> rồi chia gradient cho <code>world_size</code>.</li>
+    <li>Code gọi all-reduce <b>riêng cho từng tham số</b>, và chỉ sau khi backward chạy xong. <code>DistributedDataParallel</code> thật làm khác hai điểm. Nó gom gradient thành các "bucket" (mặc định khoảng 25 MB) để gửi ít lần mà mỗi lần nhiều. Và nó bắt đầu gửi bucket của các layer cuối <b>ngay trong lúc backward</b> còn đang tính các layer đầu. Đây là "communication/computation overlap" mà thầy liệt kê trong phần còn thiếu.</li>
+  </ul>
+</div>
+
+<h2 id="l07-tp" data-short="Tensor parallelism"><span>Tensor parallelism: mỗi GPU một lát của mỗi layer</span><span class="slide-range">trang 9–10</span></h2>
+<div class="slides" data-s="9,10"></div>
+<p><b>Chiến lược:</b> mỗi rank giữ một phần của <b>mọi</b> layer, và phải chuyển toàn bộ dữ liệu/activation qua lại.</p>
+<pre class="l07-py"><code>def tensor_parallelism_main(rank, world_size, data, num_layers):
+    setup(rank, world_size)
+    data = data.to(cuda_if_available(rank))  # mọi rank đều có cả batch (128 x 1024)
+    batch_size = data.size(0)
+    num_dim = data.size(1)
+    local_num_dim = int_divide(num_dim, world_size)  # cắt num_dim: 1024 / 4 = 256
+
+    # Mỗi rank giữ 1/world_size tham số: một lát cột 1024 x 256 của mỗi layer
+    params = [get_init_params(num_dim, local_num_dim, rank) for layer in range(num_layers)]
+
+    # Forward
+    x = data
+    for layer in range(num_layers):
+        # Tính activation (batch_size x local_num_dim)
+        x = x @ params[layer]  # chỉ trên một lát tham số
+        x = F.gelu(x)
+
+        # Cấp chỗ cho activation của mọi rank (world_size cái, mỗi cái batch_size x local_num_dim)
+        activations = [torch.empty(batch_size, local_num_dim, device=cuda_if_available(rank)) for _ in range(world_size)]
+        # Gửi activation qua all-gather
+        dist.all_gather(tensor_list=activations, tensor=x, async_op=False)
+        # Ghép lại thành batch_size x num_dim
+        x = torch.cat(activations, dim=1)
+
+    # Backward: bài tập về nhà
+    cleanup()</code></pre>
+<p>Hình dung ma trận \(W\) (\(1024 \times 1024\)) cắt dọc thành 4 lát cột \(W_0, W_1, W_2, W_3\), mỗi lát \(1024 \times 256\):</p>
+<p>\[ xW = \big[\, xW_0 \;\big|\; xW_1 \;\big|\; xW_2 \;\big|\; xW_3 \,\big] \]</p>
+<ul>
+  <li>Rank \(r\) tính \(xW_r\), tức 256 cột của kết quả. Muốn vậy rank \(r\) cần <b>cả</b> \(x\) (đủ 1024 chiều).</li>
+  <li>GeLU áp dụng từng phần tử, nên áp lên từng lát riêng rồi mới ghép cũng ra cùng kết quả.</li>
+  <li><code>all_gather</code> ghép 4 lát lại. Danh sách <code>activations</code> xếp theo thứ tự rank, nên <code>torch.cat(..., dim=1)</code> cho đúng thứ tự cột. Sau đó mọi rank lại có \(x\) đầy đủ cho layer tiếp theo.</li>
+  <li>Đây là bản <code>all_gather</code> dạng danh sách (trả về list tensor), khác với <code>all_gather_into_tensor</code> ở trên (ghi vào một tensor lớn).</li>
+</ul>
+
+<h3>Vì sao cần đường nối rất nhanh?</h3>
+<ul>
+  <li>Phải giao tiếp <b>ở mỗi layer</b>, không phải mỗi bước như data parallel.</li>
+  <li>Giao tiếp nằm <b>trên đường găng</b>: layer sau không bắt đầu được cho tới khi all-gather xong.</li>
+  <li>Lượng dữ liệu tỉ lệ với <b>batch × chiều ẩn</b>, mà batch của mô hình thật (tính theo token) rất lớn.</li>
+</ul>
+<p>Vì vậy tensor parallelism gần như luôn chỉ dùng <b>trong một node</b> (8 GPU nối NVLink), hoặc trong miền NVLink 72 GPU của NVL72.</p>
+
+<div class="note life">
+  <p><b>Cách làm thực tế (Megatron-LM).</b> Code trong trace all-gather sau mọi layer. Megatron ghép hai layer liên tiếp thành một cặp:</p>
+  <ul>
+    <li>Layer đầu cắt theo <b>cột</b> như trên, nhưng <b>không</b> gom lại.</li>
+    <li>Layer sau cắt theo <b>hàng</b>: rank \(r\) giữ hàng \(r\) của \(W'\) và nhân thẳng với lát activation của mình. Mỗi rank ra một tổng riêng phần.</li>
+    <li>Chỉ cần <b>một all-reduce</b> ở cuối cặp để cộng các tổng riêng phần.</li>
+  </ul>
+  <p>Kết quả: \(\text{GeLU}(xW)W' = \sum_r \text{GeLU}(xW_r)\,W'_r\). Khối MLP của Transformer (hai ma trận, xem lại kích thước \(d_{ff}\) ở <a href="#l03-dff">Lecture 3</a>) khớp đúng với mẫu này.</p>
+</div>
+<p><b>Backward (bài tập):</b> gợi ý là gradient theo \(x\) của layer \(xW_r\) bằng \(\frac{\partial L}{\partial (xW_r)} W_r^\top\). Mỗi rank chỉ tính được phần đóng góp của lát của mình, nên cần cộng (all-reduce hoặc reduce-scatter) giữa các rank để có gradient đầy đủ theo \(x\). Gradient theo \(W_r\) thì mỗi rank tự tính được, không cần giao tiếp.</p>
+
+<h2 id="l07-pp" data-short="Pipeline parallelism"><span>Pipeline parallelism: mỗi GPU một nhóm layer</span><span class="slide-range">trang 10–11</span></h2>
+<div class="slides" data-s="10,11"></div>
+<p><b>Chiến lược:</b> mỗi rank giữ một nhóm layer liền nhau, và chuyền activation cho rank sau. Ví dụ dùng 2 rank, 4 layer: rank 0 giữ layer 0–1, rank 1 giữ layer 2–3.</p>
+<pre class="l07-py"><code>def pipeline_parallelism_main(rank, world_size, data, num_layers, num_micro_batches):
+    setup(rank, world_size)
+    data = data.to(cuda_if_available(rank))  # dùng cả batch
+    batch_size = data.size(0)
+    num_dim = data.size(1)
+
+    # Chia layer: mỗi rank giữ một nhóm
+    local_num_layers = int_divide(num_layers, world_size)  # 4 / 2 = 2
+    local_params = [get_init_params(num_dim, num_dim, rank) for layer in range(local_num_layers)]
+
+    # Forward
+    # Chia batch thành các micro-batch để thu nhỏ "bong bóng"
+    micro_batch_size = int_divide(batch_size, num_micro_batches)  # 128 / 4 = 32
+    if rank == 0:
+        micro_batches = data.chunk(chunks=num_micro_batches, dim=0)  # dữ liệu thật
+    else:
+        # cấp chỗ để nhận activation
+        micro_batches = [torch.empty(micro_batch_size, num_dim, device=cuda_if_available(rank)) for _ in range(num_micro_batches)]
+
+    for x in micro_batches:
+        # Nhận activation từ rank trước
+        if rank - 1 >= 0:
+            dist.recv(tensor=x, src=rank - 1)
+        # Tính các layer của rank này
+        for param in local_params:
+            x = x @ param
+            x = F.gelu(x)
+        # Gửi cho rank sau
+        if rank + 1 < world_size:
+            dist.send(tensor=x, dst=rank + 1)
+
+    # Backward: bài tập về nhà
+    cleanup()</code></pre>
+<ul>
+  <li>Đây là giao tiếp <b>điểm–điểm</b> (<code>send</code>/<code>recv</code>) chứ không phải collective. Mỗi rank chỉ nói chuyện với hai hàng xóm.</li>
+  <li>Rank 0 cắt dữ liệu thật thành 4 micro-batch. Các rank sau cấp sẵn chỗ trống để nhận vào.</li>
+  <li>Mỗi lần gửi chỉ là một micro-batch activation: \(32 \times 1024\) số = 128 KiB. Lượng này nhỏ và chỉ đi tới một hàng xóm, nên pipeline <b>chạy được trên đường nối chậm</b>, ví dụ giữa các node qua Infiniband.</li>
+  <li>Rank cuối không gửi đi đâu. Trace dừng ở đó: không tính loss, không có backward.</li>
+</ul>
+
+<h3>Bong bóng (pipeline bubble)</h3>
+<p>Vấn đề của pipeline: rank 1 phải <b>chờ</b> rank 0 tính xong mới có việc. Nếu đưa cả batch một lần, lúc rank 0 tính thì rank 1 ngồi không, và ngược lại. Với 2 rank, mỗi GPU bỏ phí một nửa thời gian. Thời gian ngồi không đó gọi là <dfn>bong bóng</dfn> (bubble).</p>
+<p>Chia batch thành \(m\) <dfn>micro-batch</dfn>: rank 0 tính xong micro-batch 1 thì chuyển ngay cho rank 1, rồi tính micro-batch 2 trong lúc rank 1 tính micro-batch 1. Như dây chuyền lắp ráp. Với \(N\) rank (stage) và \(m\) micro-batch, phần thời gian bị phí là:</p>
+<p>\[ \text{bubble} = \frac{N-1}{m + N - 1} \]</p>
+<p>Ví dụ trong trace: \(N = 2\), \(m = 4\), bubble = 1/5 = 20%. Nếu không chia micro-batch (\(m = 1\)) thì là 50%.</p>
+
+<div class="widget" id="ppW">
+  <h4>Thử nghiệm: lịch chạy của pipeline (kiểu GPipe)</h4>
+  <p style="margin:0 0 4px"><label for="ppN">Số GPU (stage): <span class="chip" id="ppNv"></span></label></p>
+  <input type="range" id="ppN" min="2" max="8" value="2">
+  <p style="margin:12px 0 4px"><label for="ppM">Số micro-batch: <span class="chip" id="ppMv"></span></label></p>
+  <input type="range" id="ppM" min="1" max="16" value="4">
+  <p style="margin:12px 0 0"><label><input type="checkbox" id="ppB"> Có cả backward (mỗi ô backward lâu gấp đôi forward)</label></p>
+  <svg class="l07-gantt" id="ppSvg" role="img" aria-label="Biểu đồ thời gian của pipeline"></svg>
+  <div class="l07-legend">
+    <span><i style="background:var(--accent)"></i>forward của micro-batch số …</span>
+    <span id="ppLegB" hidden><i style="background:var(--num)"></i>backward</span>
+    <span><i style="background:var(--code-bg);border:1px solid var(--line)"></i>ngồi không (bong bóng)</span>
+  </div>
+  <div class="l07-stats" id="ppStats"></div>
+  <p id="ppMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('ppW'); if (!box) return;
+  const nS = box.querySelector('#ppN'), mS = box.querySelector('#ppM'), bC = box.querySelector('#ppB'), svg = box.querySelector('#ppSvg');
+  function upd() {
+    const N = +nS.value, M = +mS.value, back = bC.checked;
+    box.querySelector('#ppNv').textContent = N; box.querySelector('#ppMv').textContent = M;
+    box.querySelector('#ppLegB').hidden = !back;
+    const tF = N + M - 1, T = back ? 3 * tF : tF;
+    const LW = 52, CW = 22, RH = 22, G = 4, W = LW + T * CW, H = N * (RH + G);
+    svg.setAttribute('viewBox', `0 0 ${Math.max(W, 480)} ${H}`);
+    const showTxt = T <= 34;
+    let h = '';
+    for (let i = 0; i < N; i++) {
+      const y = i * (RH + G);
+      h += `<text class="lab" x="0" y="${y + RH / 2}">GPU ${i}</text><rect class="idle" x="${LW}" y="${y}" width="${T * CW}" height="${RH}" rx="4"/>`;
+      for (let j = 0; j < M; j++) {
+        const x = LW + (i + j) * CW;
+        h += `<rect class="f" x="${x + 1}" y="${y}" width="${CW - 2}" height="${RH}" rx="3"/>`;
+        if (showTxt) h += `<text class="in" x="${x + CW / 2}" y="${y + RH / 2}">${j + 1}</text>`;
+        if (back) {
+          const xb = LW + (tF + 2 * (N - 1 - i) + 2 * j) * CW;
+          h += `<rect class="b" x="${xb + 1}" y="${y}" width="${2 * CW - 2}" height="${RH}" rx="3"/>`;
+          if (showTxt) h += `<text class="in" x="${xb + CW}" y="${y + RH / 2}">${j + 1}</text>`;
+        }
+      }
+    }
+    svg.innerHTML = h;
+    const busy = back ? 3 * M : M, bub = 1 - busy / T;
+    const fmt = x => x.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+    box.querySelector('#ppStats').innerHTML =
+      `<div><small>Tổng thời gian (đơn vị: 1 ô forward)</small><b>${T}</b></div>` +
+      `<div><small>Thời gian bận của mỗi GPU</small><b>${busy}</b></div>` +
+      `<div class="${bub > 0.3 ? 'bad' : bub < 0.15 ? 'good' : ''}"><small>Bong bóng = (N−1)/(m+N−1)</small><b>${fmt(bub * 100)}%</b></div>`;
+    let msg;
+    if (M === 1) msg = `Không chia micro-batch: tại mỗi thời điểm chỉ một GPU làm việc. ${N} GPU mà chạy không nhanh hơn một GPU.`;
+    else if (M < N) msg = `Số micro-batch ít hơn số GPU: dây chuyền chưa kịp đầy thì đã hết việc. Nên có m lớn hơn N nhiều.`;
+    else msg = `Phần đầu (GPU sau chờ việc tới) và phần cuối (GPU trước hết việc) là bong bóng. m càng lớn so với N, phần giữa đầy việc càng dài.`;
+    if (back) msg += ' Kiểu GPipe chạy hết forward rồi mới tới backward, nên phải giữ activation của cả m micro-batch trong bộ nhớ. Lịch 1F1B (xen kẽ forward/backward) có cùng tỉ lệ bong bóng nhưng giữ ít activation hơn.';
+    box.querySelector('#ppMsg').textContent = msg;
+  }
+  [nS, mS].forEach(s => s.addEventListener('input', upd)); bC.addEventListener('change', upd);
+  upd();
+})();
+</script>
+<p>Micro-batch lớn hơn thì GPU chạy hiệu quả hơn, nhưng \(m\) nhỏ thì bong bóng lớn. Vì vậy cần batch tổng đủ to. Trace ghi rõ phần chưa làm: <b>chồng giao tiếp lên tính toán</b> để xoá bong bóng. Code dùng <code>send</code>/<code>recv</code> dạng đồng bộ, nên không kiểm soát được việc gửi micro-batch này chạy song song với việc tính micro-batch sau. Code thật dùng <code>isend</code>/<code>irecv</code> (không chặn) và các lịch phức tạp hơn: 1F1B, interleaved (mỗi GPU giữ vài nhóm layer không liền nhau), hay DualPipe của DeepSeek-V3.</p>
+
+<h2 id="l07-compare" data-short="So sánh ba cách & còn thiếu gì"><span>So sánh ba cách, và những gì bài chưa nói tới</span><span class="slide-range">trang 2</span></h2>
+<div class="slides" data-s="2"></div>
+<p>Mỗi cách cắt đổi một loại chi phí lấy một loại khác. Thử nghiệm dưới đây ước lượng cho đúng loại MLP trong bài (float32, AdamW, không bias) với cấu hình tuỳ chọn. Các con số là ước lượng thô, để so sánh <b>độ lớn</b> giữa ba cách.</p>
+<div class="widget" id="cmpW">
+  <h4>Thử nghiệm: bộ nhớ và giao tiếp của ba cách cắt</h4>
+  <div class="l07-form">
+    <label>Số GPU \(N\)<select id="cmpN"><option>2</option><option selected>4</option><option>8</option><option>16</option></select></label>
+    <label>Chiều ẩn \(d\)<select id="cmpD"><option selected>1024</option><option>4096</option><option>8192</option></select></label>
+    <label>Số layer \(L\)<select id="cmpL"><option selected>4</option><option>32</option><option>80</option></select></label>
+    <label>Token mỗi bước \(B\)<select id="cmpB"><option selected>128</option><option>8192</option><option>131072</option></select></label>
+    <label>Micro-batch \(m\) (pipeline)<select id="cmpM"><option>1</option><option selected>4</option><option>16</option><option>64</option></select></label>
+  </div>
+  <div class="tbl"><table class="l07-cmp" id="cmpT"></table></div>
+  <p id="cmpMsg" style="margin:10px 0 0"></p>
+</div>
+<script>
+(function () {
+  const box = document.getElementById('cmpW'); if (!box) return;
+  const g = id => +box.querySelector('#' + id).value;
+  const fB = b => { const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1000 && i < 4) { b /= 1000; i++; } return (b < 10 ? b.toFixed(1) : Math.round(b)).toString().replace('.', ',') + ' ' + u[i]; };
+  const LIM = 80e9;
+  function upd() {
+    const N = g('cmpN'), d = g('cmpD'), L = g('cmpL'), B = g('cmpB'), m = g('cmpM');
+    const P = L * d * d, st = 16 * P, act = 4 * B * d * L, f = (N - 1) / N;
+    const rows = [
+      ['1 GPU', st, act, 0, '—', '—'],
+      ['Data parallel', st, act / N, 2 * f * 4 * P, '1 all-reduce gradient mỗi bước (chồng được lên backward)', 'Infiniband vẫn chạy được'],
+      ['Tensor parallel', st / N, act, 2 * L * f * 4 * B * d, `all-gather ở <b>mỗi layer</b> (${L} lần forward + tương tự ở backward), nằm trên đường găng`, 'Cần NVLink'],
+      ['Pipeline parallel', st / N, act / N, 2 * 4 * B * d, `send/recv activation với hàng xóm; bong bóng ${Math.round((N - 1) / (m + N - 1) * 100)}%`, 'Đường chậm cũng được']
+    ];
+    const minC = Math.min(...rows.slice(1).map(r => r[3]));
+    box.querySelector('#cmpT').innerHTML =
+      '<tr><th>Cách</th><th>Tham số + gradient + Adam / GPU</th><th>Activation / GPU</th><th>Gửi mỗi GPU / bước</th><th>Khi nào gửi</th><th>Đường nối</th></tr>' +
+      rows.map(r => `<tr><td><b>${r[0]}</b></td><td class="${r[1] > LIM ? 'bad' : ''}">${fB(r[1])}</td><td class="${r[2] > LIM ? 'bad' : ''}">${fB(r[2])}</td><td class="${r[0] !== '1 GPU' && r[3] === minC ? 'good' : ''}">${r[3] ? fB(r[3]) : '—'}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join('');
+    const dpC = rows[1][3], tpC = rows[2][3];
+    let msg = `Mô hình có ${(P / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} triệu tham số. `;
+    msg += dpC < tpC ? `Ở đây data parallel gửi ít hơn tensor parallel ${Math.round(tpC / dpC)} lần: giao tiếp của data parallel tỉ lệ với số tham số, còn của tensor parallel tỉ lệ với số token × chiều ẩn × số layer. `
+                     : `Ở đây tensor parallel lại gửi ít hơn data parallel: batch nhỏ so với mô hình. `;
+    msg += st > LIM ? `Trạng thái mô hình (${fB(st)}) không vừa một GPU 80 GB, nên data parallel đơn thuần không chạy được. Phải cắt mô hình (tensor/pipeline) hoặc dùng FSDP. ` : '';
+    msg += 'Ô đỏ: vượt 80 GB (một H100). Ô xanh: gửi ít nhất trong ba cách.';
+    box.querySelector('#cmpMsg').innerHTML = msg;
+  }
+  box.querySelectorAll('select').forEach(s => s.addEventListener('change', upd));
+  upd();
+})();
+</script>
+<p>Cách ước lượng: trạng thái mô hình 16 byte/tham số. Activation tính là input của mỗi layer (4 byte/số). Data parallel all-reduce gradient \(\approx 2 \cdot \frac{N-1}{N} \cdot 4P\) byte. Tensor parallel all-gather ở mỗi layer, nhân 2 cho backward. Pipeline gửi activation một chiều và gradient chiều về. Hãy thử \(d = 8192\), \(L = 80\), \(B = 131072\), \(N = 8\): data parallel không vừa bộ nhớ, tensor parallel gửi hàng trăm GB mỗi bước, còn pipeline gửi ít nhất. Đó là lý do mô hình thật <b>kết hợp cả ba</b>: tensor parallel trong node (NVLink), pipeline giữa các node, và data parallel (thường là FSDP) ở ngoài cùng.</p>
+
+<h3>Những gì bài chưa nói tới</h3>
+<ul>
+  <li><b>Chồng giao tiếp lên tính toán</b> (communication/computation overlap): gửi gradient/activation trong lúc vẫn đang tính phần khác.</li>
+  <li><b>Mô hình tổng quát hơn</b>: có attention, layer norm…, không chỉ MLP.</li>
+  <li><b>Các kiểu song song khác</b>:
+    <ul>
+      <li><dfn>Sequence parallelism</dfn>: cắt theo độ dài chuỗi.</li>
+      <li><dfn>Expert parallelism</dfn>: mỗi GPU giữ một số expert của MoE, dùng all-to-all.</li>
+      <li>Các kiểu kết hợp.</li>
+    </ul>
+  </li>
+  <li><b>Jax/TPU</b>: chỉ cần định nghĩa mô hình và cách chia (sharding), trình biên dịch Jax tự lo phần còn lại. Thầy dẫn ví dụ Levanter. Môn này dùng PyTorch để thấy mọi thứ được xây từ các viên gạch cơ bản thế nào.</li>
+</ul>
+<p>Một ý trong phần tóm tắt của thầy đáng nhớ: với mọi đại lượng (activation, tham số…), ta luôn có ba lựa chọn: <b>tính lại</b> khi cần (ví dụ activation checkpointing), <b>lưu</b> trong bộ nhớ của mình, hoặc <b>lưu ở GPU khác</b> rồi gửi qua khi cần (sharding). Mỗi lựa chọn tốn một loại tài nguyên khác nhau: FLOP, bộ nhớ, hay băng thông.</p>
+
+<h2 id="l07-summary" data-short="Tóm tắt & tự kiểm tra"><span>Tóm tắt và tự kiểm tra</span><span class="slide-range">trang 2</span></h2>
+<div class="note key">
+  <ul>
+    <li><b>Thứ bậc bộ nhớ có thêm hai tầng:</b> NVLink/NVSwitch (giữa GPU trong node) và Infiniband/Ethernet (giữa các node). Mỗi tầng chậm hơn nhiều lần.</li>
+    <li><b>Collective operations:</b> broadcast, scatter, gather, reduce là nền tảng. All-gather, reduce-scatter, all-reduce dùng nhiều nhất. All-to-all dùng cho MoE. All-reduce = reduce-scatter + all-gather.</li>
+    <li><b>Ring all-reduce:</b> mỗi GPU gửi \(\frac{2(N-1)}{N}S \approx 2S\), gần như không đổi khi thêm GPU. Bus bandwidth đo đúng đại lượng này.</li>
+    <li><b>NCCL</b> dịch collective thành các kernel gửi/nhận. <b>torch.distributed</b> là giao diện trong PyTorch (backend nccl cho GPU, gloo cho CPU).</li>
+    <li><b>Data parallel:</b> mỗi GPU cả mô hình và một phần batch. All-reduce gradient mỗi bước. Không tiết kiệm bộ nhớ.</li>
+    <li><b>Tensor parallel:</b> mỗi GPU một lát của mỗi layer. Giao tiếp ở mỗi layer, cần NVLink.</li>
+    <li><b>Pipeline parallel:</b> mỗi GPU một nhóm layer. Gửi activation điểm–điểm, chạy được trên đường chậm, nhưng phải giảm bong bóng bằng micro-batch.</li>
+  </ul>
+</div>
+
+<h3>Tự kiểm tra (bấm để xem đáp án)</h3>
+<div class="quiz">
+  <details><summary>1. Reduce và all-reduce khác nhau thế nào? Scatter và reduce-scatter khác nhau thế nào?</summary>
+    <div><p>Reduce gộp (ví dụ cộng) dữ liệu của mọi rank và chỉ rank 0 nhận kết quả. All-reduce gộp và mọi rank đều nhận kết quả đầy đủ. Scatter chỉ chia dữ liệu của rank 0 ra cho các rank, không có phép gộp. Reduce-scatter thì mọi rank đều có dữ liệu, cộng theo từng vị trí trước, rồi mỗi rank nhận một phần của tổng.</p></div></details>
+  <details><summary>2. 3 rank có input [1, 2, 3], [4, 5, 6], [7, 8, 9]. Kết quả reduce-scatter (cộng) và all-reduce là gì?</summary>
+    <div><p>Tổng theo vị trí là [12, 15, 18]. Reduce-scatter: rank 0 nhận [12], rank 1 nhận [15], rank 2 nhận [18]. All-reduce: cả 3 rank đều nhận [12, 15, 18].</p></div></details>
+  <details><summary>3. All-reduce một tensor 1 GB trên 8 GPU bằng thuật toán ring. Mỗi GPU gửi bao nhiêu? Nếu dồn hết về rank 0 rồi phát lại thì rank 0 phải nhận bao nhiêu?</summary>
+    <div><p>Ring: \(2 \times 7/8 \times 1 = 1{,}75\) GB mỗi GPU. Dồn về rank 0: rank 0 nhận 7 GB (rồi còn gửi 7 GB), trong khi các GPU khác gần như ngồi không.</p></div></details>
+  <details><summary>4. RDMA giúp gì? Vì sao Ethernet thường chậm hơn Infiniband dù cùng tốc độ dây?</summary>
+    <div><p>RDMA cho GPU đọc/ghi thẳng vào bộ nhớ của GPU khác mà không qua CPU. Ethernet thường phải qua CPU: chép vào bộ đệm của nhân hệ điều hành, đóng gói TCP, chép vào card mạng. Các bước đó thêm độ trễ và tốn băng thông bộ nhớ. RoCE đưa RDMA lên Ethernet để tránh chuyện này.</p></div></details>
+  <details><summary>5. Trong code data parallel, vì sao tham số ở mọi rank luôn giống nhau dù loss khác nhau?</summary>
+    <div><p>Ba lý do. Mọi rank khởi tạo giống nhau (<code>manual_seed(0)</code>). Gradient được all-reduce (lấy trung bình) nên giống nhau. Và mọi rank chạy cùng một optimizer với cùng gradient. Cùng điểm xuất phát, cùng bước đi, nên cùng kết quả.</p></div></details>
+  <details><summary>6. Huấn luyện mô hình 7 tỉ tham số bằng AdamW trên 8 GPU H100 (80 GB), chỉ dùng data parallel. Có chạy được không?</summary>
+    <div><p>Không. Mỗi GPU phải giữ toàn bộ trạng thái, khoảng \(16 \times 7 = 112\) GB, vượt 80 GB. Thêm GPU cũng không giúp, vì data parallel không chia bộ nhớ. Cần FSDP/ZeRO (chia trạng thái ra các GPU) hoặc tensor/pipeline parallel.</p></div></details>
+  <details><summary>7. Code data parallel chạy trên máy không có GPU thì bị lỗi ở đâu? Sửa thế nào?</summary>
+    <div><p>Không có GPU thì <code>setup</code> dùng backend gloo, mà gloo không hỗ trợ <code>ReduceOp.AVG</code>. Sửa: dùng <code>ReduceOp.SUM</code> rồi chia <code>param.grad</code> cho <code>world_size</code>.</p></div></details>
+  <details><summary>8. Trong tensor parallel, vì sao áp GeLU lên từng lát trước khi all-gather vẫn đúng? Nếu thay GeLU bằng layer norm thì sao?</summary>
+    <div><p>GeLU tính riêng từng phần tử, nên áp lên từng lát hay lên cả vector đều ra một kết quả. Layer norm cần trung bình và phương sai trên <b>cả</b> vector, nên mỗi rank chỉ có 256/1024 chiều thì không tự tính được. Phải giao tiếp thêm (ví dụ all-reduce tổng và tổng bình phương), hoặc gom đủ vector trước.</p></div></details>
+  <details><summary>9. Pipeline 4 stage. Bong bóng là bao nhiêu nếu dùng 4 micro-batch? 16 micro-batch?</summary>
+    <div><p>\(m = 4\): \(3/7 \approx 43\%\). \(m = 16\): \(3/19 \approx 16\%\). Càng nhiều micro-batch so với số stage, bong bóng càng nhỏ.</p></div></details>
+  <details><summary>10. Bạn có 4 node, mỗi node 8 GPU nối NVLink, các node nối Infiniband. Nên đặt tensor parallel và pipeline parallel ở đâu?</summary>
+    <div><p>Tensor parallel <b>trong</b> node (8 GPU qua NVLink), vì nó giao tiếp ở mỗi layer, nhiều dữ liệu và nằm trên đường găng. Pipeline (hoặc data parallel) <b>giữa</b> các node qua Infiniband, vì pipeline chỉ gửi activation điểm–điểm cho hàng xóm, còn data parallel thì chồng được giao tiếp lên backward.</p></div></details>
+  <details><summary>11. Công thức băng thông trong code benchmark, \(\frac{2(N-1)S}{N t}\), đo đại lượng gì? Vì sao không dùng \(S/t\)?</summary>
+    <div><p>Nó là lượng dữ liệu mỗi GPU thật sự gửi trong ring all-reduce, chia cho thời gian: tốc độ trên đường nối của mỗi GPU (bus bandwidth). \(S/t\) (algorithm bandwidth) thay đổi theo \(N\) nên khó so với băng thông phần cứng. Bus bandwidth so trực tiếp được với, ví dụ, 900 GB/s của NVLink.</p></div></details>
+</div>
+
+<h3>Bảng thuật ngữ của lecture</h3>
+<div class="tbl"><table>
+  <tr><th>Thuật ngữ</th><th>Nghĩa ngắn gọn</th></tr>
+  <tr><td>Node / Pod</td><td>Một máy (thường 8 GPU) / một nhóm nhiều node nối Infiniband</td></tr>
+  <tr><td>NVLink / NVSwitch</td><td>Đường nối nhanh trực tiếp giữa các GPU / bộ chuyển mạch nối mọi GPU trong node bằng NVLink</td></tr>
+  <tr><td>PCIe</td><td>Bus nối GPU với CPU (và với nhau) trong một máy thường</td></tr>
+  <tr><td>Infiniband / Ethernet</td><td>Mạng nối giữa các node: nhanh, có RDMA / phổ biến, thường phải qua CPU</td></tr>
+  <tr><td>RDMA / RoCE</td><td>Đọc/ghi thẳng bộ nhớ máy khác không qua CPU / RDMA chạy trên Ethernet</td></tr>
+  <tr><td>NVL72</td><td>Rack 72 GPU Blackwell nằm chung một miền NVLink</td></tr>
+  <tr><td>Rank / World size</td><td>Số thứ tự của một GPU (tiến trình) / tổng số GPU</td></tr>
+  <tr><td>Collective operation</td><td>Kiểu giao tiếp chuẩn cho cả nhóm thiết bị</td></tr>
+  <tr><td>Broadcast / Scatter / Gather / Reduce</td><td>Chép từ rank 0 cho mọi rank / chia của rank 0 cho mọi rank / gom về rank 0 / gom về rank 0 kèm phép gộp</td></tr>
+  <tr><td>All-gather</td><td>Mọi rank nhận bản ghép đầy đủ các mảnh</td></tr>
+  <tr><td>Reduce-scatter</td><td>Cộng theo vị trí rồi mỗi rank giữ một phần của tổng</td></tr>
+  <tr><td>All-reduce</td><td>Cộng theo vị trí, mọi rank giữ toàn bộ kết quả (= reduce-scatter + all-gather)</td></tr>
+  <tr><td>All-to-all</td><td>Mỗi rank gửi cho từng rank một phần riêng (dùng cho MoE)</td></tr>
+  <tr><td>Ring all-reduce</td><td>Thuật toán all-reduce chuyền các khúc dữ liệu quanh một vòng tròn GPU</td></tr>
+  <tr><td>Bus bandwidth</td><td>Lượng dữ liệu mỗi GPU thật sự gửi chia cho thời gian, so được với băng thông phần cứng</td></tr>
+  <tr><td>NCCL</td><td>Thư viện của NVIDIA dịch collective thành các kernel gửi/nhận giữa GPU</td></tr>
+  <tr><td><code>torch.distributed</code> / backend</td><td>Thư viện phân tán của PyTorch / phần cài đặt bên dưới: nccl (GPU), gloo (CPU)</td></tr>
+  <tr><td><code>init_process_group</code> / <code>barrier</code></td><td>Các tiến trình điểm danh và lập kênh giao tiếp / chờ cho tới khi mọi tiến trình tới cùng một chỗ</td></tr>
+  <tr><td><code>send</code> / <code>recv</code></td><td>Giao tiếp điểm–điểm giữa hai rank</td></tr>
+  <tr><td>Data parallelism (DDP)</td><td>Mỗi GPU cả mô hình, một phần batch, all-reduce gradient</td></tr>
+  <tr><td>FSDP / ZeRO</td><td>Data parallel nhưng chia tham số, gradient, optimizer state ra các GPU (all-gather + reduce-scatter)</td></tr>
+  <tr><td>Tensor parallelism</td><td>Mỗi GPU một lát của mỗi ma trận trọng số</td></tr>
+  <tr><td>Pipeline parallelism</td><td>Mỗi GPU một nhóm layer liền nhau, chuyền activation cho nhau</td></tr>
+  <tr><td>Micro-batch / Bubble</td><td>Phần nhỏ của batch chạy qua pipeline / thời gian GPU ngồi chờ trong pipeline</td></tr>
+  <tr><td>GPipe / 1F1B</td><td>Lịch pipeline: hết forward rồi mới backward / xen kẽ một forward một backward</td></tr>
+  <tr><td>Sequence / Expert parallelism</td><td>Cắt theo độ dài chuỗi / mỗi GPU giữ một số expert của MoE</td></tr>
+  <tr><td>Communication/computation overlap</td><td>Gửi dữ liệu trong lúc vẫn đang tính phần khác, để giấu thời gian giao tiếp</td></tr>
+</table></div>
+
+<script>
+(function () {
+  // Tô màu code Python trong các khối pre.l07-py
+  const KW = new Set('def class return for in range if else elif assert import from as with None True False lambda and or not is'.split(' '));
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const RE = /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d+(?:\.\d*)?(?:e-?\d+)?)\b|\b([A-Za-z_]\w*)\b/g;
+  document.querySelectorAll('pre.l07-py > code').forEach(code => {
+    const src = code.textContent; let out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while ((m = RE.exec(src))) {
+      out += esc(src.slice(last, m.index)); last = RE.lastIndex;
+      const t = esc(m[0]);
+      if (m[1]) out += `<span class="c">${t}</span>`;
+      else if (m[2]) out += `<span class="s">${t}</span>`;
+      else if (m[3]) out += `<span class="n">${t}</span>`;
+      else out += KW.has(m[4]) ? `<span class="k">${t}</span>` : t;
+    }
+    code.innerHTML = out + esc(src.slice(last));
+  });
+})();
+</script>

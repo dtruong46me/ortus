@@ -36,6 +36,16 @@
       "unit": "page",
       "file": "lectures/l06.html",
       "imgDir": "img/l06"
+    },
+    {
+      "id": "l07",
+      "num": 7,
+      "title": "Parallelism across GPUs",
+      "titleVi": "Song song hoá trên nhiều GPU",
+      "slides": 12,
+      "unit": "page",
+      "file": "lectures/l07.html",
+      "imgDir": "img/l07"
     }
   ]
 }
