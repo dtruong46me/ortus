@@ -98,7 +98,6 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .icon-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .icon-btn .badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--accent); color: var(--surface); font-size: 11px; display: inline-grid; place-items: center; }
 .icon-btn .badge:empty { display: none; }
-#tocBtn { display: none; }
 
 .lec-pick { position: relative; min-width: 0; flex: 0 1 auto; }
 .lec-pick > button {
@@ -123,19 +122,24 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .lm-foot { margin: 6px 4px 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 
 /* ---------- Bố cục 3 cột ---------- */
-.app { display: grid; grid-template-columns: 280px minmax(0, 1fr) 330px; min-height: calc(100vh - var(--top)); }
-.app.notes-off { grid-template-columns: 280px minmax(0, 1fr); }
-.app.notes-off .notes { display: none; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: calc(100vh - var(--top)); }
+.app.side-on { grid-template-columns: 264px minmax(0, 1fr); }
+.app.notes-on { grid-template-columns: minmax(0, 1fr) 340px; }
+.app.side-on.notes-on { grid-template-columns: 264px minmax(0, 1fr) 340px; }
+.side, .notes { display: none !important; }
+.app.side-on .side { display: block !important; }
+.app.notes-on .notes { display: flex !important; }
 .side, .notes {
   position: sticky; top: var(--top); align-self: start;
   height: calc(100vh - var(--top)); height: calc(100dvh - var(--top));
   overflow-y: auto; font-family: var(--f-display);
 }
-.side { border-right: 1px solid var(--line); padding: 26px 14px 48px 18px; }
+.side { border-right: 1px solid var(--line); padding: 22px 14px 48px 18px; }
+.side-x { position: absolute; top: -4px; right: 0; height: 30px; min-width: 30px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
 .notes { border-left: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
 
 /* ---------- Mục lục phân cấp (trái) ---------- */
-.side-head { padding: 0 6px 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.side-head { position: relative; padding: 0 34px 18px 6px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
 .side-head .k { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
 .side-head .tt { font-size: 16px; font-weight: 800; line-height: 1.3; margin: 4px 0 12px; letter-spacing: -.01em; }
 .side-prog { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
@@ -298,7 +302,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 .np-title { display: flex; align-items: center; gap: 8px; }
 .np-title b { font-size: 15px; font-weight: 800; }
 .np-title .count { font-size: 12px; color: var(--muted); font-weight: 600; }
-.np-title .x { margin-left: auto; display: none; }
+.np-title .x { margin-left: auto; height: 30px; min-width: 30px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
 .np-filter { display: flex; gap: 4px; margin-top: 12px; background: var(--code-bg); border-radius: 9px; padding: 3px; }
 .np-filter button { flex: 1; border: 0; background: transparent; color: var(--muted); font: 600 12px var(--f-display); padding: 6px 0; border-radius: 7px; cursor: pointer; }
 .np-filter button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
@@ -348,26 +352,19 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 .scrim { position: fixed; inset: var(--top) 0 0 0; z-index: 30; background: rgba(8,10,16,.42); }
 .scrim[hidden] { display: none; }
 
-/* ---------- Màn hình vừa: bảng ghi chú thành ngăn kéo ---------- */
-@media (max-width: 1279px) {
-  .app, .app.notes-off { grid-template-columns: 260px minmax(0, 1fr); }
-  .app.notes-off .notes { display: flex; }
-  .notes {
-    position: fixed; top: var(--top); right: 0; bottom: 0; height: auto; width: min(370px, 100vw); z-index: 35;
-    background: var(--bg); box-shadow: var(--shadow-lg); transform: translateX(105%); transition: transform .22s ease; visibility: hidden;
-  }
-  .notes.open { transform: none; visibility: visible; }
-  .np-title .x { display: inline-flex; }
-}
-/* ---------- Điện thoại: mục lục cũng thành ngăn kéo ---------- */
-@media (max-width: 900px) {
-  .app, .app.notes-off { grid-template-columns: minmax(0, 1fr); }
-  #tocBtn { display: inline-flex; }
-  .side {
+/* ---------- Điện thoại: mục lục là ngăn kéo trái, ghi chú là ngăn kéo nửa dưới (vẫn đọc được bài phía trên) ---------- */
+@media (max-width: 759px) {
+  .app, .app.side-on, .app.notes-on, .app.side-on.notes-on { grid-template-columns: minmax(0, 1fr); }
+  .app.side-on .side {
     position: fixed; top: var(--top); left: 0; bottom: 0; height: auto; width: min(320px, 88vw); z-index: 35;
-    background: var(--bg); box-shadow: var(--shadow-lg); transform: translateX(-105%); transition: transform .22s ease; visibility: hidden;
+    background: var(--bg); box-shadow: var(--shadow-lg);
   }
-  .side.open { transform: none; visibility: visible; }
+  .app.notes-on .notes {
+    position: fixed; top: auto; left: 0; right: 0; bottom: 0; height: 50vh; height: 50dvh; z-index: 34;
+    background: var(--bg); border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-lg);
+  }
+  .app.notes-on .np-head { padding-top: 12px; }
+  .app.notes-on main { padding-bottom: 54vh; }
   main { padding-inline: 16px; padding-block: 24px 96px; }
   body { font-size: 17px; }
   .reader h2 { font-size: 23px; }
@@ -396,7 +393,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 </style>
 
 <header class="topbar">
-  <button class="icon-btn" id="tocBtn" aria-label="Contents" aria-controls="side" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+  <button class="icon-btn" id="tocBtn" aria-label="Contents" title="Show / hide contents" aria-controls="side" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
   <a class="brand" href="#">CS336 <span>Notebook</span></a>
   <div class="lec-pick">
     <button id="lecBtn" aria-haspopup="true" aria-expanded="false" aria-controls="lecMenu"><span class="n" id="lecBtnNum"></span><span class="t" id="lecBtnTitle">Loading…</span><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -410,6 +407,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
 <div class="app" id="app">
   <aside class="side" id="side" aria-label="Lecture contents">
     <div class="side-head">
+      <button class="icon-btn side-x" id="sideClose" aria-label="Hide contents" title="Hide contents"><svg class="i" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
       <div class="k" id="sideKicker"></div>
       <div class="tt" id="sideTitle"></div>
       <div class="side-prog"><div class="bar"><i id="sideBar"></i></div><span id="sideProg"></span></div>
@@ -424,7 +422,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   <aside class="notes" id="notes" aria-label="Notes">
     <div class="np-head">
       <div class="np-title"><b>Notes</b><span class="count" id="npCount"></span>
-        <button class="icon-btn x" id="npClose" aria-label="Close notes"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <button class="icon-btn x" id="npClose" aria-label="Hide notes" title="Hide notes"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="np-filter" role="group" aria-label="Filter notes">
         <button data-f="all" aria-pressed="true">All</button><button data-f="note" aria-pressed="false">Notes</button><button data-f="hl" aria-pressed="false">Highlights</button>
       </div>
@@ -493,26 +491,48 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   applyTheme(store.get('cs336:theme') || 'system');
   themeBtn.addEventListener('click', () => { const n = THEME[themeBtn.dataset.t][2]; store.set('cs336:theme', n); applyTheme(n); });
 
-  /* ---------- Ngăn kéo & bảng ghi chú ---------- */
-  const app = $('app'), side = $('side'), notesEl = $('notes'), scrim = $('scrim'), tocBtn = $('tocBtn'), notesBtn = $('notesBtn');
-  const wide = () => matchMedia('(min-width: 1280px)').matches;
-  const narrow = () => matchMedia('(max-width: 900px)').matches;
-  function syncScrim() { scrim.hidden = !(side.classList.contains('open') || notesEl.classList.contains('open')); }
-  function setSide(open) { side.classList.toggle('open', open); tocBtn.setAttribute('aria-expanded', String(open)); if (open) setNotesDrawer(false); syncScrim(); }
-  function setNotesDrawer(open) { notesEl.classList.toggle('open', open); if (!wide()) notesBtn.setAttribute('aria-pressed', String(open)); if (open) side.classList.remove('open'); syncScrim(); }
-  function showNotes() { if (wide()) { app.classList.remove('notes-off'); store.set('cs336:notesPanel', 'on'); notesBtn.setAttribute('aria-pressed', 'true'); } else setNotesDrawer(true); }
-  function syncNotesBtn() { notesBtn.setAttribute('aria-pressed', String(wide() ? !app.classList.contains('notes-off') : notesEl.classList.contains('open'))); }
-  if (store.get('cs336:notesPanel') === 'off') app.classList.add('notes-off');
-  syncNotesBtn();
-  notesBtn.addEventListener('click', () => {
-    if (wide()) { const off = app.classList.toggle('notes-off'); store.set('cs336:notesPanel', off ? 'off' : 'on'); syncNotesBtn(); }
-    else setNotesDrawer(!notesEl.classList.contains('open'));
+  /* ---------- Hai cột bên: mục lục (trái) & ghi chú (phải) ----------
+     Cả hai là cột nằm cạnh bài đọc, bật/tắt độc lập. Màn hình hẹp hơn 1100px
+     thì chỉ mở một cột mỗi lúc. Điện thoại: mục lục là ngăn kéo, ghi chú là nửa dưới. */
+  const app = $('app'), side = $('side'), scrim = $('scrim'), tocBtn = $('tocBtn'), notesBtn = $('notesBtn');
+  const phone = () => matchMedia('(max-width: 759px)').matches;
+  const narrow = phone;
+  const roomy = () => innerWidth >= 1100;
+  let sideOn = false, notesOn = false;
+  function syncPanels() {
+    app.classList.toggle('side-on', sideOn); app.classList.toggle('notes-on', notesOn);
+    tocBtn.setAttribute('aria-pressed', String(sideOn));
+    notesBtn.setAttribute('aria-pressed', String(notesOn));
+    scrim.hidden = !(phone() && sideOn);
+  }
+  function remember() { if (!phone()) { store.set('cs336:side', sideOn ? 'on' : 'off'); store.set('cs336:notesPanel', notesOn ? 'on' : 'off'); } }
+  function setSide(on) { sideOn = on; if (on && !roomy()) notesOn = false; remember(); syncPanels(); }
+  function setNotes(on) { notesOn = on; if (on && !roomy()) sideOn = false; remember(); syncPanels(); }
+  const showNotes = () => { if (!notesOn) setNotes(true); };
+  function initPanels() {
+    if (phone()) { sideOn = false; notesOn = false; }
+    else {
+      const sp = store.get('cs336:side'), np = store.get('cs336:notesPanel');
+      sideOn = sp ? sp === 'on' : innerWidth >= 900;
+      notesOn = np ? np === 'on' : innerWidth >= 1280;
+      if (sideOn && notesOn && !roomy()) sideOn = false;
+    }
+    syncPanels();
+  }
+  initPanels();
+  let wasPhone = phone(), rzT;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzT);
+    rzT = setTimeout(() => {
+      if (phone() !== wasPhone) { wasPhone = phone(); initPanels(); }
+      else if (!phone() && sideOn && notesOn && !roomy()) { sideOn = false; syncPanels(); }
+    }, 150);
   });
-  $('npClose').addEventListener('click', () => setNotesDrawer(false));
-  tocBtn.addEventListener('click', () => setSide(!side.classList.contains('open')));
-  scrim.addEventListener('click', () => { setSide(false); setNotesDrawer(false); });
-  matchMedia('(min-width: 1280px)').addEventListener('change', () => { notesEl.classList.remove('open'); syncScrim(); syncNotesBtn(); });
-  matchMedia('(max-width: 900px)').addEventListener('change', () => { side.classList.remove('open'); syncScrim(); });
+  notesBtn.addEventListener('click', () => setNotes(!notesOn));
+  tocBtn.addEventListener('click', () => setSide(!sideOn));
+  $('npClose').addEventListener('click', () => setNotes(false));
+  $('sideClose').addEventListener('click', () => setSide(false));
+  scrim.addEventListener('click', () => setSide(false));
 
   /* ---------- Danh sách lecture ---------- */
   const reader = $('reader'), tocEl = $('toc'), lecBtn = $('lecBtn'), lecMenu = $('lecMenu');
@@ -972,11 +992,13 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
   }
   function litAnno() { reader.querySelectorAll('.anno').forEach(sp => sp.classList.toggle('lit', sp.dataset.nid === activeId)); }
   function goTo(id) {
-    const spans = reader.querySelectorAll(`.anno[data-nid="${id}"]`);
+    const spans = [...reader.querySelectorAll(`.anno[data-nid="${id}"]`)];
     setActive(id, false);
     if (!spans.length) { toast('Couldn\'t find this passage in the lecture.'); return; }
-    if (!wide()) setNotesDrawer(false);
-    spans[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (phone() && sideOn) setSide(false);
+    for (let d = spans[0].closest('details'); d; d = d.parentElement.closest('details')) d.open = true;
+    const y = spans[0].getBoundingClientRect().top + window.scrollY - (phone() ? 96 : Math.round(innerHeight * 0.3));
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
     spans.forEach(sp => { sp.classList.remove('flash'); void sp.offsetWidth; sp.classList.add('flash'); });
     setTimeout(() => spans.forEach(sp => sp.classList.remove('flash')), 1700);
   }
@@ -994,7 +1016,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
       if (delArm === id) { delArm = null; deleteNote(id); return; }
       delArm = id; renderPanel(); setTimeout(() => { if (delArm === id) { delArm = null; renderPanel(); } }, 3000); return;
     }
-    if (!e.target.closest('textarea, button') && id !== activeId) goTo(id);
+    if (!e.target.closest('textarea, button, .composer')) goTo(id);
   });
   list.addEventListener('input', e => { if (e.target.matches('textarea')) editText = e.target.value; });
   list.addEventListener('keydown', e => {
@@ -1036,7 +1058,7 @@ mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width:
       if (e.key === 'ArrowRight') openLb(lbN + 1);
       return;
     }
-    if (e.key === 'Escape') { hidePop(); setMenu(false); setSide(false); if (!editingId) setNotesDrawer(false); }
+    if (e.key === 'Escape') { hidePop(); setMenu(false); if (phone() && sideOn) setSide(false); }
   });
 })();
 </script>
